@@ -1,0 +1,42 @@
+import { ArrowRight, ArrowUpRight, BriefcaseBusiness, Check, Clock3, MoreHorizontal, Plus, Star, Users, X } from 'lucide-react'
+import type { AuthUser } from '../../services/auth'
+import type { ApplicationStatus, JobStatus, MarketplaceApplication, MarketplaceJob, WorkspaceView } from '../../types/marketplace'
+import { formatSalary } from './JobCard'
+import { ResumeLabel } from './JobDialogs'
+
+type EmployerPagesProps = {
+  view: WorkspaceView
+  user: AuthUser
+  jobs: MarketplaceJob[]
+  applications: MarketplaceApplication[]
+  reviewedJobIds: string[]
+  onCreateJob: () => void
+  onNavigate: (view: WorkspaceView) => void
+  onReview: (job: MarketplaceJob, application: MarketplaceApplication) => void
+  onUpdateJob: (jobId: string, status: JobStatus) => void
+  onUpdateApplication: (applicationId: string, status: ApplicationStatus) => void
+}
+
+const jobStatus: Record<JobStatus, string> = { OPEN: 'Đang tuyển', HIRED: 'Đã nhận người', COMPLETED: 'Hoàn thành' }
+
+function EmployerEmpty({ onCreateJob }: { onCreateJob: () => void }) {
+  return <div className="empty-state employer-empty"><span className="empty-icon"><BriefcaseBusiness size={21} /></span><h2>Bắt đầu với tin tuyển dụng đầu tiên</h2><p>Mô tả rõ công việc, lịch làm và mức lương để sinh viên biết đây là cơ hội dành cho mình.</p><button className="button-primary" type="button" onClick={onCreateJob}>Đăng tin đầu tiên <Plus size={17} /></button></div>
+}
+
+export function EmployerPages({ view, user, jobs, applications, reviewedJobIds, onCreateJob, onNavigate, onReview, onUpdateJob, onUpdateApplication }: EmployerPagesProps) {
+  const openApplications = applications.filter((application) => application.status === 'PENDING')
+  if (view === 'candidates') {
+    return <section className="workspace-section"><div className="section-heading-row"><div><p className="eyebrow">KẾT NỐI ĐÚNG NGƯỜI</p><h1>Ứng viên của bạn</h1><p className="section-subtitle">Đọc phần giới thiệu, xem CV và cập nhật trạng thái hồ sơ.</p></div><span className="results-count">{openApplications.length} hồ sơ mới</span></div>{applications.length ? <div className="candidate-list">{applications.map((application) => {
+      const job = jobs.find((item) => item.id === application.jobId)
+      return <article className="candidate-card" key={application.id}><div className="candidate-avatar">{application.applicantName.split(' ').slice(-1)[0]?.[0]}</div><div className="candidate-main"><div className="candidate-head"><div><h2>{application.applicantName}</h2><span>{application.applicantEmail}</span></div><span className={`status-pill status-${application.status.toLowerCase()}`}>{application.status === 'PENDING' ? 'Chờ xem' : application.status === 'ACCEPTED' ? 'Đã chọn' : 'Đã từ chối'}</span></div><p>Ứng tuyển <strong>{job?.title ?? 'Công việc đã gỡ'}</strong> <span>· {application.createdAt}</span></p><blockquote>{application.introduction}</blockquote><ResumeLabel name={application.resumeName} />{application.status === 'PENDING' && <div className="candidate-actions"><button className="quiet-button" type="button" onClick={() => onUpdateApplication(application.id, 'REJECTED')}><X size={15} /> Từ chối</button><button className="button-primary" type="button" onClick={() => onUpdateApplication(application.id, 'ACCEPTED')}><Check size={15} /> Chọn ứng viên</button></div>}{application.status === 'ACCEPTED' && job?.status === 'COMPLETED' && <div className="candidate-actions">{reviewedJobIds.includes(job.id) ? <span className="applied-confirmation"><Check size={14} /> Đã gửi đánh giá</span> : <button className="review-button" type="button" onClick={() => onReview(job, application)}><Star size={15} /> Đánh giá sinh viên</button>}</div>}</div></article>
+    })}</div> : jobs.length ? <div className="empty-state"><span className="empty-icon"><Users size={21} /></span><h2>Chưa có hồ sơ ứng tuyển</h2><p>Khi có sinh viên ứng tuyển vào tin của bạn, hồ sơ sẽ hiển thị tại đây.</p></div> : <EmployerEmpty onCreateJob={onCreateJob} />}</section>
+  }
+
+  if (view === 'jobs') {
+    return <section className="workspace-section"><div className="section-heading-row"><div><p className="eyebrow">QUẢN LÝ CÔNG VIỆC</p><h1>Tin tuyển dụng</h1><p className="section-subtitle">Theo dõi trạng thái và tiến độ ứng tuyển.</p></div><button className="button-primary" type="button" onClick={onCreateJob}><Plus size={17} /> Đăng tin mới</button></div>{jobs.length ? <div className="employer-job-list">{jobs.map((job) => <article className="employer-job-row" key={job.id}><div className={`company-mark tone-${job.tone}`}>{job.initials}</div><div className="employer-job-info"><h2>{job.title}</h2><span>{job.company} · {formatSalary(job)}</span><span className="employer-job-meta"><Users size={14} /> {applications.filter((application) => application.jobId === job.id).length} ứng viên <i /> <Clock3 size={13} /> Đăng {job.postedAt}</span></div><label className={`status-select status-${job.status.toLowerCase()}`}><span>{jobStatus[job.status]}</span><select aria-label={`Cập nhật trạng thái ${job.title}`} value={job.status} onChange={(event) => onUpdateJob(job.id, event.target.value as JobStatus)}><option value="OPEN">Đang tuyển</option><option value="HIRED">Đã nhận người</option><option value="COMPLETED">Hoàn thành</option></select><MoreHorizontal size={17} /></label></article>)}</div> : <EmployerEmpty onCreateJob={onCreateJob} />}</section>
+  }
+
+  const activeJobs = jobs.filter((job) => job.status === 'OPEN').length
+  const completedJobs = jobs.filter((job) => job.status === 'COMPLETED').length
+  return <section className="workspace-section"><div className="dashboard-welcome"><div><p className="eyebrow">KHÔNG GIAN NHÀ TUYỂN DỤNG</p><h1>Chào {user.fullName.split(' ').slice(-1)[0]}.</h1><p className="section-subtitle">Tìm những người phù hợp cho các ca làm sắp tới của bạn.</p></div><button className="button-primary" type="button" onClick={onCreateJob}><Plus size={17} /> Đăng tin tuyển dụng</button></div><div className="metric-grid"><article className="metric-card"><span>Tin đang tuyển</span><strong>{activeJobs.toString().padStart(2, '0')}</strong><small><i className="metric-dot dot-green" /> Đang nhận hồ sơ</small><BriefcaseBusiness className="metric-watermark" size={24} /></article><article className="metric-card"><span>Ứng viên mới</span><strong>{openApplications.length.toString().padStart(2, '0')}</strong><small><i className="metric-dot dot-orange" /> Chờ bạn xem qua</small><Users className="metric-watermark" size={24} /></article><article className="metric-card"><span>Công việc hoàn thành</span><strong>{completedJobs.toString().padStart(2, '0')}</strong><small><i className="metric-dot dot-blue" /> Hành trình trọn vẹn</small><Check className="metric-watermark" size={24} /></article></div><div className="dashboard-content-grid"><section className="dashboard-table-section"><div className="section-heading-row compact-heading"><div><p className="eyebrow">CẬP NHẬT GẦN ĐÂY</p><h2>Ứng viên mới nhất</h2></div><button className="text-button" type="button" onClick={() => onNavigate('candidates')}>Xem tất cả <ArrowRight size={15} /></button></div>{applications.length ? <div className="mini-candidate-list">{applications.slice(0, 4).map((application) => <div className="mini-candidate-row" key={application.id}><span className="candidate-avatar small-avatar">{application.applicantName.split(' ').slice(-1)[0]?.[0]}</span><div><strong>{application.applicantName}</strong><span>{jobs.find((job) => job.id === application.jobId)?.title}</span></div><span className={`status-pill status-${application.status.toLowerCase()}`}>{application.status === 'PENDING' ? 'Mới' : application.status === 'ACCEPTED' ? 'Đã chọn' : 'Đã từ chối'}</span></div>)}</div> : <div className="dashboard-empty-row"><span>Hồ sơ ứng tuyển sẽ xuất hiện ở đây.</span><button className="text-button" type="button" onClick={onCreateJob}>Đăng tin đầu tiên <ArrowUpRight size={15} /></button></div>}</section><aside className="dashboard-side-note"><span className="side-note-index">01 / NOTE</span><h2>Rõ ràng ngay từ đầu.</h2><p>Mô tả ca làm, mức lương và kỳ vọng cụ thể sẽ giúp bạn tìm được người phù hợp nhanh hơn.</p><button type="button" onClick={onCreateJob}>Tạo tin tuyển dụng <ArrowRight size={15} /></button></aside></div></section>
+}
