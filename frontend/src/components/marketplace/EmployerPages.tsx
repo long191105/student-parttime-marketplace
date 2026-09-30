@@ -1,5 +1,6 @@
-import { ArrowRight, ArrowUpRight, BriefcaseBusiness, Check, Clock3, MoreHorizontal, Plus, Star, Users, X } from 'lucide-react'
+import { ArrowRight, ArrowUpRight, BriefcaseBusiness, Check, Clock3, Plus, Star, Users, X } from 'lucide-react'
 import type { AuthUser } from '../../services/auth'
+import { Dropdown } from '../shared/Dropdown'
 import type { ApplicationStatus, JobStatus, MarketplaceApplication, MarketplaceJob, WorkspaceView } from '../../types/marketplace'
 import { formatSalary } from './JobCard'
 import { ResumeLabel } from './JobDialogs'
@@ -17,8 +18,6 @@ type EmployerPagesProps = {
   onUpdateApplication: (applicationId: string, status: ApplicationStatus) => void
 }
 
-const jobStatus: Record<JobStatus, string> = { OPEN: 'Đang tuyển', HIRED: 'Đã nhận người', COMPLETED: 'Hoàn thành' }
-
 function EmployerEmpty({ onCreateJob }: { onCreateJob: () => void }) {
   return <div className="empty-state employer-empty"><span className="empty-icon"><BriefcaseBusiness size={21} /></span><h2>Bắt đầu với tin tuyển dụng đầu tiên</h2><p>Mô tả rõ công việc, lịch làm và mức lương để sinh viên biết đây là cơ hội dành cho mình.</p><button className="button-primary" type="button" onClick={onCreateJob}>Đăng tin đầu tiên <Plus size={17} /></button></div>
 }
@@ -33,7 +32,7 @@ export function EmployerPages({ view, user, jobs, applications, reviewedJobIds, 
   }
 
   if (view === 'jobs') {
-    return <section className="workspace-section"><div className="section-heading-row"><div><p className="eyebrow">QUẢN LÝ CÔNG VIỆC</p><h1>Tin tuyển dụng</h1><p className="section-subtitle">Theo dõi trạng thái và tiến độ ứng tuyển.</p></div><button className="button-primary" type="button" onClick={onCreateJob}><Plus size={17} /> Đăng tin mới</button></div>{jobs.length ? <div className="employer-job-list">{jobs.map((job) => <article className="employer-job-row" key={job.id}><div className={`company-mark tone-${job.tone}`}>{job.initials}</div><div className="employer-job-info"><h2>{job.title}</h2><span>{job.company} · {formatSalary(job)}</span><span className="employer-job-meta"><Users size={14} /> {applications.filter((application) => application.jobId === job.id).length} ứng viên <i /> <Clock3 size={13} /> Đăng {job.postedAt}</span></div><label className={`status-select status-${job.status.toLowerCase()}`}><span>{jobStatus[job.status]}</span><select aria-label={`Cập nhật trạng thái ${job.title}`} value={job.status} onChange={(event) => onUpdateJob(job.id, event.target.value as JobStatus)}><option value="OPEN">Đang tuyển</option><option value="HIRED">Đã nhận người</option><option value="COMPLETED">Hoàn thành</option></select><MoreHorizontal size={17} /></label></article>)}</div> : <EmployerEmpty onCreateJob={onCreateJob} />}</section>
+    return <section className="workspace-section"><div className="section-heading-row"><div><p className="eyebrow">QUẢN LÝ CÔNG VIỆC</p><h1>Tin tuyển dụng</h1><p className="section-subtitle">Theo dõi trạng thái và tiến độ ứng tuyển.</p></div><button className="button-primary" type="button" onClick={onCreateJob}><Plus size={17} /> Đăng tin mới</button></div>{jobs.length ? <div className="employer-job-list">{jobs.map((job) => <article className="employer-job-row" key={job.id}><div className={`company-mark tone-${job.tone}`}>{job.initials}</div><div className="employer-job-info"><h2>{job.title}</h2><span>{job.company} · {formatSalary(job)}</span><span className="employer-job-meta"><Users size={14} /> {applications.filter((application) => application.jobId === job.id).length} ứng viên <i /> <Clock3 size={13} /> Đăng {job.postedAt}</span></div><div className={`status-select status-${job.status.toLowerCase()}`}><Dropdown ariaLabel={`Cập nhật trạng thái ${job.title}`} className="dropdown-status" options={[{ label: 'Đang tuyển', value: 'OPEN' }, { label: 'Đã nhận người', value: 'HIRED' }, { label: 'Hoàn thành', value: 'COMPLETED' }]} value={job.status} onValueChange={(value) => onUpdateJob(job.id, value as JobStatus)} /></div></article>)}</div> : <EmployerEmpty onCreateJob={onCreateJob} />}</section>
   }
 
   const activeJobs = jobs.filter((job) => job.status === 'OPEN').length

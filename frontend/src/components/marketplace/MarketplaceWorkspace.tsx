@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react'
-import { Bell, Bookmark, BriefcaseBusiness, ChevronDown, CircleHelp, FileText, Gauge, LayoutDashboard, LogOut, Menu, Search, ShieldCheck, Users, X } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+import { Bell, Bookmark, BriefcaseBusiness, ChevronDown, CircleHelp, FileText, Gauge, LayoutDashboard, LogOut, Search, ShieldCheck, Users } from 'lucide-react'
 import type { AuthUser, UserRole } from '../../services/auth'
 import type { JobDraft, MarketplaceApplication, MarketplaceJob, WorkspaceView } from '../../types/marketplace'
 import { useMarketplace } from '../../hooks/useMarketplace'
@@ -45,7 +45,9 @@ export function MarketplaceWorkspace({ user, onLogout }: MarketplaceWorkspacePro
   const [selectedJob, setSelectedJob] = useState<MarketplaceJob | null>(null)
   const [showJobForm, setShowJobForm] = useState(false)
   const [reviewing, setReviewing] = useState<{ job: MarketplaceJob; targetId: number | null; targetName: string; authorRole: 'STUDENT' | 'EMPLOYER' } | null>(null)
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [profileMenuOpen, setProfileMenuOpen] = useState(false)
+  const profileMenuRef = useRef<HTMLDivElement>(null)
+  const profileTriggerRef = useRef<HTMLButtonElement>(null)
   const { state, createJob, submitApplication, updateApplicationStatus, updateJobStatus, removeJob, toggleSavedJob, addReview, markNotificationsRead } = useMarketplace()
 
   useEffect(() => {
@@ -56,6 +58,25 @@ export function MarketplaceWorkspace({ user, onLogout }: MarketplaceWorkspacePro
     document.addEventListener('marketplace:navigate', navigate)
     return () => document.removeEventListener('marketplace:navigate', navigate)
   }, [])
+
+  useEffect(() => {
+    if (!profileMenuOpen) return
+    function handlePointerDown(event: PointerEvent) {
+      if (!profileMenuRef.current?.contains(event.target as Node)) setProfileMenuOpen(false)
+    }
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === 'Escape') {
+        setProfileMenuOpen(false)
+        profileTriggerRef.current?.focus()
+      }
+    }
+    document.addEventListener('pointerdown', handlePointerDown)
+    document.addEventListener('keydown', handleKeyDown)
+    return () => {
+      document.removeEventListener('pointerdown', handlePointerDown)
+      document.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [profileMenuOpen])
 
   const visibleNotifications = state.notifications.filter((item) => item.userId === user.id || (item.userId === null && item.audienceRole === user.role))
   const unreadCount = visibleNotifications.filter((item) => !item.read).length
@@ -93,23 +114,36 @@ export function MarketplaceWorkspace({ user, onLogout }: MarketplaceWorkspacePro
 
   return (
     <div className="marketplace-shell">
-      <aside className={`sidebar ${mobileMenuOpen ? 'sidebar-open' : ''}`}>
-        <div className="sidebar-brand-row"><BrandLockup /><button className="icon-button sidebar-close" type="button" onClick={() => setMobileMenuOpen(false)} aria-label="Đóng menu"><X size={18} /></button></div>
-        <div className="sidebar-account"><span className="avatar avatar-large">{initials(user.fullName)}</span><div><strong>{user.fullName}</strong><span>{roleNames[user.role]}</span></div><ChevronDown size={15} /></div>
-        <p className="sidebar-label">{user.role === 'STUDENT' ? 'KHÁM PHÁ' : user.role === 'EMPLOYER' ? 'KHÔNG GIAN TUYỂN DỤNG' : 'QUẢN TRỊ'}</p>
-        <nav className="sidebar-nav" aria-label="Điều hướng chính">{navigation[user.role].map((item) => {
-          const Icon = item.icon
-          return <button className={`nav-item ${activeView === item.view ? 'nav-item-active' : ''}`} type="button" key={item.view} onClick={() => { setActiveView(item.view); setMobileMenuOpen(false) }}><Icon size={18} /><span>{item.label}</span>{item.view === 'notifications' && unreadCount > 0 && <span className="nav-count">{unreadCount}</span>}</button>
-        })}</nav>
-        {user.role === 'STUDENT' && <div className="sidebar-tip"><span className="tip-index">MỘT CHÚT GỢI Ý</span><h3>Học tốt, làm vừa sức.</h3><p>Ưu tiên công việc có lịch linh hoạt để bạn luôn giữ nhịp học tập.</p></div>}
-        <div className="sidebar-bottom"><button className="nav-item" type="button" onClick={() => setActiveView('notifications')}><CircleHelp size={18} /><span>Trợ giúp</span></button><button className="nav-item logout-nav" type="button" onClick={onLogout}><LogOut size={18} /><span>Đăng xuất</span></button><span className="sidebar-version">DHL · 1.0.0</span></div>
-      </aside>
-
       <main className="workspace-main">
-        <header className="workspace-header"><button className="icon-button mobile-menu-button" type="button" onClick={() => setMobileMenuOpen(true)} aria-label="Mở menu"><Menu size={20} /></button><div className="breadcrumb"><span>{roleNames[user.role]}</span><span>/</span><strong>{navigation[user.role].find((item) => item.view === activeView)?.label ?? 'Tổng quan'}</strong></div><div className="header-actions"><button className={`icon-button header-notifications ${unreadCount ? 'has-unread' : ''}`} type="button" onClick={() => setActiveView('notifications')} aria-label={`Thông báo${unreadCount ? `, ${unreadCount} chưa đọc` : ''}`}><Bell size={19} />{unreadCount > 0 && <span>{unreadCount}</span>}</button><span className="header-divider" /><span className="avatar">{initials(user.fullName)}</span></div></header>
+        <header className="workspace-header">
+          <div className="workspace-header-inner">
+            <BrandLockup className="header-brand" />
+            <nav className="header-nav" aria-label="Điều hướng chính">{navigation[user.role].map((item) => {
+              const Icon = item.icon
+              return <button className={`header-nav-item ${activeView === item.view ? 'is-active' : ''}`} type="button" key={item.view} aria-current={activeView === item.view ? 'page' : undefined} onClick={() => setActiveView(item.view)}><Icon size={16} /><span>{item.label}</span>{item.view === 'notifications' && unreadCount > 0 && <span className="header-nav-count">{unreadCount}</span>}</button>
+            })}</nav>
+            <div className="header-actions">
+              <button className={`icon-button header-notifications ${unreadCount ? 'has-unread' : ''}`} type="button" onClick={() => setActiveView('notifications')} aria-label={`Thông báo${unreadCount ? `, ${unreadCount} chưa đọc` : ''}`}><Bell size={19} />{unreadCount > 0 && <span>{unreadCount}</span>}</button>
+              <div className="profile-menu-anchor" ref={profileMenuRef}>
+                <button aria-controls="profile-navigation-menu" aria-expanded={profileMenuOpen} aria-haspopup="true" className={`profile-trigger ${profileMenuOpen ? 'is-open' : ''}`} onClick={() => setProfileMenuOpen((open) => !open)} ref={profileTriggerRef} type="button">
+                  <span className="avatar">{initials(user.fullName)}</span><span className="profile-trigger-copy"><strong>{user.fullName}</strong><small>{roleNames[user.role]}</small></span><ChevronDown aria-hidden="true" className="profile-chevron" size={15} />
+                </button>
+                {profileMenuOpen && <div className="profile-menu" id="profile-navigation-menu">
+                  <div className="profile-menu-heading"><span className="avatar avatar-large">{initials(user.fullName)}</span><div><strong>{user.fullName}</strong><span>{roleNames[user.role]}</span><small>{user.email}</small></div></div>
+                  <p className="profile-menu-label">KHÔNG GIAN LÀM VIỆC</p>
+                  <nav className="profile-menu-nav" aria-label="Các mục trong không gian làm việc">{navigation[user.role].map((item) => {
+                    const Icon = item.icon
+                    return <button className={`profile-menu-item ${activeView === item.view ? 'is-active' : ''}`} type="button" key={item.view} onClick={() => { setActiveView(item.view); setProfileMenuOpen(false) }}><Icon size={17} /><span>{item.label}</span>{item.view === 'notifications' && unreadCount > 0 && <span className="nav-count">{unreadCount}</span>}</button>
+                  })}</nav>
+                  {user.role === 'STUDENT' && <div className="profile-menu-tip"><span className="tip-index">MỘT CHÚT GỢI Ý</span><strong>Học tốt, làm vừa sức.</strong><span>Ưu tiên công việc có lịch linh hoạt để bạn luôn giữ nhịp học tập.</span></div>}
+                  <div className="profile-menu-footer"><button className="profile-menu-item" type="button" onClick={() => { setActiveView('notifications'); setProfileMenuOpen(false) }}><CircleHelp size={17} /><span>Trợ giúp</span></button><button className="profile-menu-item logout-nav" type="button" onClick={onLogout}><LogOut size={17} /><span>Đăng xuất</span></button><span className="sidebar-version">DHL · 1.0.0</span></div>
+                </div>}
+              </div>
+            </div>
+          </div>
+        </header>
         <div className={`workspace-body role-${user.role.toLowerCase()}`}>{currentPage}</div>
       </main>
-      {mobileMenuOpen && <button className="mobile-menu-backdrop" type="button" onClick={() => setMobileMenuOpen(false)} aria-label="Đóng menu" />}
       {selectedJob && <JobDetailsDialog job={selectedJob} user={user} alreadyApplied={appliedJobIds.includes(selectedJob.id)} onClose={() => setSelectedJob(null)} onApply={handleApply} />}
       {showJobForm && <JobFormDialog companyName={user.fullName} onClose={() => setShowJobForm(false)} onCreate={handleCreateJob} />}
       {reviewing && <ReviewDialog targetName={reviewing.targetName} jobTitle={reviewing.job.title} onClose={() => setReviewing(null)} onSubmit={handleReview} />}
