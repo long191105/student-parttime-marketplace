@@ -1,6 +1,7 @@
 import { useDeferredValue, useState } from 'react'
-import { ArrowRight, BriefcaseBusiness, ChevronDown, MapPin, Search, SlidersHorizontal, Sparkles } from 'lucide-react'
+import { ArrowRight, BriefcaseBusiness, MapPin, Search, SlidersHorizontal, Sparkles } from 'lucide-react'
 import heroPhoto from '../../assets/hero.png'
+import { Dropdown } from '../shared/Dropdown'
 import type { MarketplaceJob } from '../../types/marketplace'
 import { JobCard } from './JobCard'
 
@@ -43,7 +44,7 @@ export function ExplorePage({ jobs, savedJobIds, appliedJobIds, onOpenJob, onTog
           <p className="hero-description">Tìm những công việc linh hoạt quanh lịch học. Tử tế, rõ ràng, và đáng để bắt đầu.</p>
           <div className="hero-search">
             <label className="search-input-wrap"><Search size={18} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Vị trí, kỹ năng hoặc công ty" aria-label="Tìm vị trí, kỹ năng hoặc công ty" /></label>
-            <label className="search-select-wrap"><MapPin size={17} /><select aria-label="Địa điểm" value={city} onChange={(event) => setCity(event.target.value)}>{cities.map((item) => <option key={item}>{item}</option>)}</select><ChevronDown size={15} /></label>
+            <div className="search-select-wrap"><MapPin size={17} /><Dropdown ariaLabel="Địa điểm" className="dropdown-search" options={cities.map((item) => ({ label: item, value: item }))} value={city} onValueChange={setCity} /></div>
             <button className="button-primary search-submit" type="button" onClick={() => document.getElementById('job-results')?.scrollIntoView({ behavior: 'smooth' })}>Tìm việc <ArrowRight size={17} /></button>
           </div>
           <div className="hero-footnote"><span>Đang có <strong>{openJobs.length} cơ hội</strong> dành cho sinh viên</span><span className="hero-footnote-divider" /><span>Lọc theo lịch, địa điểm & mức lương</span></div>
@@ -62,8 +63,8 @@ export function ExplorePage({ jobs, savedJobIds, appliedJobIds, onOpenJob, onTog
       <section className="jobs-section" id="job-results" aria-labelledby="jobs-title">
         <div className="section-heading-row jobs-heading"><div><p className="eyebrow">TÌM MỘT CA LÀM MỚI</p><h2 id="jobs-title">Việc làm dành cho bạn</h2></div><span className="results-count">{filteredJobs.length} việc phù hợp</span></div>
         <div className="filter-bar">
-          <label className="filter-control"><SlidersHorizontal size={15} /><select aria-label="Lọc theo ngành nghề" value={category} onChange={(event) => setCategory(event.target.value)}>{categories.map((item) => <option key={item}>{item}</option>)}</select><ChevronDown size={14} /></label>
-          <label className="filter-control"><select aria-label="Lọc theo mức lương tối thiểu" value={minimumPay} onChange={(event) => setMinimumPay(event.target.value)}><option value="">Mọi mức lương</option><option value="25000:giờ">Từ 25.000đ/giờ</option><option value="30000:giờ">Từ 30.000đ/giờ</option><option value="180000:ca">Từ 180.000đ/ca</option><option value="4000000:tháng">Từ 4.000.000đ/tháng</option></select><ChevronDown size={14} /></label>
+          <div className="filter-control"><SlidersHorizontal size={15} /><Dropdown ariaLabel="Lọc theo ngành nghề" className="dropdown-filter" options={categories.map((item) => ({ label: item, value: item }))} value={category} onValueChange={setCategory} /></div>
+          <div className="filter-control"><Dropdown ariaLabel="Lọc theo mức lương tối thiểu" className="dropdown-filter" options={[{ label: 'Mọi mức lương', value: '' }, { label: 'Từ 25.000đ/giờ', value: '25000:giờ' }, { label: 'Từ 30.000đ/giờ', value: '30000:giờ' }, { label: 'Từ 180.000đ/ca', value: '180000:ca' }, { label: 'Từ 4.000.000đ/tháng', value: '4000000:tháng' }]} value={minimumPay} onValueChange={setMinimumPay} /></div>
           <button className="filter-reset" type="button" onClick={() => { setCategory(categories[0]); setCity(cities[0]); setMinimumPay(''); setQuery('') }}>Xóa bộ lọc</button>
         </div>
         <div className="job-list">{filteredJobs.length ? filteredJobs.map((job) => <div className="job-list-item" key={job.id}><JobCard job={job} saved={savedJobIds.includes(job.id)} onOpen={onOpenJob} onToggleSaved={onToggleSaved} /><span className={`match-indicator ${appliedJobIds.includes(job.id) ? 'applied' : ''}`}>{appliedJobIds.includes(job.id) ? 'Đã ứng tuyển' : job.postedAt}</span></div>) : <div className="empty-state"><span className="empty-icon"><Search size={20} /></span><h2>Chưa tìm thấy việc phù hợp</h2><p>Thử một từ khóa hoặc bộ lọc khác nhé.</p></div>}</div>
