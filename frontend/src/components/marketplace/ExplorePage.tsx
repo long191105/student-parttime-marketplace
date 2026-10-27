@@ -1,5 +1,5 @@
 import { useDeferredValue, useState } from 'react'
-import { ArrowRight, BriefcaseBusiness, MapPin, Search, SlidersHorizontal, Sparkles } from 'lucide-react'
+import { ArrowLeft, ArrowRight, MapPin, Search, Sparkles } from 'lucide-react'
 import heroPhoto from '../../assets/hero.png'
 import { Dropdown } from '../shared/Dropdown'
 import type { MarketplaceJob } from '../../types/marketplace'
@@ -7,6 +7,11 @@ import { JobCard } from './JobCard'
 
 const categories = ['Tất cả ngành nghề', 'Marketing / Truyền thông', 'Nhà hàng / Khách sạn', 'Giáo dục / Đào tạo', 'Bán lẻ / Bán hàng', 'Thiết kế / Sáng tạo', 'Sự kiện / Giải trí']
 const cities = ['Tất cả địa điểm', 'Hà Nội', 'TP. Hồ Chí Minh', 'Đà Nẵng']
+const bannerSlides = [
+  { image: 'https://images.unsplash.com/photo-1521737711867-e3b97375f902?auto=format&fit=crop&w=1600&q=85', alt: 'Đồng nghiệp trẻ cùng lên kế hoạch cho một dự án', label: 'MÔI TRƯỜNG TỬ TẾ', title: 'Bắt đầu từ một đội ngũ tốt' },
+  { image: 'https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&w=1600&q=85', alt: 'Nhóm sinh viên làm việc cùng nhau trong không gian sáng tạo', label: 'LINH HOẠT CHO SINH VIÊN', title: 'Việc làm hợp với lịch học' },
+  { image: 'https://images.unsplash.com/photo-1552664730-d307ca884978?auto=format&fit=crop&w=1600&q=85', alt: 'Nhóm cộng sự trao đổi ý tưởng trong buổi làm việc', label: 'TRẢI NGHIỆM MỚI', title: 'Thêm kinh nghiệm, mở lối đi riêng' },
+]
 
 type ExplorePageProps = {
   jobs: MarketplaceJob[]
@@ -21,6 +26,7 @@ export function ExplorePage({ jobs, savedJobIds, appliedJobIds, onOpenJob, onTog
   const [category, setCategory] = useState(categories[0])
   const [city, setCity] = useState(cities[0])
   const [minimumPay, setMinimumPay] = useState('')
+  const [activeBanner, setActiveBanner] = useState(0)
   const deferredQuery = useDeferredValue(query.trim().toLocaleLowerCase('vi'))
   const openJobs = jobs.filter((job) => job.status === 'OPEN')
   const filteredJobs = openJobs.filter((job) => {
@@ -38,20 +44,33 @@ export function ExplorePage({ jobs, savedJobIds, appliedJobIds, onOpenJob, onTog
   return (
     <div className="explore-workspace">
       <section className="explore-hero">
-        <div className="hero-copy">
-          <p className="eyebrow"><Sparkles size={14} /> CÔNG VIỆC HỢP VỚI LỊCH CỦA BẠN</p>
+        <div className="hero-copy hero-copy-centered">
           <h1>Đi làm thêm,<br /><span>đúng nhịp của bạn.</span></h1>
           <p className="hero-description">Tìm những công việc linh hoạt quanh lịch học. Tử tế, rõ ràng, và đáng để bắt đầu.</p>
-          <div className="hero-search">
+          <div className="hero-search hero-search-wide">
+            <div className="search-category-wrap"><Dropdown ariaLabel="Danh mục nghề" className="dropdown-search" options={categories.map((item) => ({ label: item, value: item }))} value={category} onValueChange={setCategory} /></div>
             <label className="search-input-wrap"><Search size={18} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Vị trí, kỹ năng hoặc công ty" aria-label="Tìm vị trí, kỹ năng hoặc công ty" /></label>
             <div className="search-select-wrap"><MapPin size={17} /><Dropdown ariaLabel="Địa điểm" className="dropdown-search" options={cities.map((item) => ({ label: item, value: item }))} value={city} onValueChange={setCity} /></div>
             <button className="button-primary search-submit" type="button" onClick={() => document.getElementById('job-results')?.scrollIntoView({ behavior: 'smooth' })}>Tìm việc <ArrowRight size={17} /></button>
           </div>
           <div className="hero-footnote"><span>Đang có <strong>{openJobs.length} cơ hội</strong> dành cho sinh viên</span><span className="hero-footnote-divider" /><span>Lọc theo lịch, địa điểm & mức lương</span></div>
         </div>
-        <div className="hero-aside">
-          <div className="hero-photo-card"><img src={heroPhoto} alt="Sinh viên cùng làm việc trong một không gian sáng tạo" /><div className="hero-photo-caption"><span className="note-marker"><BriefcaseBusiness size={15} /></span><div><strong>Việc nhỏ, bước tiến lớn</strong><span>Mỗi trải nghiệm đều có giá trị.</span></div></div></div>
-          <div className="hero-aside-numbers"><div className="hero-aside-number"><span>01</span><div><strong>Chọn lịch bạn rảnh</strong><small>Học vẫn là ưu tiên.</small></div></div><div className="hero-aside-number"><span>02</span><div><strong>Gặp nơi làm phù hợp</strong><small>Tìm công việc đáng tin.</small></div></div><div className="hero-aside-number"><span>03</span><div><strong>Thêm kinh nghiệm thật</strong><small>Từng ca làm đều có ích.</small></div></div></div>
+        <div className="hero-promo-grid">
+          <aside className="hero-category-panel" aria-label="Danh mục việc làm">
+            <div className="hero-category-heading"><strong>Khám phá ngành nghề</strong><span>{categories.length - 1} lĩnh vực</span></div>
+            <div className="hero-category-list">{categories.slice(1).map((item) => <button className={`hero-category-item ${category === item ? 'is-active' : ''}`} type="button" key={item} onClick={() => setCategory(item)}><span>{item}</span><span>{openJobs.filter((job) => job.category === item).length}</span></button>)}</div>
+            <button className="hero-category-all" type="button" onClick={() => setCategory(categories[0])}>Tất cả ngành nghề <ArrowRight size={15} /></button>
+          </aside>
+          <div className="hero-carousel" aria-roledescription="carousel" aria-label="Cơ hội việc làm nổi bật">
+            {bannerSlides.map((slide, index) => <div className={`hero-carousel-slide ${index === activeBanner ? 'is-active' : ''}`} key={slide.image} aria-hidden={index !== activeBanner}>
+              <img src={slide.image} alt={slide.alt} onError={(event) => { event.currentTarget.src = heroPhoto }} />
+              <div className="hero-carousel-shade" />
+              <div className="hero-carousel-copy"><span>{slide.label}</span><h2>{slide.title}</h2><p>Khám phá một công việc mới, bắt đầu một trải nghiệm đáng giá.</p><button type="button" onClick={() => document.getElementById('job-results')?.scrollIntoView({ behavior: 'smooth' })}>Khám phá việc làm <ArrowRight size={16} /></button></div>
+            </div>)}
+            <button className="hero-carousel-arrow hero-carousel-previous" type="button" aria-label="Ảnh trước" onClick={() => setActiveBanner((index) => (index - 1 + bannerSlides.length) % bannerSlides.length)}><ArrowLeft size={19} /></button>
+            <button className="hero-carousel-arrow hero-carousel-next" type="button" aria-label="Ảnh tiếp theo" onClick={() => setActiveBanner((index) => (index + 1) % bannerSlides.length)}><ArrowRight size={19} /></button>
+            <div className="hero-carousel-dots" aria-label="Chọn ảnh banner">{bannerSlides.map((slide, index) => <button className={index === activeBanner ? 'is-active' : ''} type="button" key={slide.image} aria-label={`Hiện ảnh ${index + 1}: ${slide.title}`} aria-current={index === activeBanner ? 'true' : undefined} onClick={() => setActiveBanner(index)} />)}</div>
+          </div>
         </div>
       </section>
 
@@ -63,7 +82,6 @@ export function ExplorePage({ jobs, savedJobIds, appliedJobIds, onOpenJob, onTog
       <section className="jobs-section" id="job-results" aria-labelledby="jobs-title">
         <div className="section-heading-row jobs-heading"><div><p className="eyebrow">TÌM MỘT CA LÀM MỚI</p><h2 id="jobs-title">Việc làm dành cho bạn</h2></div><span className="results-count">{filteredJobs.length} việc phù hợp</span></div>
         <div className="filter-bar">
-          <div className="filter-control"><SlidersHorizontal size={15} /><Dropdown ariaLabel="Lọc theo ngành nghề" className="dropdown-filter" options={categories.map((item) => ({ label: item, value: item }))} value={category} onValueChange={setCategory} /></div>
           <div className="filter-control"><Dropdown ariaLabel="Lọc theo mức lương tối thiểu" className="dropdown-filter" options={[{ label: 'Mọi mức lương', value: '' }, { label: 'Từ 25.000đ/giờ', value: '25000:giờ' }, { label: 'Từ 30.000đ/giờ', value: '30000:giờ' }, { label: 'Từ 180.000đ/ca', value: '180000:ca' }, { label: 'Từ 4.000.000đ/tháng', value: '4000000:tháng' }]} value={minimumPay} onValueChange={setMinimumPay} /></div>
           <button className="filter-reset" type="button" onClick={() => { setCategory(categories[0]); setCity(cities[0]); setMinimumPay(''); setQuery('') }}>Xóa bộ lọc</button>
         </div>
