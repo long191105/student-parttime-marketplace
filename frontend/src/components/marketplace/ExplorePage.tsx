@@ -45,7 +45,6 @@ export function ExplorePage({ jobs, savedJobIds, appliedJobIds, onOpenJob, onTog
     <div className="explore-workspace">
       <section className="explore-hero">
         <div className="hero-copy hero-copy-centered">
-          <p className="eyebrow"><Sparkles size={14} /> CÔNG VIỆC HỢP VỚI LỊCH CỦA BẠN</p>
           <h1>Đi làm thêm,<br /><span>đúng nhịp của bạn.</span></h1>
           <p className="hero-description">Tìm những công việc linh hoạt quanh lịch học. Tử tế, rõ ràng, và đáng để bắt đầu.</p>
           <div className="hero-search hero-search-wide">
