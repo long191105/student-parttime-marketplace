@@ -67,3 +67,18 @@ cd ../../frontend
 npm run build
 npm run lint
 ```
+## Lấy Code mới 
+Cách lấy code mới về 
+git switch main
+git pull origin main
+git switch tên nhánh
+git merge main
+
+
+
+
+
+Cách commit code:
+git add .
+git commit -m 'nội dung'
+git push
