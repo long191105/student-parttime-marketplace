@@ -1,11 +1,20 @@
-# Marketplace database
+# Chợ Hời PostgreSQL
 
-`schema.sql` creates the `marketplace` schema in the existing PostgreSQL database and references `public.user_accounts` for student, employer, and admin identities.
+Backend dùng PostgreSQL. Flyway tự tạo các bảng và chỉ mục khi khởi động lần đầu:
 
-Apply it to the configured `student_marketplace` database with:
+- `user_accounts`: tài khoản thành viên và quản trị viên.
+- `categories`: danh mục tin đăng.
+- `listings`: tin đăng, trạng thái kiểm duyệt và thông tin sản phẩm.
+- `favorites`: tin yêu thích của thành viên.
+
+## Tạo database lần đầu
+
+Mở PowerShell và tạo database rỗng (PostgreSQL phải đang chạy):
 
 ```powershell
-psql -h localhost -U postgres -d student_marketplace -f DB/schema.sql
+psql -U postgres -c "CREATE DATABASE chohoi;"
 ```
 
-Tables cover job posts, applications and attached resume URLs, two-way reviews, notifications, and saved jobs. Resume files should be stored by an upload service; `resume_url` stores the resulting private or signed URL, not the file contents.
+Sau đó chỉnh `DB_USERNAME` và `DB_PASSWORD` trong file `.env` ở thư mục gốc. Flyway sẽ tự áp dụng toàn bộ migration trong `backend/demo/src/main/resources/db/migration`; không cần tự chạy script schema. Số điện thoại liên hệ được lưu theo từng tin và chỉ xem được khi đăng nhập.
+
+Không dùng `ddl-auto=update` trong production. Khi thay đổi cấu trúc, thêm migration Flyway mới với số phiên bản tăng dần.

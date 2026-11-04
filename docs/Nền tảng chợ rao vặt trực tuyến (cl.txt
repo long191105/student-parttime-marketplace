@@ -1,0 +1,23 @@
+Nền tảng Chợ Hời (classified marketplace) theo mô hình Chợ Tốt
+Mục tiêu
+Xây dựng một nền tảng web hai chiều kết nối người bán (cá nhân hoặc cửa hàng nhỏ) với người mua, cho phép đăng tin rao bán đồ cũ/mới, tìm kiếm, liên hệ thương lượng, quản lý trạng thái tin đăng và đánh giá uy tín người bán sau giao dịch. Hệ thống tham khảo mô hình của Chợ Tốt: người dùng tự đăng tin, giao dịch trực tiếp ngoài nền tảng, còn nền tảng đóng vai trò kết nối và kiểm duyệt.
+Phạm vi đề tài
+Trong phạm vi:
+Đăng ký/đăng nhập (email hoặc số điện thoại, có xác thực OTP/email), phân quyền 3 vai trò: Khách vãng lai (chỉ xem), Thành viên (vừa mua vừa bán), Quản trị viên.
+Thành viên đăng tin rao vặt gồm: tiêu đề, danh mục, mô tả, hình ảnh (nhiều ảnh), giá, tình trạng (mới/cũ), khu vực (tỉnh/thành, quận/huyện) và thông tin liên hệ.
+Hệ thống danh mục đa cấp (đồ điện tử, xe cộ, thời trang, đồ gia dụng, bất động sản, thú cưng, việc làm...), mỗi danh mục có thể có thuộc tính riêng (ví dụ: hãng, năm sản xuất, số km).
+Tìm kiếm và lọc tin theo từ khóa, danh mục, khu vực, khoảng giá, tình trạng; sắp xếp theo mới nhất, giá tăng/giảm.
+Trang chi tiết tin đăng: thư viện ảnh, thông tin người bán, nút hiện số điện thoại, tin liên quan.
+Liên hệ người bán qua nhắn tin cơ bản (gửi/nhận tin nhắn trong hộp thư) hoặc gọi điện.
+Quản lý tin của tôi: sửa, ẩn, xóa, đẩy tin lên đầu, và theo dõi trạng thái (chờ duyệt, đang hiển thị, đã bán, hết hạn, bị từ chối).
+Lưu tin yêu thích, lưu tìm kiếm, theo dõi người bán.
+Đánh giá và xếp hạng người bán (số sao, bình luận) sau khi giao dịch; hiển thị hồ sơ uy tín.
+Báo cáo tin vi phạm (lừa đảo, sai danh mục, hàng cấm).
+Trang quản trị: duyệt/từ chối tin, xử lý báo cáo, khóa tài khoản, quản lý danh mục, thống kê cơ bản (số tin, người dùng, lượt xem).
+Thông báo cơ bản (trong ứng dụng/email) khi tin được duyệt/từ chối, có tin nhắn mới, tin sắp hết hạn, hoặc người bán đã theo dõi đăng tin mới.
+Ngoài phạm vi (không bắt buộc):
+Thanh toán/giao dịch tiền thật, ký quỹ trung gian qua cổng thanh toán.
+Ứng dụng di động native riêng biệt (ưu tiên web responsive).
+Chat real-time nâng cao (gửi ảnh, trạng thái đang nhập, gọi video), tính năng này để hướng phát triển.
+Gợi ý tin bằng AI, gói tin trả phí/quảng cáo, tích hợp vận chuyển, kiểm duyệt ảnh tự động.
+Công nghệ đề xuất • Backend: Spring Boot (REST API), Spring Security + JWT cho xác thực/phân quyền • Frontend: ReactJS (hoặc Vue.js), thiết kế responsive • Cơ sở dữ liệu: MySQL/PostgreSQL • Công cụ hỗ trợ: Git/GitHub cho quản lý mã nguồn, Postman cho kiểm thử API
