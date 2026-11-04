@@ -454,6 +454,12 @@ img { display: block; max-width: 100%; }
 .notification-settings small { color: #8d9787; font-size: 8px; }
 
 .admin-app { display: grid; min-height: 650px; grid-template-columns: 218px minmax(0, 1fr); overflow: hidden; margin: -26px calc((min(100vw - 72px, 1280px) - 100vw) / 2) 0; background: #f7f8f4; }
+.admin-app.admin-app-standalone { min-height: 100vh; margin: 0; }
+.admin-route-message { display: grid; min-height: 100vh; align-content: center; justify-items: center; gap: 12px; padding: 24px; background: #f7f8f4; text-align: center; }
+.admin-route-message h1, .admin-route-message p { margin: 0; }
+.admin-route-message h1 { color: #384237; font-family: var(--display); font-size: 24px; }
+.admin-route-message p { max-width: 520px; color: #788078; font-size: 14px; }
+.admin-route-message .button-secondary { margin-left: 8px; }
 .admin-sidebar { display: flex; flex-direction: column; padding: 17px 12px 13px; border-right: 1px solid #e7e9e0; background: #fff; }
 .admin-brand { display: flex; align-items: center; gap: 8px; padding: 0 6px 21px; border-bottom: 1px solid #f0f0ea; }
 .admin-brand .brand-icon { width: 31px; height: 31px; border-radius: 9px 9px 9px 3px; }
@@ -474,6 +480,8 @@ img { display: block; max-width: 100%; }
 .admin-content { min-width: 0; }
 .admin-topbar { display: flex; height: 46px; align-items: center; justify-content: space-between; padding: 0 23px; border-bottom: 1px solid #e8eae3; background: #fff; }
 .admin-topbar > div:first-child { display: flex; align-items: center; gap: 7px; color: #969b91; font-size: 8px; }
+.admin-home-link { padding: 0; border: 0; background: none; color: inherit; font: inherit; cursor: pointer; }
+.admin-home-link:hover { color: #4c7045; }
 .admin-topbar > div:first-child strong { color: #586153; font-weight: 650; }
 .admin-topbar-profile { display: flex; align-items: center; gap: 8px; color: #828a7d; font-size: 8px; }
 .admin-status-dot { width: 6px; height: 6px; border-radius: 50%; background: #77a45d; }
