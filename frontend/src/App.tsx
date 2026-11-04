@@ -4,6 +4,7 @@ import { AdminPage } from './pages/AdminPage'
 import { AuthPage } from './pages/AuthPage'
 import { ExplorePage } from './pages/ExplorePage'
 import { FavoritesPage } from './pages/FavoritesPage'
+import { CheckInPage } from './pages/CheckInPage'
 import { InboxPage } from './pages/InboxPage'
 import { ListingDetailPage } from './pages/ListingDetailPage'
 import { MyListingsPage } from './pages/MyListingsPage'
@@ -350,6 +351,7 @@ export function App() {
       {view === 'sell' && <SellPage onCancel={() => navigate('home')} onSubmit={createListing} />}
       {view === 'my-listings' && <MyListingsPage listings={listings} onStatusChange={changeStatus} onOpen={openListing} onSell={() => navigate('sell')} sellerId={currentSellerId} />}
       {view === 'favorites' && <FavoritesPage listings={listings} savedIds={savedIds} onOpen={openListing} onToggleSaved={toggleSaved} />}
+      {view === 'check-in' && <CheckInPage userId={user?.id ?? null} onBack={() => navigate('home')} />}
       {view === 'messages' && <InboxPage />}
       {view === 'notifications' && <NotificationsPage onNavigate={navigate} />}
       {view === 'profile' && user && <ProfilePage listings={listings} onOpen={openListing} onToggleSaved={toggleSaved} onAuth={signOut} fullName={currentSellerName} sellerId={currentSellerId} />}

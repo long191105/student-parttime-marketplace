@@ -1,9 +1,11 @@
-import { useState } from 'react'
-import { Bell, ChevronDown, Heart, MapPin, Menu, MessageCircle, Plus, Search, ShoppingBag, UserRound, X } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { Armchair, Bell, Bike, Camera, ChevronDown, Heart, MapPin, Menu, MessageCircle, Plus, Search, ShoppingBag, Smartphone, Sparkles, UserRound, X } from 'lucide-react'
 import { locations } from '../data/categories'
 import type { AuthUser } from '../services/MarketplaceApi'
+import { ChoHoiWordmark } from './ChoHoiWordmark'
+import { FloatingPromotions } from './FloatingPromotions'
 
-export type AppView = 'home' | 'search' | 'detail' | 'sell' | 'my-listings' | 'favorites' | 'messages' | 'notifications' | 'profile' | 'auth'
+export type AppView = 'home' | 'search' | 'detail' | 'sell' | 'my-listings' | 'favorites' | 'messages' | 'notifications' | 'profile' | 'check-in' | 'auth'
 
 interface MarketplaceLayoutProps {
   children: React.ReactNode
@@ -23,6 +25,17 @@ export function MarketplaceLayout({
   children, view, query, location, onQueryChange, onLocationChange, onNavigate, onSearch, favoritesCount, unreadCount, user,
 }: MarketplaceLayoutProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [homeHeaderCompact, setHomeHeaderCompact] = useState(false)
+
+  useEffect(() => {
+    if (view !== 'home') return
+
+    function updateHeader() {
+      setHomeHeaderCompact(window.scrollY > 180)
+    }
+    window.addEventListener('scroll', updateHeader, { passive: true })
+    return () => window.removeEventListener('scroll', updateHeader)
+  }, [view])
 
   function navigate(nextView: AppView) {
     onNavigate(nextView)
@@ -35,22 +48,36 @@ export function MarketplaceLayout({
         <span>Chợ Hời đang có hơn <strong>8.400 món đồ tốt</strong> chờ bạn khám phá</span>
         <button type="button" onClick={() => navigate('search')}>Tìm món đồ yêu thích <span aria-hidden="true">→</span></button>
       </div>
-      <header className="site-header">
+      {view === 'home' && (
+        <div className="home-banner-backdrop" aria-hidden="true">
+          <div className="home-banner-copy"><span><Sparkles size={14} /> MÓN TỐT QUANH BẠN</span><strong>Giá hời gần nhà.<br />Chốt vui mỗi ngày.</strong></div>
+          <i className="home-banner-orbit" />
+          <i className="home-banner-product home-banner-chair"><Armchair size={30} /></i>
+          <i className="home-banner-product home-banner-phone"><Smartphone size={27} /></i>
+          <i className="home-banner-product home-banner-camera"><Camera size={25} /></i>
+          <i className="home-banner-product home-banner-bike"><Bike size={31} /></i>
+          <i className="home-banner-product home-banner-bag"><ShoppingBag size={27} /></i>
+          <i className="home-banner-glint home-banner-glint-one">✦</i>
+          <i className="home-banner-glint home-banner-glint-two">✳</i>
+          <i className="home-banner-glint home-banner-glint-three">✧</i>
+        </div>
+      )}
+      <header className={`site-header${view === 'home' ? ' site-header-home' : ''}${view === 'home' && homeHeaderCompact ? ' site-header-home-compact' : ''}`}>
         <div className="header-main page-container">
           <button className="brand" type="button" onClick={() => navigate('home')} aria-label="Về trang chủ Chợ Hời">
             <span className="brand-icon"><ShoppingBag size={21} strokeWidth={2.2} /></span>
-            <span>chợ<span>hời</span><small>MUA BÁN QUANH BẠN</small></span>
+            <span className="brand-copy"><ChoHoiWordmark /><small>MUA BÁN QUANH BẠN</small></span>
           </button>
-          <label className="location-picker">
-            <MapPin size={16} />
-            <select aria-label="Khu vực" value={location} onChange={(event) => onLocationChange(event.target.value)}>
-              {locations.map((item) => <option key={item}>{item}</option>)}
-            </select>
-            <ChevronDown size={14} />
-          </label>
           <form className="header-search" onSubmit={(event) => { event.preventDefault(); onSearch() }}>
             <Search size={19} />
-            <input aria-label="Tìm tin rao" placeholder="Tìm iPhone, xe máy, đồ gia dụng..." value={query} onChange={(event) => onQueryChange(event.target.value)} />
+            <input aria-label="Tìm tin rao" placeholder="Tìm sản phẩm..." value={query} onChange={(event) => onQueryChange(event.target.value)} />
+            <label className="location-picker">
+              <MapPin size={17} />
+              <select aria-label="Khu vực" value={location} onChange={(event) => onLocationChange(event.target.value)}>
+                {locations.map((item) => <option key={item}>{item}</option>)}
+              </select>
+              <ChevronDown size={14} />
+            </label>
             <button type="submit">Tìm kiếm</button>
           </form>
           <div className="header-actions">
@@ -78,7 +105,7 @@ export function MarketplaceLayout({
       <main className="page-container page-content">{children}</main>
       <footer className="site-footer">
         <div className="page-container footer-inner">
-          <div className="footer-brand"><span className="brand-icon"><ShoppingBag size={19} /></span><strong>chợ<span>hời</span></strong><p>Món đồ tốt, tìm thấy quanh bạn.</p></div>
+          <div className="footer-brand"><span className="brand-icon"><ShoppingBag size={19} /></span><ChoHoiWordmark className="footer-wordmark" /><p>Món đồ tốt, tìm thấy quanh bạn.</p></div>
           <div><strong>Khám phá</strong><span>Đồ điện tử</span><span>Xe cộ</span><span>Đồ gia dụng</span></div>
           <div><strong>Hỗ trợ</strong><span>Hướng dẫn mua bán</span><span>Chính sách an toàn</span><span>Liên hệ với chúng tôi</span></div>
           <div className="footer-note">Mua bán gần nhà<br />Bắt đầu bằng một tin đăng tử tế.</div>
@@ -92,6 +119,7 @@ export function MarketplaceLayout({
         <button className={view === 'messages' ? 'mobile-nav-active' : ''} onClick={() => navigate('messages')}><MessageCircle size={19} /><span>Hộp thư</span></button>
         <button className={view === 'profile' ? 'mobile-nav-active' : ''} onClick={() => navigate('profile')}><UserRound size={19} /><span>Tôi</span></button>
       </nav>
+      <FloatingPromotions onNavigate={navigate} view={view} />
     </div>
   )
 }
