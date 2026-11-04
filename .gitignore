@@ -1,3 +1,9 @@
+# Local environment variables and credentials
+.env
+.env.*
+!.env.example
+frontend/.env.local
+
 # Compiled class file
 *.class
 
