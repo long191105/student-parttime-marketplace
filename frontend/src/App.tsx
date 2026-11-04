@@ -16,6 +16,7 @@ import { MarketplaceApi, type AuthSession, type AuthUser } from './services/Mark
 import { MarketplaceService } from './services/MarketplaceService'
 
 const api = new MarketplaceApi()
+const authenticationRequiredViews: AppView[] = ['sell', 'my-listings', 'messages', 'notifications']
 
 export function App() {
   const [service] = useState(() => new MarketplaceService())
@@ -25,6 +26,7 @@ export function App() {
   const [apiState, setApiState] = useState<'connecting' | 'connected' | 'offline'>('connecting')
   const [apiError, setApiError] = useState('')
   const [view, setView] = useState<AppView>('home')
+  const [isAdminRoute, setIsAdminRoute] = useState(() => window.location.pathname.replace(/\/+$/, '') === '/admin')
   const [previousView, setPreviousView] = useState<AppView>('home')
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [query, setQuery] = useState('')
@@ -46,6 +48,14 @@ export function App() {
     const timer = window.setTimeout(() => setNotice(''), 3500)
     return () => window.clearTimeout(timer)
   }, [notice])
+
+  useEffect(() => {
+    function syncAdminRoute() {
+      setIsAdminRoute(window.location.pathname.replace(/\/+$/, '') === '/admin')
+    }
+    window.addEventListener('popstate', syncAdminRoute)
+    return () => window.removeEventListener('popstate', syncAdminRoute)
+  }, [])
 
   useEffect(() => {
     let active = true
@@ -94,8 +104,31 @@ export function App() {
   }, [])
 
   function navigate(nextView: AppView) {
-    if (nextView === 'auth') setPreviousView(view === 'auth' ? previousView : view)
-    setView(nextView)
+    if (nextView === 'auth') {
+      setPreviousView(view === 'auth' ? previousView : view)
+      setView('auth')
+    } else if (authenticationRequiredViews.includes(nextView) && !user) {
+      setPreviousView(nextView)
+      setView('auth')
+    } else {
+      setView(nextView)
+    }
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  function leaveAdminRoute() {
+    window.history.replaceState({}, '', '/')
+    setIsAdminRoute(false)
+    setView('home')
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  function openListingFromAdmin(listing: Listing) {
+    window.history.replaceState({}, '', '/')
+    setIsAdminRoute(false)
+    setPreviousView('home')
+    setSelectedId(listing.id)
+    setView('detail')
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
@@ -187,12 +220,13 @@ export function App() {
   }
 
   async function createListing(data: Omit<ListingData, 'id' | 'status' | 'views' | 'postedAt'> & { contactPhone: string }): Promise<void> {
+    if (!user) {
+      setNotice('Đăng nhập trước khi đăng tin.')
+      navigate('auth')
+      return
+    }
+
     if (apiState === 'connected') {
-      if (!user) {
-        setNotice('Đăng nhập trước khi đăng tin.')
-        navigate('auth')
-        return
-      }
       try {
         await api.createListing(data)
         await reloadFromApi()
@@ -265,8 +299,24 @@ export function App() {
   const currentSellerId = user ? String(user.id) : 'long'
   const currentSellerName = user?.fullName ?? 'Long Nguyễn'
 
+  if (isAdminRoute) {
+    if (apiState === 'connecting') {
+      return <div className="admin-route-message"><p>Đang xác minh quyền truy cập...</p></div>
+    }
+    if (apiState === 'offline') {
+      return <div className="admin-route-message"><h1>Không thể kết nối hệ thống quản trị</h1><p>{apiError}</p><button className="button-primary" onClick={retryConnection}>Thử kết nối lại</button><button className="button-secondary" onClick={leaveAdminRoute}>Về trang chủ</button></div>
+    }
+    if (!user) {
+      return <AuthPage onBack={leaveAdminRoute} onAuthenticate={authenticate} onSuccess={authenticationSucceeded} />
+    }
+    if (user.role !== 'ADMIN') {
+      return <div className="admin-route-message"><h1>Bạn không có quyền truy cập</h1><p>Trang quản trị chỉ dành cho tài khoản quản trị viên.</p><button className="button-primary" onClick={leaveAdminRoute}>Về trang chủ</button></div>
+    }
+    return <AdminPage listings={listings} onStatusChange={changeStatus} onOpen={openListingFromAdmin} onExit={leaveAdminRoute} />
+  }
+
   if (view === 'auth') {
-    return <AuthPage onBack={() => navigate(previousView === 'auth' ? 'home' : previousView)} onAuthenticate={authenticate} onSuccess={authenticationSucceeded} />
+    return <AuthPage onBack={() => navigate(previousView === 'auth' || authenticationRequiredViews.includes(previousView) ? 'home' : previousView)} onAuthenticate={authenticate} onSuccess={authenticationSucceeded} />
   }
 
   return (
@@ -279,7 +329,7 @@ export function App() {
       onNavigate={navigate}
       onSearch={submitSearch}
       favoritesCount={savedIds.length}
-      unreadCount={1}
+      unreadCount={user && apiState === 'connected' ? 1 : 0}
       user={user}
     >
       {apiState === 'offline' && <div className="api-status-banner" role="status"><span>DEMO · Chưa kết nối database; thao tác chỉ lưu trên trình duyệt.</span><button onClick={retryConnection}>Thử kết nối lại</button><small>{apiError}</small></div>}
@@ -304,7 +354,6 @@ export function App() {
       {view === 'notifications' && <NotificationsPage onNavigate={navigate} />}
       {view === 'profile' && user && <ProfilePage listings={listings} onOpen={openListing} onToggleSaved={toggleSaved} onAuth={signOut} fullName={currentSellerName} sellerId={currentSellerId} />}
       {view === 'profile' && !user && <div className="empty-state"><h3>Đăng nhập để xem hồ sơ của bạn</h3><button className="button-primary" onClick={() => navigate('auth')}>Đăng nhập</button></div>}
-      {view === 'admin' && <AdminPage listings={listings} onStatusChange={changeStatus} onOpen={openListing} />}
     </MarketplaceLayout>
   )
 }

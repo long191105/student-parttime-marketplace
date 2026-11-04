@@ -3,7 +3,7 @@ import { Bell, ChevronDown, Heart, MapPin, Menu, MessageCircle, Plus, Search, Sh
 import { locations } from '../data/categories'
 import type { AuthUser } from '../services/MarketplaceApi'
 
-export type AppView = 'home' | 'search' | 'detail' | 'sell' | 'my-listings' | 'favorites' | 'messages' | 'notifications' | 'profile' | 'admin' | 'auth'
+export type AppView = 'home' | 'search' | 'detail' | 'sell' | 'my-listings' | 'favorites' | 'messages' | 'notifications' | 'profile' | 'auth'
 
 interface MarketplaceLayoutProps {
   children: React.ReactNode
@@ -56,7 +56,7 @@ export function MarketplaceLayout({
           <div className="header-actions">
             <button className="header-icon" type="button" aria-label="Tin yêu thích" onClick={() => navigate('favorites')}><Heart size={20} /><span>Yêu thích</span>{favoritesCount > 0 && <b>{favoritesCount}</b>}</button>
             <button className="header-icon" type="button" aria-label="Hộp thư" onClick={() => navigate('messages')}><MessageCircle size={20} /><span>Tin nhắn</span>{unreadCount > 0 && <b>{unreadCount}</b>}</button>
-            <button className="header-icon notification-icon" type="button" aria-label="Thông báo" onClick={() => navigate('notifications')}><Bell size={20} /><i /></button>
+            <button className="header-icon notification-icon" type="button" aria-label="Thông báo" onClick={() => navigate('notifications')}><Bell size={20} />{user && unreadCount > 0 && <i />}</button>
             <button className="profile-menu" type="button" onClick={() => navigate(user ? 'profile' : 'auth')}><span className="avatar avatar-header">{user ? user.fullName.split(/\s+/).slice(-2).map((part) => part[0]).join('').toLocaleUpperCase('vi') : <UserRound size={15} />}</span><span className="profile-menu-name">{user ? user.fullName : 'Đăng nhập'}</span><ChevronDown size={14} /></button>
           </div>
           <button className="mobile-menu-toggle" type="button" aria-label={mobileMenuOpen ? 'Đóng menu' : 'Mở menu'} onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>{mobileMenuOpen ? <X /> : <Menu />}</button>
@@ -68,7 +68,6 @@ export function MarketplaceLayout({
               <button onClick={() => navigate('search')}>Khám phá</button>
               <button onClick={() => navigate('my-listings')}>Tin của tôi</button>
               <button onClick={() => navigate('messages')}>Hộp thư</button>
-              <button onClick={() => navigate('admin')}>Quản trị</button>
               <button className="mobile-nav-only" onClick={() => navigate('profile')}>Tài khoản</button>
               <button className="mobile-nav-only" onClick={() => navigate('auth')}>Đăng xuất</button>
             </nav>
