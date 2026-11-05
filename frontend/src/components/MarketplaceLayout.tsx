@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Armchair, Bell, Bike, Camera, ChevronDown, Heart, MapPin, Menu, MessageCircle, Plus, Search, ShoppingBag, Smartphone, Sparkles, UserRound, X } from 'lucide-react'
+import { Bell, ChevronDown, Heart, MapPin, Menu, MessageCircle, Plus, Search, ShoppingBag, UserRound, X } from 'lucide-react'
 import { locations } from '../data/categories'
 import type { AuthUser } from '../services/MarketplaceApi'
 import { ChoHoiWordmark } from './ChoHoiWordmark'
@@ -44,25 +44,14 @@ export function MarketplaceLayout({
 
   return (
     <div className="app-shell">
-      <div className="announcement">
-        <span>Chợ Hời đang có hơn <strong>8.400 món đồ tốt</strong> chờ bạn khám phá</span>
-        <button type="button" onClick={() => navigate('search')}>Tìm món đồ yêu thích <span aria-hidden="true">→</span></button>
-      </div>
-      {view === 'home' && (
-        <div className="home-banner-backdrop" aria-hidden="true">
-          <div className="home-banner-copy"><span><Sparkles size={14} /> MÓN TỐT QUANH BẠN</span><strong>Giá hời gần nhà.<br />Chốt vui mỗi ngày.</strong></div>
-          <i className="home-banner-orbit" />
-          <i className="home-banner-product home-banner-chair"><Armchair size={30} /></i>
-          <i className="home-banner-product home-banner-phone"><Smartphone size={27} /></i>
-          <i className="home-banner-product home-banner-camera"><Camera size={25} /></i>
-          <i className="home-banner-product home-banner-bike"><Bike size={31} /></i>
-          <i className="home-banner-product home-banner-bag"><ShoppingBag size={27} /></i>
-          <i className="home-banner-glint home-banner-glint-one">✦</i>
-          <i className="home-banner-glint home-banner-glint-two">✳</i>
-          <i className="home-banner-glint home-banner-glint-three">✧</i>
+      {view !== 'home' && (
+        <div className="announcement">
+          <span>Chợ Hời đang có hơn <strong>8.400 món đồ tốt</strong> chờ bạn khám phá</span>
+          <button type="button" onClick={() => navigate('search')}>Tìm món đồ yêu thích <span aria-hidden="true">→</span></button>
         </div>
       )}
       <header className={`site-header${view === 'home' ? ' site-header-home' : ''}${view === 'home' && homeHeaderCompact ? ' site-header-home-compact' : ''}`}>
+        {view === 'home' && <img className="home-banner-image" src="/banner.png" alt="" aria-hidden="true" />}
         <div className="header-main page-container">
           <button className="brand" type="button" onClick={() => navigate('home')} aria-label="Về trang chủ Chợ Hời">
             <span className="brand-icon"><ShoppingBag size={21} strokeWidth={2.2} /></span>
