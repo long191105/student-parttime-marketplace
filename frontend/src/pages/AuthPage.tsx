@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { ArrowLeft, ArrowRight, BadgeCheck, Eye, EyeOff, Heart, LockKeyhole, Package, ShieldCheck, ShoppingBag, Sparkles } from 'lucide-react'
+import { ChoHoiWordmark } from '../components/ChoHoiWordmark'
 import type { AuthSession } from '../services/MarketplaceApi'
 
 interface AuthPageProps {
@@ -38,7 +39,7 @@ export function AuthPage({ onBack, onAuthenticate, onSuccess }: AuthPageProps) {
       <section className="auth-story">
         <button className="auth-back" onClick={onBack}><ArrowLeft size={16} /> Về trang chủ</button>
         <div className="auth-story-content">
-          <div className="auth-brand"><span className="auth-brand-icon"><ShoppingBag size={20} /></span><strong>chợ<span>hời</span></strong></div>
+          <div className="auth-brand"><span className="auth-brand-icon"><ShoppingBag size={20} /></span><ChoHoiWordmark className="auth-wordmark" /></div>
           <span className="auth-kicker"><Sparkles size={13} /> CHỢ HỜI · CỘNG ĐỒNG TỬ TẾ</span>
           <h1>Đồ tốt tìm<br />được <span>chủ mới.</span></h1>
           <p>Thêm một kết nối hay. Thêm một món đồ được yêu thương.</p>
@@ -61,7 +62,7 @@ export function AuthPage({ onBack, onAuthenticate, onSuccess }: AuthPageProps) {
       <section className="auth-form-side">
         <div className="auth-form-container">
           <div className="auth-mobile-heading">
-            <div className="auth-brand"><span className="auth-brand-icon"><ShoppingBag size={19} /></span><strong>chợ<span>hời</span></strong></div>
+            <div className="auth-brand"><span className="auth-brand-icon"><ShoppingBag size={19} /></span><ChoHoiWordmark className="auth-wordmark" /></div>
             <button className="auth-mobile-back" onClick={onBack}><ArrowLeft size={15} /> Khám phá</button>
           </div>
           <div className="auth-form-card">
