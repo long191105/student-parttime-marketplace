@@ -50,6 +50,7 @@ export function MarketplaceLayout({
           <button type="button" onClick={() => navigate('search')}>Tìm món đồ yêu thích <span aria-hidden="true">→</span></button>
         </div>
       )}
+      {view === 'home' && homeHeaderCompact && <div className="home-header-placeholder" aria-hidden="true" />}
       <header className={`site-header${view === 'home' ? ' site-header-home' : ''}${view === 'home' && homeHeaderCompact ? ' site-header-home-compact' : ''}`}>
         {view === 'home' && <img className="home-banner-image" src="/banner.png" alt="" aria-hidden="true" />}
         <div className="header-main page-container">

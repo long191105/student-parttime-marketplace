@@ -187,7 +187,8 @@ img { display: block; max-width: 100%; }
 .site-header-home .main-nav button.nav-active::after { background: #ef5a25; }
 .site-header-home .sell-button { position: absolute; top: 60px; right: 0; background: #17345f; }
 .site-header-home .sell-button:hover { background: #244b80; }
-.site-header-home-compact { position: sticky; top: 0; z-index: 20; margin: 0; background: rgb(255 254 250 / 96%); backdrop-filter: blur(16px); }
+.home-header-placeholder { height: 330px; }
+.site-header-home-compact { position: fixed; top: 0; right: 0; left: 0; z-index: 20; margin: 0; background: rgb(255 254 250 / 96%); backdrop-filter: blur(16px); }
 .site-header-home-compact { height: auto; overflow: visible; }
 .site-header-home-compact .home-banner-image { display: none; }
 .site-header-home-compact .header-bottom { position: static; }
@@ -944,6 +945,7 @@ img { display: block; max-width: 100%; }
   .site-header-home .main-nav button.nav-active::after { right: auto; width: 23px; background: #71925e; }
   .site-header-home .main-nav .mobile-nav-only { display: block; }
   .site-header-home-compact { height: 65px; margin: 0; overflow: visible; }
+  .home-header-placeholder { height: 250px; }
   .site-header-home-compact .home-banner-image { display: none; }
   .site-header-home-compact .header-main { min-height: 65px; grid-template-columns: 115px minmax(0, 1fr) 34px; grid-template-rows: auto; gap: 10px; padding-top: 0; }
   .site-header-home-compact .header-search { right: auto; bottom: auto; left: auto; }

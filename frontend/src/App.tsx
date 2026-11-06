@@ -104,6 +104,57 @@ export function App() {
     return () => { active = false }
   }, [])
 
+  useEffect(() => {
+    if (apiState !== 'offline') return
+
+    let active = true
+    const interval = window.setInterval(() => {
+      void api.listListings().then((nextListings) => {
+        if (!active) return
+        setListings(nextListings)
+        setApiState('connected')
+        setApiError('')
+      }).catch((error: unknown) => {
+        if (!active) return
+        setApiError(error instanceof Error ? error.message : 'Backend chưa sẵn sàng.')
+      })
+    }, 10_000)
+
+    return () => {
+      active = false
+      window.clearInterval(interval)
+    }
+  }, [apiState])
+
+  useEffect(() => {
+    if (apiState !== 'connected' || !isAdminRoute || user?.role !== 'ADMIN') return
+
+    let active = true
+    async function refreshAdminListings() {
+      try {
+        const [publicListings, pendingListings] = await Promise.all([
+          api.listListings(),
+          api.listPendingListings(),
+        ])
+        if (!active) return
+        setListings((current) => mergeListings(
+          current.filter((listing) => listing.status !== 'ACTIVE' && listing.status !== 'PENDING'),
+          publicListings,
+          pendingListings,
+        ))
+      } catch (error) {
+        console.error('Không thể làm mới hàng đợi duyệt tin.', error)
+      }
+    }
+
+    void refreshAdminListings()
+    const interval = window.setInterval(() => { void refreshAdminListings() }, 10_000)
+    return () => {
+      active = false
+      window.clearInterval(interval)
+    }
+  }, [apiState, isAdminRoute, user?.role])
+
   function navigate(nextView: AppView) {
     if (nextView === 'auth') {
       setPreviousView(view === 'auth' ? previousView : view)
@@ -259,6 +310,14 @@ export function App() {
       setUser(session.user)
       setNotice('Đăng nhập thành công. Chào mừng đến với Chợ Hời!')
       await reloadFromApi(session.user)
+      if (session.user.role === 'ADMIN') {
+        if (window.location.pathname.replace(/\/+$/, '') !== '/admin') {
+          window.history.pushState({}, '', '/admin')
+        }
+        setIsAdminRoute(true)
+        window.scrollTo({ top: 0, behavior: 'smooth' })
+        return
+      }
       navigate(previousView === 'auth' ? 'home' : previousView)
     } catch (error) {
       console.error('Không thể tải dữ liệu tài khoản.', error)
