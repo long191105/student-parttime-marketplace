@@ -52,10 +52,14 @@ img { display: block; max-width: 100%; }
 .header-search > svg { flex: 0 0 auto; color: #f4f2e9; }
 .header-search input { width: 100%; min-width: 0; border: 0; outline: 0; background: transparent; color: #fffdf5; font-size: 12px; }
 .header-search input::placeholder { color: #a4a69e; }
-.header-search .location-picker { display: flex; height: 34px; flex: 0 0 160px; align-items: center; gap: 7px; padding: 0 9px; border: 1px solid #383a34; border-radius: 8px; color: #f4c84f; }
-.location-picker select { width: 100%; min-width: 0; appearance: none; border: 0; outline: 0; background: transparent; color: #fffdf5; font-size: 11px; font-weight: 650; }
-.location-picker select option { background: #171916; color: #fffdf5; }
-.location-picker > svg:last-child { flex: 0 0 auto; color: #d7d8cf; }
+.header-search .location-picker { position: relative; height: 34px; flex: 0 0 200px; border: 1px solid #383a34; border-radius: 8px; color: #f4c84f; }
+.location-picker-trigger { display: flex; width: 100%; height: 100%; align-items: center; gap: 7px; padding: 0 9px; border: 0; border-radius: inherit; background: transparent; color: inherit; text-align: left; }
+.location-picker-trigger > span { flex: 1; overflow: hidden; color: #fffdf5; font-size: 11px; font-weight: 650; text-overflow: ellipsis; white-space: nowrap; }
+.location-picker-trigger > svg { flex: 0 0 auto; }
+.location-picker-trigger > svg:last-child { color: #d7d8cf; }
+.location-options { position: absolute; top: calc(100% + 8px); left: 0; z-index: 80; display: grid; width: max(100%, 240px); max-height: min(320px, 60vh); grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 2px; overflow-y: auto; padding: 7px; border: 1px solid #383a34; border-radius: 9px; background: #171916; box-shadow: 0 12px 28px rgb(0 0 0 / 28%); }
+.location-option { min-height: 32px; overflow: hidden; padding: 5px 8px; border: 0; border-radius: 5px; background: transparent; color: #e8e9e1; font-size: 10px; text-align: left; text-overflow: ellipsis; white-space: nowrap; }
+.location-option:hover, .location-option-selected { background: #2d342b; color: #f4c84f; }
 .header-search button { height: 34px; flex: 0 0 auto; padding: 0 15px; border: 0; border-radius: 8px; background: var(--green); color: #fff; font-size: 11px; font-weight: 800; transition: background 160ms ease, transform 160ms ease; }
 .header-search button:hover { transform: translateY(-1px); background: var(--green-dark); }
 .sell-button:hover, .button-primary:hover { background: var(--green-dark); }

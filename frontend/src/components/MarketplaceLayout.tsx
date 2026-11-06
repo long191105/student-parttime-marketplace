@@ -28,9 +28,12 @@ export function MarketplaceLayout({
 }: MarketplaceLayoutProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [accountMenuOpen, setAccountMenuOpen] = useState(false)
+  const [locationMenuOpen, setLocationMenuOpen] = useState(false)
   const [homeHeaderCompact, setHomeHeaderCompact] = useState(false)
   const accountMenuRef = useRef<HTMLDivElement>(null)
   const accountTriggerRef = useRef<HTMLButtonElement>(null)
+  const locationPickerRef = useRef<HTMLDivElement>(null)
+  const locationTriggerRef = useRef<HTMLButtonElement>(null)
 
   useEffect(() => {
     if (view !== 'home') return
@@ -66,6 +69,30 @@ export function MarketplaceLayout({
     }
   }, [accountMenuOpen])
 
+  useEffect(() => {
+    if (!locationMenuOpen) return
+
+    function handlePointerDown(event: PointerEvent) {
+      if (event.target instanceof Node && !locationPickerRef.current?.contains(event.target)) {
+        setLocationMenuOpen(false)
+      }
+    }
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === 'Escape') {
+        setLocationMenuOpen(false)
+        locationTriggerRef.current?.focus()
+      }
+    }
+
+    document.addEventListener('pointerdown', handlePointerDown)
+    document.addEventListener('keydown', handleKeyDown)
+    return () => {
+      document.removeEventListener('pointerdown', handlePointerDown)
+      document.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [locationMenuOpen])
+
   function navigate(nextView: AppView) {
     onNavigate(nextView)
     setMobileMenuOpen(false)
@@ -96,13 +123,40 @@ export function MarketplaceLayout({
           <form className="header-search" onSubmit={(event) => { event.preventDefault(); onSearch() }}>
             <Search size={19} />
             <input aria-label="Tìm tin rao" placeholder="Tìm sản phẩm..." value={query} onChange={(event) => onQueryChange(event.target.value)} />
-            <label className="location-picker">
-              <MapPin size={17} />
-              <select aria-label="Khu vực" value={location} onChange={(event) => onLocationChange(event.target.value)}>
-                {locations.map((item) => <option key={item}>{item}</option>)}
-              </select>
-              <ChevronDown size={14} />
-            </label>
+            <div className="location-picker" ref={locationPickerRef}>
+              <button
+                className="location-picker-trigger"
+                ref={locationTriggerRef}
+                type="button"
+                aria-label={`Chọn khu vực, hiện tại ${location}`}
+                aria-haspopup="listbox"
+                aria-expanded={locationMenuOpen}
+                onClick={() => setLocationMenuOpen((open) => !open)}
+              >
+                <MapPin size={17} />
+                <span>{location}</span>
+                <ChevronDown size={14} />
+              </button>
+              {locationMenuOpen && (
+                <div className="location-options" role="listbox" aria-label="Chọn tỉnh hoặc thành phố">
+                  {locations.map((item) => (
+                    <button
+                      className={location === item ? 'location-option location-option-selected' : 'location-option'}
+                      key={item}
+                      type="button"
+                      role="option"
+                      aria-selected={location === item}
+                      onClick={() => {
+                        onLocationChange(item)
+                        setLocationMenuOpen(false)
+                      }}
+                    >
+                      {item}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
             <button type="submit">Tìm kiếm</button>
           </form>
           <div className="header-actions">
