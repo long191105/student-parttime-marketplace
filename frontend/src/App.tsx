@@ -175,6 +175,13 @@ export function App() {
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
+  function openAdminRoute() {
+    if (user?.role !== 'ADMIN') return
+    window.history.pushState({}, '', '/admin')
+    setIsAdminRoute(true)
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
   function openListingFromAdmin(listing: Listing) {
     window.history.replaceState({}, '', '/')
     setIsAdminRoute(false)
@@ -387,6 +394,7 @@ export function App() {
       onQueryChange={setQuery}
       onLocationChange={setLocation}
       onNavigate={navigate}
+      onAdminNavigate={openAdminRoute}
       onSearch={submitSearch}
       favoritesCount={savedIds.length}
       unreadCount={user && apiState === 'connected' ? 1 : 0}
