@@ -15,6 +15,7 @@ interface MarketplaceLayoutProps {
   onQueryChange: (value: string) => void
   onLocationChange: (value: string) => void
   onNavigate: (view: AppView) => void
+  onAdminNavigate: () => void
   onSearch: () => void
   favoritesCount: number
   unreadCount: number
@@ -22,7 +23,7 @@ interface MarketplaceLayoutProps {
 }
 
 export function MarketplaceLayout({
-  children, view, query, location, onQueryChange, onLocationChange, onNavigate, onSearch, favoritesCount, unreadCount, user,
+  children, view, query, location, onQueryChange, onLocationChange, onNavigate, onAdminNavigate, onSearch, favoritesCount, unreadCount, user,
 }: MarketplaceLayoutProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [homeHeaderCompact, setHomeHeaderCompact] = useState(false)
@@ -85,6 +86,7 @@ export function MarketplaceLayout({
               <button onClick={() => navigate('search')}>Khám phá</button>
               <button onClick={() => navigate('my-listings')}>Tin của tôi</button>
               <button onClick={() => navigate('messages')}>Hộp thư</button>
+              {user?.role === 'ADMIN' && <button onClick={() => { onAdminNavigate(); setMobileMenuOpen(false) }}>Quản trị</button>}
               <button className="mobile-nav-only" onClick={() => navigate('profile')}>Tài khoản</button>
               <button className="mobile-nav-only" onClick={() => navigate('auth')}>Đăng xuất</button>
             </nav>
