@@ -105,6 +105,28 @@ export function App() {
   }, [])
 
   useEffect(() => {
+    if (apiState !== 'offline') return
+
+    let active = true
+    const interval = window.setInterval(() => {
+      void api.listListings().then((nextListings) => {
+        if (!active) return
+        setListings(nextListings)
+        setApiState('connected')
+        setApiError('')
+      }).catch((error: unknown) => {
+        if (!active) return
+        setApiError(error instanceof Error ? error.message : 'Backend chưa sẵn sàng.')
+      })
+    }, 10_000)
+
+    return () => {
+      active = false
+      window.clearInterval(interval)
+    }
+  }, [apiState])
+
+  useEffect(() => {
     if (apiState !== 'connected' || !isAdminRoute || user?.role !== 'ADMIN') return
 
     let active = true
