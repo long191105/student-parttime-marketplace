@@ -463,10 +463,10 @@ img { display: block; max-width: 100%; }
 .form-step { display: grid; width: 27px; height: 27px; flex: 0 0 auto; place-items: center; border-radius: 50%; background: #edf2e7; color: #668057; font-family: var(--display); font-size: 9px; font-weight: 800; }
 .form-section-heading h2 { margin: 2px 0 4px; color: #404a3e; font-family: var(--display); font-size: 13px; }
 .form-section-heading p { margin: 0; color: #92988e; font-size: 9px; }
-.form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 13px; }
+.form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; gap: 13px; }
 .form-grid-two { max-width: 100%; }
-.form-grid label, .form-full-label, .auth-form > label { display: grid; gap: 7px; color: #596355; font-size: 9px; font-weight: 650; }
-.form-grid input, .form-grid select, .form-full-label textarea, .form-grid select, .auth-form input { width: 100%; min-height: 37px; padding: 9px 10px; border: 1px solid #e6e8df; border-radius: 3px; background: #fff; color: #4b5548; font-size: 10px; }
+.form-grid label, .form-full-label, .auth-form > label { display: grid; align-content: start; gap: 7px; color: #596355; font-size: 9px; font-weight: 650; }
+.form-grid input, .form-grid select, .form-full-label textarea, .form-grid select, .auth-form input { width: 100%; height: 38px; min-height: 38px; padding: 9px 10px; border: 1px solid #e6e8df; border-radius: 3px; background: #fff; color: #4b5548; font-size: 10px; }
 .form-grid input::placeholder, .form-full-label textarea::placeholder, .auth-form input::placeholder { color: #adb2a9; }
 .form-grid label small, .form-full-label small { color: #a0a59c; font-size: 8px; font-weight: 400; text-align: right; }
 .form-full-label { margin-top: 14px; }
@@ -1111,7 +1111,7 @@ img { display: block; max-width: 100%; }
   .form-step { width: 23px; height: 23px; font-size: 8px; }
   .form-grid { grid-template-columns: 1fr; gap: 10px; }
   .form-grid label, .form-full-label { font-size: 8px; }
-  .form-grid input, .form-grid select, .form-full-label textarea { min-height: 35px; font-size: 9px; }
+  .form-grid input, .form-grid select, .form-full-label textarea { height: 35px; min-height: 35px; font-size: 9px; }
   .form-section { padding-bottom: 15px; }
   .form-section + .form-section { padding-top: 15px; }
   .review-notice { align-items: flex-start; font-size: 8px; line-height: 1.5; }
