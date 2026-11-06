@@ -147,6 +147,16 @@ public class ListingService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Danh mục không tồn tại hoặc đã bị tắt.");
         }
         validateImage(request.image());
+        List<String> images = request.images() == null || request.images().isEmpty()
+                ? List.of(request.image().trim())
+                : request.images().stream().map(String::trim).toList();
+        if (images.size() > 10) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Mỗi tin đăng chỉ được thêm tối đa 10 ảnh.");
+        }
+        if (!images.getFirst().equals(request.image().trim())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Ảnh bìa phải là ảnh đầu tiên trong thư viện.");
+        }
+        images.forEach(ListingService::validateImage);
         String initials = initials(seller.getFullName());
         Listing listing = new Listing(
                 request.title().trim(),
@@ -156,6 +166,7 @@ public class ListingService {
                 request.location().trim(),
                 request.contactPhone().trim(),
                 request.image().trim(),
+                images,
                 seller.getFullName(),
                 initials,
                 request.description().trim(),

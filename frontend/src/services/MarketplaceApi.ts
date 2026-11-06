@@ -26,6 +26,7 @@ export interface ListingDraft {
   location: string
   contactPhone: string
   image: string
+  images?: string[]
   seller: string
   sellerId: string
   sellerInitials: string
@@ -67,6 +68,7 @@ export class MarketplaceApi {
         location: draft.location,
         contactPhone: draft.contactPhone,
         image: draft.image,
+        images: draft.images?.length ? draft.images : [draft.image],
         description: draft.description,
         negotiable: draft.negotiable,
         specs: draft.specs,

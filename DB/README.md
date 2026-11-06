@@ -5,6 +5,7 @@ Backend dùng PostgreSQL. Flyway tự tạo các bảng và chỉ mục khi kh�
 - `user_accounts`: tài khoản thành viên và quản trị viên.
 - `categories`: danh mục tin đăng.
 - `listings`: tin đăng, trạng thái kiểm duyệt và thông tin sản phẩm.
+- `listing_images`: tối đa 10 ảnh theo thứ tự hiển thị cho từng tin đăng.
 - `favorites`: tin yêu thích của thành viên.
 
 ## Tạo database lần đầu

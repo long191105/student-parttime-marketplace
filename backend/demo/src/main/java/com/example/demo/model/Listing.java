@@ -2,8 +2,12 @@ package com.example.demo.model;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
 
 import jakarta.persistence.Column;
+import jakarta.persistence.CollectionTable;
+import jakarta.persistence.ElementCollection;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
@@ -13,6 +17,7 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OrderColumn;
 import jakarta.persistence.Table;
 
 @Entity
@@ -44,6 +49,12 @@ public class Listing {
 
     @Column(name = "image_url", nullable = false, columnDefinition = "text")
     private String imageUrl;
+
+    @ElementCollection
+    @CollectionTable(name = "listing_images", joinColumns = @JoinColumn(name = "listing_id"))
+    @OrderColumn(name = "image_order")
+    @Column(name = "image_url", nullable = false, columnDefinition = "text")
+    private List<String> images = new ArrayList<>();
 
     @Column(nullable = false, length = 120)
     private String sellerName;
@@ -100,6 +111,25 @@ public class Listing {
             boolean negotiable,
             String specsText,
             UserAccount seller) {
+        this(title, category, price, condition, location, contactPhone, imageUrl, List.of(imageUrl),
+                sellerName, sellerInitials, description, negotiable, specsText, seller);
+    }
+
+    public Listing(
+            String title,
+            String category,
+            BigDecimal price,
+            ListingCondition condition,
+            String location,
+            String contactPhone,
+            String imageUrl,
+            List<String> images,
+            String sellerName,
+            String sellerInitials,
+            String description,
+            boolean negotiable,
+            String specsText,
+            UserAccount seller) {
         this.title = title;
         this.category = category;
         this.price = price;
@@ -107,6 +137,7 @@ public class Listing {
         this.location = location;
         this.contactPhone = contactPhone;
         this.imageUrl = imageUrl;
+        this.images = new ArrayList<>(images);
         this.sellerName = sellerName;
         this.sellerInitials = sellerInitials;
         this.description = description;
@@ -147,6 +178,10 @@ public class Listing {
 
     public String getImageUrl() {
         return imageUrl;
+    }
+
+    public List<String> getImages() {
+        return images.isEmpty() ? List.of(imageUrl) : List.copyOf(images);
     }
 
     public String getSellerName() {

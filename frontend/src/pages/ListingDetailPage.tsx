@@ -21,7 +21,7 @@ export function ListingDetailPage({ listing, related, saved, onBack, onToggleSav
   const [isLoadingPhone, setIsLoadingPhone] = useState(false)
   const [reported, setReported] = useState(false)
   const [activeImage, setActiveImage] = useState(0)
-  const gallery = [listing.image, ...related.slice(0, 3).map((item) => item.image)]
+  const gallery = listing.images
 
   async function revealPhone() {
     if (phone) {
@@ -51,7 +51,7 @@ export function ListingDetailPage({ listing, related, saved, onBack, onToggleSav
         <section className="detail-main">
           <div className="detail-gallery">
             <div className="detail-main-image"><img src={gallery[activeImage]} alt={listing.title} /><span className="image-count">{activeImage + 1} / {gallery.length}</span></div>
-            <div className="detail-thumbnails">{gallery.map((image, index) => <button key={image} className={index === activeImage ? 'thumbnail-active' : ''} onClick={() => setActiveImage(index)}><img src={image} alt={`Ảnh ${index + 1} của ${listing.title}`} /></button>)}</div>
+            {gallery.length > 1 && <div className="detail-thumbnails">{gallery.map((image, index) => <button key={`${index}-${image}`} type="button" className={index === activeImage ? 'thumbnail-active' : ''} aria-label={`Xem ảnh ${index + 1} của ${listing.title}`} aria-pressed={index === activeImage} onClick={() => setActiveImage(index)}><img src={image} alt="" /></button>)}</div>}
           </div>
           <div className="detail-info-card">
             <div className="detail-category-row"><span>{listing.category}</span><span>{listing.conditionLabel}</span><span>Đăng {listing.postedAt}</span></div>

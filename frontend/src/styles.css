@@ -389,6 +389,7 @@ img { display: block; max-width: 100%; }
 .empty-state h3 { margin: 13px 0 5px; color: #414b40; font-family: var(--display); font-size: 16px; }
 .empty-state p { margin: 0 0 12px; font-size: 10px; }
 .button-primary, .button-secondary { display: inline-flex; min-height: 39px; align-items: center; justify-content: center; gap: 8px; padding: 0 14px; border: 0; border-radius: 4px; background: var(--green); color: #fff; font-size: 10px; font-weight: 700; }
+.button-primary:disabled { background: #9ba995; cursor: wait; }
 .button-secondary { border: 1px solid var(--line); background: #fff; color: #646d61; }
 .button-secondary:hover { background: #f7f8f2; }
 .filter-backdrop { display: none; }
@@ -472,15 +473,24 @@ img { display: block; max-width: 100%; }
 .form-full-label { margin-top: 14px; }
 .form-full-label textarea { resize: vertical; line-height: 1.6; }
 .checkbox-label { display: inline-flex; align-items: center; gap: 7px; margin-top: 12px; color: #687365; font-size: 9px; }
-.upload-row { display: flex; align-items: flex-start; gap: 10px; }
-.upload-box { display: grid; width: 132px; height: 118px; align-content: center; justify-items: center; gap: 6px; border: 1px dashed #cbd6c2; border-radius: 4px; background: #fafbf7; color: #718662; cursor: pointer; }
+.upload-gallery { display: grid; justify-items: start; gap: 10px; }
+.upload-cover-preview { position: relative; width: min(100%, 520px); height: 300px; overflow: hidden; border: 1px solid #e8e9e1; border-radius: 4px; background: #f7f7f2; }
+.upload-cover-preview img { width: 100%; height: 100%; object-fit: contain; }
+.upload-cover-preview > span { position: absolute; bottom: 8px; left: 8px; display: flex; align-items: center; gap: 4px; padding: 5px 8px; border-radius: 3px; background: rgb(43 57 42 / 78%); color: #fff; font-size: 8px; }
+.upload-thumbnails { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 8px; }
+.upload-thumbnail { position: relative; width: 76px; height: 66px; }
+.upload-thumbnail-select { position: relative; width: 100%; height: 100%; overflow: hidden; padding: 2px; border: 1px solid transparent; border-radius: 3px; background: #f5f5ee; }
+.upload-thumbnail-cover .upload-thumbnail-select { border-color: #6d8b5a; }
+.upload-thumbnail-select img { width: 100%; height: 100%; object-fit: cover; }
+.upload-thumbnail-select > span { position: absolute; right: 2px; bottom: 2px; left: 2px; display: flex; align-items: center; justify-content: center; gap: 3px; padding: 3px 2px; background: rgb(43 57 42 / 78%); color: #fff; font-size: 7px; }
+.upload-thumbnail-remove { position: absolute; top: -5px; right: -5px; display: grid; width: 18px; height: 18px; place-items: center; border: 1px solid #fff; border-radius: 50%; background: #5e6959; color: #fff; }
+.upload-box { position: relative; display: grid; width: 132px; height: 118px; align-content: center; justify-items: center; gap: 6px; border: 1px dashed #cbd6c2; border-radius: 4px; background: #fafbf7; color: #718662; cursor: pointer; }
+.upload-box-small { width: 76px; height: 66px; gap: 4px; }
 .upload-box input { position: absolute; width: 1px; height: 1px; opacity: 0; }
 .upload-box strong { font-size: 9px; }
 .upload-box span { color: #a0a79b; font-size: 7px; }
-.upload-preview { position: relative; width: 132px; height: 118px; overflow: hidden; border-radius: 4px; }
-.upload-preview img { width: 100%; height: 100%; object-fit: cover; }
-.upload-preview button { position: absolute; top: 5px; right: 5px; display: grid; width: 22px; height: 22px; place-items: center; border: 0; border-radius: 50%; background: #fff; color: #7b8175; }
-.upload-preview > span { position: absolute; bottom: 0; left: 0; display: flex; width: 100%; align-items: center; gap: 4px; padding: 5px 7px; background: rgb(43 57 42 / 72%); color: #fff; font-size: 8px; }
+.upload-box-small strong { font-size: 7px; }
+.upload-photo-count { color: #92988e; font-size: 8px; }
 .review-notice { display: flex; align-items: center; gap: 8px; margin-top: 14px; padding: 10px; border-radius: 3px; background: #f5f7ef; color: #728269; font-size: 9px; }
 .review-notice svg { flex: 0 0 auto; }
 .form-error { display: block; margin-top: 13px; padding: 9px 11px; border-radius: 3px; background: #fff2ed; color: #b2533d; font-size: 9px; }
@@ -1112,6 +1122,7 @@ img { display: block; max-width: 100%; }
   .form-grid { grid-template-columns: 1fr; gap: 10px; }
   .form-grid label, .form-full-label { font-size: 8px; }
   .form-grid input, .form-grid select, .form-full-label textarea { height: 35px; min-height: 35px; font-size: 9px; }
+  .upload-cover-preview { height: min(58vw, 240px); }
   .form-section { padding-bottom: 15px; }
   .form-section + .form-section { padding-top: 15px; }
   .review-notice { align-items: flex-start; font-size: 8px; line-height: 1.5; }
