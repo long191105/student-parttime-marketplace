@@ -396,6 +396,7 @@ export function App() {
       onNavigate={navigate}
       onAdminNavigate={openAdminRoute}
       onSearch={submitSearch}
+      onSignOut={signOut}
       favoritesCount={savedIds.length}
       unreadCount={user && apiState === 'connected' ? 1 : 0}
       user={user}

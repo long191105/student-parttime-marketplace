@@ -33,7 +33,7 @@ cd backend/demo
 $env:JAVA_HOME = "C:\Program Files\Java\jdk-21.0.12.1"
 .\mvnw.cmd spring-boot:run
 ```
-
+hung :C:\Program Files\Java\jdk-21
 Nếu JDK được cài ở đường dẫn khác, cập nhật `JAVA_HOME`. API chạy tại `http://localhost:8080`; kiểm tra backend và database tại `http://localhost:8080/api/health`.
 
 Để khởi tạo tài khoản quản trị đầu tiên, đặt `ADMIN_EMAIL` và `ADMIN_PASSWORD` (ít nhất 12 ký tự) trong `.env` trước lần chạy đầu. Đăng ký công khai chỉ tạo tài khoản `MEMBER`. Trang quản trị được tách riêng tại `/admin` và chỉ tài khoản có quyền `ADMIN` mới truy cập được.
