@@ -10,6 +10,7 @@ export interface ListingData {
   location: string
   postedAt: string
   image: string
+  images?: string[]
   seller: string
   sellerId: string
   sellerInitials: string
@@ -32,6 +33,7 @@ export class Listing implements ListingData {
   readonly location: string
   readonly postedAt: string
   readonly image: string
+  readonly images: string[]
   readonly seller: string
   readonly sellerId: string
   readonly sellerInitials: string
@@ -54,6 +56,7 @@ export class Listing implements ListingData {
     this.location = data.location
     this.postedAt = data.postedAt
     this.image = data.image
+    this.images = data.images?.length ? [...data.images] : [data.image]
     this.seller = data.seller
     this.sellerId = data.sellerId
     this.sellerInitials = data.sellerInitials

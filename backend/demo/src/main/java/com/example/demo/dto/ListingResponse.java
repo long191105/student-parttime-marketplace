@@ -27,7 +27,8 @@ public record ListingResponse(
         long views,
         boolean negotiable,
         List<String> specs,
-        String reviewReason) {
+        String reviewReason,
+        List<String> images) {
 
     public static ListingResponse from(Listing listing) {
         String specsText = listing.getSpecsText();
@@ -53,7 +54,8 @@ public record ListingResponse(
                 listing.getViews(),
                 listing.isNegotiable(),
                 specs,
-                listing.getReviewReason());
+                listing.getReviewReason(),
+                listing.getImages());
     }
 
     private static String relativeTime(Instant createdAt) {

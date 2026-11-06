@@ -2,10 +2,13 @@ package com.example.demo.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import java.math.BigDecimal;
+import java.util.List;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -16,6 +19,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.web.server.ResponseStatusException;
 
+import com.example.demo.dto.CreateListingRequest;
+import com.example.demo.dto.ListingResponse;
 import com.example.demo.dto.PhoneResponse;
 import com.example.demo.model.Listing;
 import com.example.demo.model.ListingCondition;
@@ -105,5 +110,62 @@ class ListingServiceTest {
 
         assertThrows(ResponseStatusException.class, () -> listingService.getSellerPhone(41L));
         verifyNoInteractions(listingRepository);
+    }
+
+    @Test
+    void createListingPersistsCoverFirstImageGallery() {
+        when(currentUserService.requireUser()).thenReturn(seller);
+        when(categoryRepository.existsByNameIgnoreCase("Điện tử")).thenReturn(true);
+        when(listingRepository.save(any(Listing.class))).thenAnswer(invocation -> {
+            Listing saved = invocation.getArgument(0);
+            ReflectionTestUtils.setField(saved, "id", 42L);
+            return saved;
+        });
+        List<String> images = List.of(
+                "https://example.com/cover.jpg",
+                "https://example.com/detail.jpg");
+        CreateListingRequest request = new CreateListingRequest(
+                "Máy ảnh film Canon AE-1",
+                "Điện tử",
+                BigDecimal.valueOf(3_900_000),
+                ListingCondition.USED,
+                "Quận 3, TP. Hồ Chí Minh",
+                "0912345678",
+                images.getFirst(),
+                images,
+                "Máy ảnh còn hoạt động tốt, có bao da và dây đeo.",
+                true,
+                List.of("Canon", "35mm"));
+
+        ListingResponse response = listingService.create(request);
+
+        assertEquals(images, response.images());
+        assertEquals(images.getFirst(), response.image());
+        verify(listingRepository).save(any(Listing.class));
+    }
+
+    @Test
+    void createListingRejectsMoreThanTenImages() {
+        when(currentUserService.requireUser()).thenReturn(seller);
+        when(categoryRepository.existsByNameIgnoreCase("Điện tử")).thenReturn(true);
+        List<String> images = java.util.Collections.nCopies(11, "https://example.com/item.jpg");
+        CreateListingRequest request = new CreateListingRequest(
+                "Máy ảnh film Canon AE-1",
+                "Điện tử",
+                BigDecimal.valueOf(3_900_000),
+                ListingCondition.USED,
+                "Quận 3, TP. Hồ Chí Minh",
+                "0912345678",
+                images.getFirst(),
+                images,
+                "Máy ảnh còn hoạt động tốt, có bao da và dây đeo.",
+                true,
+                List.of("Canon", "35mm"));
+
+        ResponseStatusException exception = assertThrows(
+                ResponseStatusException.class,
+                () -> listingService.create(request));
+
+        assertEquals(HttpStatus.BAD_REQUEST, exception.getStatusCode());
     }
 }
