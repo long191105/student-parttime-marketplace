@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react'
-import { Bell, ChevronDown, Heart, MapPin, Menu, MessageCircle, Plus, Search, ShoppingBag, UserRound, X } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+import { Bell, Bookmark, ChevronDown, Heart, LogOut, MapPin, Menu, MessageCircle, Package, Plus, Search, ShoppingBag, UserRound, X } from 'lucide-react'
 import { locations } from '../data/categories'
 import type { AuthUser } from '../services/MarketplaceApi'
 import { ChoHoiWordmark } from './ChoHoiWordmark'
@@ -17,16 +17,20 @@ interface MarketplaceLayoutProps {
   onNavigate: (view: AppView) => void
   onAdminNavigate: () => void
   onSearch: () => void
+  onSignOut: () => void
   favoritesCount: number
   unreadCount: number
   user: AuthUser | null
 }
 
 export function MarketplaceLayout({
-  children, view, query, location, onQueryChange, onLocationChange, onNavigate, onAdminNavigate, onSearch, favoritesCount, unreadCount, user,
+  children, view, query, location, onQueryChange, onLocationChange, onNavigate, onAdminNavigate, onSearch, onSignOut, favoritesCount, unreadCount, user,
 }: MarketplaceLayoutProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [accountMenuOpen, setAccountMenuOpen] = useState(false)
   const [homeHeaderCompact, setHomeHeaderCompact] = useState(false)
+  const accountMenuRef = useRef<HTMLDivElement>(null)
+  const accountTriggerRef = useRef<HTMLButtonElement>(null)
 
   useEffect(() => {
     if (view !== 'home') return
@@ -38,9 +42,39 @@ export function MarketplaceLayout({
     return () => window.removeEventListener('scroll', updateHeader)
   }, [view])
 
+  useEffect(() => {
+    if (!accountMenuOpen) return
+
+    function handlePointerDown(event: PointerEvent) {
+      if (event.target instanceof Node && !accountMenuRef.current?.contains(event.target)) {
+        setAccountMenuOpen(false)
+      }
+    }
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === 'Escape') {
+        setAccountMenuOpen(false)
+        accountTriggerRef.current?.focus()
+      }
+    }
+
+    document.addEventListener('pointerdown', handlePointerDown)
+    document.addEventListener('keydown', handleKeyDown)
+    return () => {
+      document.removeEventListener('pointerdown', handlePointerDown)
+      document.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [accountMenuOpen])
+
   function navigate(nextView: AppView) {
     onNavigate(nextView)
     setMobileMenuOpen(false)
+    setAccountMenuOpen(false)
+  }
+
+  function signOut() {
+    setAccountMenuOpen(false)
+    onSignOut()
   }
 
   return (
@@ -75,7 +109,51 @@ export function MarketplaceLayout({
             <button className="header-icon" type="button" aria-label="Tin yêu thích" onClick={() => navigate('favorites')}><Heart size={20} /><span>Yêu thích</span>{favoritesCount > 0 && <b>{favoritesCount}</b>}</button>
             <button className="header-icon" type="button" aria-label="Hộp thư" onClick={() => navigate('messages')}><MessageCircle size={20} /><span>Tin nhắn</span>{unreadCount > 0 && <b>{unreadCount}</b>}</button>
             <button className="header-icon notification-icon" type="button" aria-label="Thông báo" onClick={() => navigate('notifications')}><Bell size={20} />{user && unreadCount > 0 && <i />}</button>
-            <button className="profile-menu" type="button" onClick={() => navigate(user ? 'profile' : 'auth')}><span className="avatar avatar-header">{user ? user.fullName.split(/\s+/).slice(-2).map((part) => part[0]).join('').toLocaleUpperCase('vi') : <UserRound size={15} />}</span><span className="profile-menu-name">{user ? user.fullName : 'Đăng nhập'}</span><ChevronDown size={14} /></button>
+            <div className="account-menu-wrap" ref={accountMenuRef}>
+              <button
+                className="profile-menu"
+                ref={accountTriggerRef}
+                type="button"
+                aria-label={user ? `Tài khoản ${user.fullName}` : 'Đăng nhập'}
+                aria-haspopup="menu"
+                aria-expanded={accountMenuOpen}
+                onClick={() => setAccountMenuOpen((open) => !open)}
+              >
+                <span className="avatar avatar-header">{user ? user.fullName.split(/\s+/).slice(-2).map((part) => part[0]).join('').toLocaleUpperCase('vi') : <UserRound size={15} />}</span>
+                <span className="profile-menu-name">{user ? user.fullName : 'Đăng nhập'}</span>
+                <ChevronDown size={14} />
+              </button>
+              {accountMenuOpen && (
+                <section className="account-dropdown" aria-label="Menu tài khoản">
+                  {user ? (
+                    <>
+                      <div className="account-dropdown-heading">
+                        <span className="avatar account-dropdown-avatar">{user.fullName.split(/\s+/).slice(-2).map((part) => part[0]).join('').toLocaleUpperCase('vi')}</span>
+                        <span className="account-dropdown-identity"><strong>{user.fullName}</strong><small>{user.email}</small></span>
+                      </div>
+                      <div className="account-dropdown-actions">
+                        <button type="button" onClick={() => navigate('profile')}>Hồ sơ cá nhân</button>
+                        <button type="button" onClick={() => navigate('sell')}><Plus size={15} /> Đăng tin</button>
+                      </div>
+                      <div className="account-dropdown-links" role="menu" aria-label="Tiện ích tài khoản">
+                        <button type="button" role="menuitem" onClick={() => navigate('favorites')}><Heart size={17} /><span>Tin đã lưu</span><small>{favoritesCount}</small></button>
+                        <button type="button" role="menuitem" onClick={() => navigate('my-listings')}><Package size={17} /><span>Tin của tôi</span><ChevronDown size={15} /></button>
+                        <button type="button" role="menuitem" onClick={() => navigate('messages')}><MessageCircle size={17} /><span>Hộp thư</span>{unreadCount > 0 && <small>{unreadCount}</small>}</button>
+                        <button type="button" role="menuitem" onClick={() => navigate('notifications')}><Bell size={17} /><span>Thông báo</span></button>
+                      </div>
+                      <button className="account-dropdown-signout" type="button" onClick={signOut}><LogOut size={16} /> Đăng xuất</button>
+                    </>
+                  ) : (
+                    <div className="account-dropdown-guest">
+                      <span className="account-dropdown-guest-icon"><Bookmark size={20} /></span>
+                      <strong>Chào mừng đến với Chợ Hời</strong>
+                      <p>Đăng nhập để quản lý tin đăng và lưu những món đồ bạn yêu thích.</p>
+                      <button type="button" onClick={() => navigate('auth')}>Đăng nhập / Đăng ký</button>
+                    </div>
+                  )}
+                </section>
+              )}
+            </div>
           </div>
           <button className="mobile-menu-toggle" type="button" aria-label={mobileMenuOpen ? 'Đóng menu' : 'Mở menu'} onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>{mobileMenuOpen ? <X /> : <Menu />}</button>
         </div>
