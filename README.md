@@ -9,11 +9,14 @@ Nền tảng rao vặt trực tuyến cho mua bán đồ cũ, đồ mới và k�
 - Node.js 20.19+ hoặc 22.12+
 - PostgreSQL 15+
 
-## Khởi tạo PostgreSQL
+## Cấu hình database PostgreSQL
 
-1. Tạo database rỗng: `psql -U postgres -c "CREATE DATABASE chohoi;"`
-2. Sửa file `.env` ở thư mục gốc, điền `DB_USERNAME`, `DB_PASSWORD` và `JWT_SECRET`.
-3. Có thể tạo JWT secret ngẫu nhiên trong PowerShell:
+Nhóm có thể dùng chung database PostgreSQL trên Neon khi chạy ứng dụng local:
+
+1. Mỗi thành viên sao chép `.env.example` thành `.env` ở thư mục gốc dự án.
+2. Điền `DB_PASSWORD` bằng mật khẩu của database Neon; thay `JWT_SECRET` bằng secret ngẫu nhiên và `ADMIN_PASSWORD` bằng mật khẩu quản trị mạnh. Không commit hoặc gửi file `.env` lên Git.
+3. Giữ nguyên `DB_URL` và `DB_USERNAME` nếu nhóm dùng đúng Neon database đã cấu hình trong template. Tất cả thành viên phải dùng cùng URL, database và thông tin đăng nhập.
+4. Có thể tạo JWT secret riêng cho mỗi máy trong PowerShell:
 
    ```powershell
    $bytes = New-Object byte[] 48
@@ -22,7 +25,9 @@ Nền tảng rao vặt trực tuyến cho mua bán đồ cũ, đồ mới và k�
    [Convert]::ToBase64String($bytes)
    ```
 
-Flyway tự tạo schema và danh mục mặc định khi backend khởi động. `.env` đã được Git bỏ qua; không commit thông tin đăng nhập.
+`DB_URL` mặc định dùng SSL (`sslmode=require`). Nếu muốn dùng PostgreSQL local thay vì Neon, đổi `DB_URL`, `DB_USERNAME` và `DB_PASSWORD` trong `.env`. File `.env` đã được Git bỏ qua; chỉ commit `.env.example`, không commit thông tin đăng nhập.
+
+Khi backend khởi động, Hibernate cập nhật schema tự động (`ddl-auto=update`). Vì database được chia sẻ, thay đổi schema có thể ảnh hưởng các thành viên khác; không dùng database này cho dữ liệu production.
 
 ## Chạy backend
 
