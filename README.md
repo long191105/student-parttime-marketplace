@@ -29,6 +29,14 @@ Nhóm có thể dùng chung database PostgreSQL trên Neon khi chạy ứng dụ
 
 Khi backend khởi động, Hibernate cập nhật schema tự động (`ddl-auto=update`). Vì database được chia sẻ, thay đổi schema có thể ảnh hưởng các thành viên khác; không dùng database này cho dữ liệu production.
 
+## Cấu hình xác minh email đăng ký
+
+Đăng ký chỉ nhận địa chỉ `@gmail.com`. Backend gửi mã OTP qua Gmail SMTP; tài khoản chỉ được tạo sau khi mã được xác minh. Mỗi mã có hiệu lực 10 phút, tối đa 5 lần nhập sai và chờ 60 giây giữa các lần gửi lại.
+
+1. Bật xác minh 2 bước cho tài khoản Google dùng để gửi email và tạo **App Password**.
+2. Điền `MAIL_USERNAME` (địa chỉ Gmail gửi thư) và `MAIL_PASSWORD` (Google App Password) trong `.env`. Địa chỉ gửi (`From`) tự dùng `MAIL_USERNAME`; Gmail yêu cầu gửi bằng chính tài khoản đã xác thực. Không dùng mật khẩu đăng nhập Gmail thông thường và không commit `.env`.
+3. Khởi động lại backend. Nếu chưa cấu hình SMTP, đăng ký sẽ báo lỗi cấu hình gửi email; các API khác vẫn dùng được.
+
 ## Chạy backend
 
 Trong terminal PowerShell thứ nhất:

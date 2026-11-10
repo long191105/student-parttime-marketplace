@@ -859,6 +859,10 @@ img { display: block; max-width: 100%; }
 .auth-form { display: grid; gap: 16px; }
 .auth-form > label { gap: 7px; color: #4f5c50; font-size: 11px; font-weight: 700; }
 .auth-form > label > input, .password-input input { width: 100%; min-height: 47px; padding: 0 14px; border: 1px solid #e4e9df; border-radius: 11px; background: #fbfcf9; color: #364438; font-size: 12px; transition: border-color .2s, box-shadow .2s, background .2s; }
+.otp-fieldset { display: grid; gap: 10px; min-width: 0; margin: 0; padding: 0; border: 0; color: #4f5c50; font-size: 11px; font-weight: 700; }
+.otp-inputs { display: flex; justify-content: center; gap: clamp(7px, 2.5vw, 12px); }
+.otp-inputs input { box-sizing: border-box; width: clamp(40px, 11vw, 48px); height: 52px; min-height: 52px; padding: 0; border: 1px solid #e4e9df; border-radius: 11px; background: #fbfcf9; color: #364438; font-size: 20px; font-weight: 700; text-align: center; transition: border-color .2s, box-shadow .2s, background .2s; }
+.otp-inputs input:focus { border-color: #8daa7b; outline: 0; background: #fff; box-shadow: 0 0 0 4px rgb(105 143 84 / 11%); }
 .auth-form > label > input:focus, .password-input input:focus { border-color: #8daa7b; outline: 0; background: #fff; box-shadow: 0 0 0 4px rgb(105 143 84 / 11%); }
 .auth-form input::placeholder { color: #aab1a6; }
 .optional-label { color: #a0a59c; font-size: 10px; font-weight: 450; }
@@ -867,6 +871,10 @@ img { display: block; max-width: 100%; }
 .password-input button { position: absolute; right: 7px; display: grid; width: 34px; height: 34px; place-items: center; border: 0; border-radius: 8px; background: transparent; color: #8e988c; }
 .password-input button:hover { background: #f0f3eb; color: #4f7045; }
 .forgot-password, .resend-code { justify-self: end; padding: 0; border: 0; background: none; color: #5d8052; font-size: 11px; }
+.resend-code:disabled, .auth-edit-registration:disabled { opacity: .6; cursor: wait; }
+.auth-edit-registration { justify-self: center; padding: 0; border: 0; background: none; color: #7d8879; font-size: 11px; }
+.auth-edit-registration:hover { color: #466c4b; }
+.otp-status { color: #55754c; font-size: 11px; line-height: 1.5; }
 .auth-submit { width: 100%; min-height: 49px; justify-content: center; gap: 9px; margin-top: 2px; border-radius: 11px; box-shadow: 0 7px 13px rgb(40 84 57 / 18%), inset 0 1px 0 rgb(255 255 255 / 17%); font-size: 12px; transition: transform .18s, box-shadow .18s, background .18s; }
 .auth-submit:hover:not(:disabled) { box-shadow: 0 10px 18px rgb(40 84 57 / 24%), inset 0 1px 0 rgb(255 255 255 / 17%); transform: translateY(-2px); }
 .auth-submit:disabled { opacity: .7; cursor: wait; }
