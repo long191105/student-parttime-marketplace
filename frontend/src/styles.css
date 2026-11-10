@@ -214,7 +214,7 @@ img { display: block; max-width: 100%; }
 .site-header-home .main-nav button { color: #17345f; font-weight: 700; }
 .site-header-home .main-nav button:hover, .site-header-home .main-nav button.nav-active { color: #d94620; }
 .site-header-home .main-nav button.nav-active::after { background: #ef5a25; }
-.site-header-home .sell-button { position: absolute; top: 60px; right: 0; background: #17345f; }
+.site-header-home .sell-button { position: absolute; top: 72px; right: 0; background: #17345f; }
 .site-header-home .sell-button:hover { background: #244b80; }
 .site-header-home:not(.site-header-home-compact) .brand { gap: 8px; padding: 6px 14px; border-radius: 999px; background: #fff; box-shadow: 0 3px 12px rgb(23 52 95 / 10%); }
 .site-header-home:not(.site-header-home-compact) .brand-copy small { display: none; }
@@ -244,6 +244,8 @@ img { display: block; max-width: 100%; }
 .site-header-home-compact .home-banner-image { display: none; }
 .site-header-home-compact .header-bottom { position: static; }
 .site-header-home-compact .sell-button { position: static; }
+.site-header-home-compact .header-bottom-inner { justify-content: space-between; gap: 32px; }
+.site-header-home-compact .sell-button { flex: 0 0 auto; }
 .site-header-home-compact .header-main { min-height: 82px; grid-template-columns: 152px minmax(240px, 1fr) auto; grid-template-rows: auto; align-content: normal; gap: 20px; padding-top: 0; }
 .site-header-home-compact .header-search { position: static; }
 .site-header-home-compact .brand-icon { border: 0; background: #e6edda; color: var(--green); }
