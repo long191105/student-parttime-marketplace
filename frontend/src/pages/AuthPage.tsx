@@ -1,4 +1,4 @@
-import { useRef, useState, type ClipboardEvent, type FormEvent, type KeyboardEvent } from 'react'
+import { useRef, useState, type FormEvent } from 'react'
 import { ArrowLeft, ArrowRight, BadgeCheck, Eye, EyeOff, Heart, LockKeyhole, Package, ShieldCheck, ShoppingBag, Sparkles } from 'lucide-react'
 import { ChoHoiWordmark } from '../components/ChoHoiWordmark'
 import type { AuthSession } from '../services/MarketplaceApi'
@@ -19,7 +19,7 @@ export function AuthPage({ onBack, onAuthenticate, onVerify, onResend, onSuccess
   const [fullName, setFullName] = useState('')
   const [phone, setPhone] = useState('')
   const [otp, setOtp] = useState('')
-  const otpInputRefs = useRef<Array<HTMLInputElement | null>>([])
+  const otpInputRef = useRef<HTMLInputElement | null>(null)
   const [isVerifying, setIsVerifying] = useState(false)
   const [errorMessage, setErrorMessage] = useState('')
   const [statusMessage, setStatusMessage] = useState('')
@@ -63,46 +63,6 @@ export function AuthPage({ onBack, onAuthenticate, onVerify, onResend, onSuccess
     } finally {
       setIsSubmitting(false)
     }
-  }
-
-  function updateOtpDigit(index: number, input: string) {
-    const digits = input.replace(/\D/g, '')
-    if (!digits) {
-      const next = otp.padEnd(6, ' ').split('')
-      next[index] = ' '
-      setOtp(next.join('').trimEnd())
-      return
-    }
-
-    const next = otp.padEnd(6, ' ').split('')
-    digits.slice(0, 6 - index).split('').forEach((digit, offset) => {
-      next[index + offset] = digit
-    })
-    setOtp(next.join('').trimEnd())
-    const focusIndex = Math.min(index + digits.length, 5)
-    requestAnimationFrame(() => otpInputRefs.current[focusIndex]?.focus())
-  }
-
-  function handleOtpKeyDown(index: number, event: KeyboardEvent<HTMLInputElement>) {
-    if (event.key === 'Backspace' && !otp[index] && index > 0) {
-      event.preventDefault()
-      updateOtpDigit(index - 1, '')
-      otpInputRefs.current[index - 1]?.focus()
-    } else if (event.key === 'ArrowLeft' && index > 0) {
-      event.preventDefault()
-      otpInputRefs.current[index - 1]?.focus()
-    } else if (event.key === 'ArrowRight' && index < 5) {
-      event.preventDefault()
-      otpInputRefs.current[index + 1]?.focus()
-    }
-  }
-
-  function handleOtpPaste(event: ClipboardEvent<HTMLInputElement>) {
-    const pastedDigits = event.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6)
-    if (!pastedDigits) return
-    event.preventDefault()
-    setOtp(pastedDigits)
-    otpInputRefs.current[Math.min(pastedDigits.length, 5)]?.focus()
   }
 
   async function resendCode() {
@@ -170,21 +130,23 @@ export function AuthPage({ onBack, onAuthenticate, onVerify, onResend, onSuccess
               <fieldset className="otp-fieldset">
                 <legend>Mã OTP</legend>
                 <div className="otp-inputs" dir="ltr">
-                  {Array.from({ length: 6 }, (_, index) => (
-                    <input
-                      key={index}
-                      ref={(element) => { otpInputRefs.current[index] = element }}
-                      aria-label={`Chữ số thứ ${index + 1}`}
-                      autoComplete={index === 0 ? 'one-time-code' : 'off'}
-                      inputMode="numeric"
-                      maxLength={6}
-                      type="text"
-                      value={otp[index] ?? ''}
-                      onChange={(event) => updateOtpDigit(index, event.target.value)}
-                      onKeyDown={(event) => handleOtpKeyDown(index, event)}
-                      onPaste={handleOtpPaste}
-                    />
-                  ))}
+                  <div className="otp-digit-cells" aria-hidden="true">
+                    {Array.from({ length: 6 }, (_, index) => (
+                      <span key={index} className={index === Math.min(otp.length, 5) ? 'otp-digit-cell otp-digit-cell-active' : 'otp-digit-cell'}>
+                        {otp[index] ?? ''}
+                      </span>
+                    ))}
+                  </div>
+                  <input
+                    ref={otpInputRef}
+                    className="otp-native-input"
+                    aria-label="Mã OTP gồm 6 chữ số"
+                    autoComplete="one-time-code"
+                    inputMode="numeric"
+                    type="text"
+                    value={otp}
+                    onChange={(event) => setOtp(event.target.value.replace(/\D/g, '').slice(0, 6))}
+                  />
                 </div>
               </fieldset>
               {statusMessage && <span className="otp-status" role="status">{statusMessage}</span>}

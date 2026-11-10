@@ -860,9 +860,11 @@ img { display: block; max-width: 100%; }
 .auth-form > label { gap: 7px; color: #4f5c50; font-size: 11px; font-weight: 700; }
 .auth-form > label > input, .password-input input { width: 100%; min-height: 47px; padding: 0 14px; border: 1px solid #e4e9df; border-radius: 11px; background: #fbfcf9; color: #364438; font-size: 12px; transition: border-color .2s, box-shadow .2s, background .2s; }
 .otp-fieldset { display: grid; gap: 10px; min-width: 0; margin: 0; padding: 0; border: 0; color: #4f5c50; font-size: 11px; font-weight: 700; }
-.otp-inputs { display: flex; justify-content: center; gap: clamp(7px, 2.5vw, 12px); }
-.otp-inputs input { box-sizing: border-box; width: clamp(40px, 11vw, 48px); height: 52px; min-height: 52px; padding: 0; border: 1px solid #e4e9df; border-radius: 11px; background: #fbfcf9; color: #364438; font-size: 20px; font-weight: 700; text-align: center; transition: border-color .2s, box-shadow .2s, background .2s; }
-.otp-inputs input:focus { border-color: #8daa7b; outline: 0; background: #fff; box-shadow: 0 0 0 4px rgb(105 143 84 / 11%); }
+.otp-inputs { position: relative; display: flex; justify-content: center; }
+.otp-digit-cells { display: flex; gap: clamp(7px, 2.5vw, 12px); pointer-events: none; }
+.otp-digit-cell { box-sizing: border-box; display: grid; width: clamp(40px, 11vw, 48px); height: 52px; place-items: center; border: 1px solid #e4e9df; border-radius: 11px; background: #fbfcf9; color: #364438; font-size: 20px; font-weight: 700; transition: border-color .2s, box-shadow .2s, background .2s; }
+.otp-digit-cell-active { border-color: #8daa7b; background: #fff; box-shadow: 0 0 0 3px rgb(105 143 84 / 11%); }
+.otp-native-input { position: absolute; inset: 0; z-index: 1; width: 100% !important; height: 100% !important; min-height: 52px !important; padding: 0 !important; border: 0 !important; opacity: 0; cursor: text; }
 .auth-form > label > input:focus, .password-input input:focus { border-color: #8daa7b; outline: 0; background: #fff; box-shadow: 0 0 0 4px rgb(105 143 84 / 11%); }
 .auth-form input::placeholder { color: #aab1a6; }
 .optional-label { color: #a0a59c; font-size: 10px; font-weight: 450; }
