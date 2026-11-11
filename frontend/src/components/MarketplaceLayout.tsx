@@ -39,10 +39,20 @@ export function MarketplaceLayout({
     if (view !== 'home') return
 
     function updateHeader() {
-      setHomeHeaderCompact(window.scrollY > 180)
+      const isMobile = window.innerWidth <= 760
+      const bannerHeight = isMobile
+        ? window.innerWidth / 3
+        : Math.min(Math.max(window.innerWidth * 0.27, 210), 420)
+      const mobileSearchHeight = isMobile ? 54 : 0
+      setHomeHeaderCompact(window.scrollY > bannerHeight + mobileSearchHeight)
     }
+    updateHeader()
     window.addEventListener('scroll', updateHeader, { passive: true })
-    return () => window.removeEventListener('scroll', updateHeader)
+    window.addEventListener('resize', updateHeader)
+    return () => {
+      window.removeEventListener('scroll', updateHeader)
+      window.removeEventListener('resize', updateHeader)
+    }
   }, [view])
 
   useEffect(() => {
@@ -208,6 +218,9 @@ export function MarketplaceLayout({
                 </section>
               )}
             </div>
+            {view === 'home' && !homeHeaderCompact && (
+              <button className="sell-button home-sell-button" type="button" onClick={() => navigate('sell')}><Plus size={18} /> Đăng tin miễn phí</button>
+            )}
           </div>
           <button className="mobile-menu-toggle" type="button" aria-label={mobileMenuOpen ? 'Đóng menu' : 'Mở menu'} onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>{mobileMenuOpen ? <X /> : <Menu />}</button>
         </div>
@@ -222,7 +235,7 @@ export function MarketplaceLayout({
               <button className="mobile-nav-only" onClick={() => navigate('profile')}>Tài khoản</button>
               <button className="mobile-nav-only" onClick={() => navigate('auth')}>Đăng xuất</button>
             </nav>
-            <button className="sell-button" onClick={() => navigate('sell')}><Plus size={18} /> Đăng tin miễn phí</button>
+            {(view !== 'home' || homeHeaderCompact) && <button className="sell-button" onClick={() => navigate('sell')}><Plus size={18} /> Đăng tin miễn phí</button>}
           </div>
         </div>
       </header>
