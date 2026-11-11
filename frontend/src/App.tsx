@@ -305,10 +305,10 @@ export function App() {
     setNotice('Tin demo đã được lưu trên trình duyệt và đang chờ duyệt.')
   }
 
-  async function authenticate(mode: 'login' | 'register', fullName: string, email: string, password: string, phone: string): Promise<AuthSession> {
-    return mode === 'login'
-      ? api.login(email, password)
-      : api.register(fullName, email, password, phone.replace(/\D/g, ''))
+  async function authenticate(mode: 'login' | 'register', fullName: string, email: string, password: string, phone: string): Promise<AuthSession | null> {
+    if (mode === 'login') return api.login(email, password)
+    await api.register(fullName, email, password, phone.replace(/\D/g, ''))
+    return null
   }
 
   async function authenticationSucceeded(session: AuthSession) {
@@ -374,7 +374,7 @@ export function App() {
       return <div className="admin-route-message"><h1>Không thể kết nối hệ thống quản trị</h1><p>{apiError}</p><button className="button-primary" onClick={retryConnection}>Thử kết nối lại</button><button className="button-secondary" onClick={leaveAdminRoute}>Về trang chủ</button></div>
     }
     if (!user) {
-      return <AuthPage onBack={leaveAdminRoute} onAuthenticate={authenticate} onSuccess={authenticationSucceeded} />
+      return <AuthPage onBack={leaveAdminRoute} onAuthenticate={authenticate} onVerify={api.verifyRegistration.bind(api)} onResend={api.resendRegistrationCode.bind(api)} onSuccess={authenticationSucceeded} />
     }
     if (user.role !== 'ADMIN') {
       return <div className="admin-route-message"><h1>Bạn không có quyền truy cập</h1><p>Trang quản trị chỉ dành cho tài khoản quản trị viên.</p><button className="button-primary" onClick={leaveAdminRoute}>Về trang chủ</button></div>
@@ -383,7 +383,7 @@ export function App() {
   }
 
   if (view === 'auth') {
-    return <AuthPage onBack={() => navigate(previousView === 'auth' || authenticationRequiredViews.includes(previousView) ? 'home' : previousView)} onAuthenticate={authenticate} onSuccess={authenticationSucceeded} />
+    return <AuthPage onBack={() => navigate(previousView === 'auth' || authenticationRequiredViews.includes(previousView) ? 'home' : previousView)} onAuthenticate={authenticate} onVerify={api.verifyRegistration.bind(api)} onResend={api.resendRegistrationCode.bind(api)} onSuccess={authenticationSucceeded} />
   }
 
   return (

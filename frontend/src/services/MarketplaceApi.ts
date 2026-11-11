@@ -114,10 +114,24 @@ export class MarketplaceApi {
     })
   }
 
-  async register(fullName: string, email: string, password: string, phone: string): Promise<AuthSession> {
-    return this.request<AuthSession>('/auth/register', {
+  async register(fullName: string, email: string, password: string, phone: string): Promise<void> {
+    await this.request<{ message: string }>('/auth/register', {
       method: 'POST',
       body: JSON.stringify({ fullName, email, password, phone }),
+    })
+  }
+
+  async verifyRegistration(email: string, otp: string): Promise<AuthSession> {
+    return this.request<AuthSession>('/auth/register/verify', {
+      method: 'POST',
+      body: JSON.stringify({ email, otp }),
+    })
+  }
+
+  async resendRegistrationCode(email: string): Promise<void> {
+    await this.request<{ message: string }>('/auth/register/resend', {
+      method: 'POST',
+      body: JSON.stringify({ email }),
     })
   }
 

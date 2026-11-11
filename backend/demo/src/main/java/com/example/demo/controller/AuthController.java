@@ -8,9 +8,12 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.example.demo.dto.AuthResponse;
+import com.example.demo.dto.EmailRequest;
 import com.example.demo.dto.LoginRequest;
+import com.example.demo.dto.MessageResponse;
 import com.example.demo.dto.RegisterRequest;
 import com.example.demo.dto.UserSummary;
+import com.example.demo.dto.VerifyRegistrationRequest;
 import com.example.demo.model.UserAccount;
 import com.example.demo.service.AuthService;
 
@@ -27,8 +30,18 @@ public class AuthController {
     }
 
     @PostMapping("/register")
-    public AuthResponse register(@Valid @RequestBody RegisterRequest request) {
+    public MessageResponse register(@Valid @RequestBody RegisterRequest request) {
         return authService.register(request);
+    }
+
+    @PostMapping("/register/verify")
+    public AuthResponse verifyRegistration(@Valid @RequestBody VerifyRegistrationRequest request) {
+        return authService.verifyRegistration(request);
+    }
+
+    @PostMapping("/register/resend")
+    public MessageResponse resendRegistrationCode(@Valid @RequestBody EmailRequest request) {
+        return authService.resendRegistrationCode(request.email());
     }
 
     @PostMapping("/login")
