@@ -214,10 +214,10 @@ export function MarketplaceLayout({
         <div className="header-bottom">
           <div className="page-container header-bottom-inner">
             <nav className={`main-nav ${mobileMenuOpen ? 'main-nav-open' : ''}`} aria-label="Điều hướng chính">
-              <button className={view === 'home' || view === 'search' ? 'nav-active' : ''} onClick={() => navigate('home')}>Trang chủ</button>
-              <button onClick={() => navigate('search')}>Khám phá</button>
-              <button onClick={() => navigate('my-listings')}>Tin của tôi</button>
-              <button onClick={() => navigate('messages')}>Hộp thư</button>
+              <button type="button" className={view === 'home' ? 'nav-active' : ''} aria-current={view === 'home' ? 'page' : undefined} onClick={() => navigate('home')}>Trang chủ</button>
+              <button type="button" className={view === 'search' || view === 'detail' ? 'nav-active' : ''} aria-current={view === 'search' || view === 'detail' ? 'page' : undefined} onClick={() => navigate('search')}>Khám phá</button>
+              <button type="button" className={view === 'my-listings' ? 'nav-active' : ''} aria-current={view === 'my-listings' ? 'page' : undefined} onClick={() => navigate('my-listings')}>Tin của tôi</button>
+              <button type="button" className={view === 'messages' ? 'nav-active' : ''} aria-current={view === 'messages' ? 'page' : undefined} onClick={() => navigate('messages')}>Hộp thư</button>
               {user?.role === 'ADMIN' && <button onClick={() => { onAdminNavigate(); setMobileMenuOpen(false) }}>Quản trị</button>}
               <button className="mobile-nav-only" onClick={() => navigate('profile')}>Tài khoản</button>
               <button className="mobile-nav-only" onClick={() => navigate('auth')}>Đăng xuất</button>
