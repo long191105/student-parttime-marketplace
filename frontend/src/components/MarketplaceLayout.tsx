@@ -39,10 +39,20 @@ export function MarketplaceLayout({
     if (view !== 'home') return
 
     function updateHeader() {
-      setHomeHeaderCompact(window.scrollY > 180)
+      const isMobile = window.innerWidth <= 760
+      const bannerHeight = isMobile
+        ? window.innerWidth / 3
+        : Math.min(Math.max(window.innerWidth * 0.27, 210), 420)
+      const mobileSearchHeight = isMobile ? 54 : 0
+      setHomeHeaderCompact(window.scrollY > bannerHeight + mobileSearchHeight)
     }
+    updateHeader()
     window.addEventListener('scroll', updateHeader, { passive: true })
-    return () => window.removeEventListener('scroll', updateHeader)
+    window.addEventListener('resize', updateHeader)
+    return () => {
+      window.removeEventListener('scroll', updateHeader)
+      window.removeEventListener('resize', updateHeader)
+    }
   }, [view])
 
   useEffect(() => {
@@ -208,21 +218,24 @@ export function MarketplaceLayout({
                 </section>
               )}
             </div>
+            {view === 'home' && !homeHeaderCompact && (
+              <button className="sell-button home-sell-button" type="button" onClick={() => navigate('sell')}><Plus size={18} /> Đăng tin miễn phí</button>
+            )}
           </div>
           <button className="mobile-menu-toggle" type="button" aria-label={mobileMenuOpen ? 'Đóng menu' : 'Mở menu'} onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>{mobileMenuOpen ? <X /> : <Menu />}</button>
         </div>
         <div className="header-bottom">
           <div className="page-container header-bottom-inner">
             <nav className={`main-nav ${mobileMenuOpen ? 'main-nav-open' : ''}`} aria-label="Điều hướng chính">
-              <button className={view === 'home' || view === 'search' ? 'nav-active' : ''} onClick={() => navigate('home')}>Trang chủ</button>
-              <button onClick={() => navigate('search')}>Khám phá</button>
-              <button onClick={() => navigate('my-listings')}>Tin của tôi</button>
-              <button onClick={() => navigate('messages')}>Hộp thư</button>
+              <button type="button" className={view === 'home' ? 'nav-active' : ''} aria-current={view === 'home' ? 'page' : undefined} onClick={() => navigate('home')}>Trang chủ</button>
+              <button type="button" className={view === 'search' || view === 'detail' ? 'nav-active' : ''} aria-current={view === 'search' || view === 'detail' ? 'page' : undefined} onClick={() => navigate('search')}>Khám phá</button>
+              <button type="button" className={view === 'my-listings' ? 'nav-active' : ''} aria-current={view === 'my-listings' ? 'page' : undefined} onClick={() => navigate('my-listings')}>Tin của tôi</button>
+              <button type="button" className={view === 'messages' ? 'nav-active' : ''} aria-current={view === 'messages' ? 'page' : undefined} onClick={() => navigate('messages')}>Hộp thư</button>
               {user?.role === 'ADMIN' && <button onClick={() => { onAdminNavigate(); setMobileMenuOpen(false) }}>Quản trị</button>}
               <button className="mobile-nav-only" onClick={() => navigate('profile')}>Tài khoản</button>
               <button className="mobile-nav-only" onClick={() => navigate('auth')}>Đăng xuất</button>
             </nav>
-            <button className="sell-button" onClick={() => navigate('sell')}><Plus size={18} /> Đăng tin miễn phí</button>
+            {(view !== 'home' || homeHeaderCompact) && <button className="sell-button" onClick={() => navigate('sell')}><Plus size={18} /> Đăng tin miễn phí</button>}
           </div>
         </div>
       </header>
