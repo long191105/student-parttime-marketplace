@@ -21,10 +21,12 @@ interface MarketplaceLayoutProps {
   favoritesCount: number
   unreadCount: number
   user: AuthUser | null
+  authNotice: string
+  onDismissAuthNotice: () => void
 }
 
 export function MarketplaceLayout({
-  children, view, query, location, onQueryChange, onLocationChange, onNavigate, onAdminNavigate, onSearch, onSignOut, favoritesCount, unreadCount, user,
+  children, view, query, location, onQueryChange, onLocationChange, onNavigate, onAdminNavigate, onSearch, onSignOut, favoritesCount, unreadCount, user, authNotice, onDismissAuthNotice,
 }: MarketplaceLayoutProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [accountMenuOpen, setAccountMenuOpen] = useState(false)
@@ -219,6 +221,12 @@ export function MarketplaceLayout({
               )}
             </div>
             <button className="sell-button" type="button" onClick={() => navigate('sell')}><Plus size={18} /> Đăng tin miễn phí</button>
+            {authNotice && (
+              <div className="toast-message auth-toast-message" role="status">
+                {authNotice}
+                <button type="button" onClick={onDismissAuthNotice} aria-label="Đóng thông báo">×</button>
+              </div>
+            )}
           </div>
           <button className="mobile-menu-toggle" type="button" aria-label={mobileMenuOpen ? 'Đóng menu' : 'Mở menu'} onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>{mobileMenuOpen ? <X /> : <Menu />}</button>
         </div>
@@ -235,6 +243,12 @@ export function MarketplaceLayout({
             </nav>
           </div>
         </div>
+        {authNotice && (
+          <div className="toast-message auth-toast-message-mobile" role="status">
+            {authNotice}
+            <button type="button" onClick={onDismissAuthNotice} aria-label="Đóng thông báo">×</button>
+          </div>
+        )}
       </header>
       <main className="page-container page-content">{children}</main>
       <footer className="site-footer">
