@@ -122,6 +122,12 @@ img { display: block; max-width: 100%; }
 .auth-toast-message-mobile { display: none; }
 .toast-message button { border: 0; background: none; color: #788879; font-size: 21px; line-height: 1; }
 .floating-promotions { position: fixed; top: 50%; right: 17px; z-index: 60; display: grid; gap: 14px; pointer-events: none; transform: translateY(-50%); }
+.floating-promotions-has-minimized { pointer-events: none; }
+.floating-promo-dock { position: fixed; right: 17px; bottom: 18px; z-index: 60; display: flex; gap: 9px; }
+.floating-promo-minimized { display: grid; width: 42px; height: 42px; place-items: center; padding: 0; border: 2px solid #fff; border-radius: 50%; color: #fff; box-shadow: 0 5px 16px rgb(37 45 34 / 22%); cursor: pointer; transition: transform 160ms ease, box-shadow 160ms ease; }
+.floating-promo-minimized:hover { transform: translateY(-2px); box-shadow: 0 7px 20px rgb(37 45 34 / 25%); }
+.floating-promo-minimized-discover { background: linear-gradient(145deg, #ffd971, #f2a74d 58%, #e78353); }
+.floating-promo-minimized-checkin { background: linear-gradient(145deg, #f7c77b, #e98d67 60%, #c66c58); }
 .floating-promo { position: relative; width: 72px; height: 72px; }
 .floating-promo-button { position: relative; display: grid; width: 68px; height: 68px; place-items: center; overflow: hidden; border: 2px solid rgb(255 255 255 / 94%); border-radius: 50%; box-shadow: 0 5px 16px rgb(37 45 34 / 22%); pointer-events: auto; transition: transform 160ms ease, box-shadow 160ms ease; }
 .floating-promo-button:hover { transform: scale(1.08); box-shadow: 0 7px 20px rgb(37 45 34 / 25%); }
@@ -133,7 +139,8 @@ img { display: block; max-width: 100%; }
 .floating-promo-label { position: absolute; bottom: 7px; left: 50%; padding: 2px 7px; border: 1.5px solid #fff; border-radius: 10px; background: #527d49; color: #fff; font-family: 'Baloo 2', var(--display); font-size: 9px; font-weight: 800; letter-spacing: .5px; transform: translateX(-50%) rotate(-5deg); }
 .floating-promo-checkin .floating-promo-label { background: #a85e42; }
 .floating-promo-arrow { position: absolute; right: 8px; bottom: 7px; padding: 2px; border-radius: 50%; background: rgb(255 255 255 / 86%); }
-.floating-promo-close { position: absolute; top: -3px; right: -2px; z-index: 1; display: grid; width: 20px; height: 20px; place-items: center; border: 2px solid #fff; border-radius: 50%; background: #53614f; color: #fff; box-shadow: 0 2px 6px rgb(37 45 34 / 20%); pointer-events: auto; }
+.floating-promo-close { position: absolute; top: -3px; right: -2px; z-index: 1; display: grid; width: 20px; height: 20px; place-items: center; padding: 0; border: 2px solid #fff; border-radius: 50%; background: #53614f; color: #fff; line-height: 0; box-shadow: 0 2px 6px rgb(37 45 34 / 20%); pointer-events: auto; }
+.floating-promo-close svg { display: block; }
 .floating-promo-checkin .floating-promo-close { background: #a7653f; }
 .api-status-banner { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0 0 14px; padding: 9px 11px; border: 1px solid #ead9c4; border-radius: 4px; background: #fbf5eb; color: #896f46; font-size: 10px; }
 .api-status-banner button { padding: 4px 7px; border: 1px solid #e6d9c2; border-radius: 3px; background: #fffdf8; color: #786443; font-size: 9px; font-weight: 700; }
@@ -948,6 +955,9 @@ img { display: block; max-width: 100%; }
 @media (max-width: 760px) {
   .auth-toast-message-mobile { position: fixed; top: 74px; right: 12px; z-index: 50; display: flex; width: max-content; max-width: calc(100vw - 24px); }
   .floating-promotions { top: auto; right: 10px; bottom: 68px; gap: 8px; transform: none; }
+  .floating-promotions-has-minimized { bottom: 128px; }
+  .floating-promo-dock { right: 10px; bottom: 68px; gap: 7px; }
+  .floating-promo-minimized { width: 38px; height: 38px; }
   .floating-promo { width: 56px; height: 56px; }
   .floating-promo-button { width: 52px; height: 52px; }
   .floating-promo-emoji { font-size: 25px; }
