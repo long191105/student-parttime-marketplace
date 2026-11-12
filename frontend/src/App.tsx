@@ -17,7 +17,7 @@ import { MarketplaceApi, type AuthSession, type AuthUser } from './services/Mark
 import { MarketplaceService } from './services/MarketplaceService'
 
 const api = new MarketplaceApi()
-const authenticationRequiredViews: AppView[] = ['sell', 'my-listings', 'messages', 'notifications']
+const authenticationRequiredViews: AppView[] = ['sell', 'my-listings', 'messages', 'notifications', 'check-in']
 
 export function App() {
   const [service] = useState(() => new MarketplaceService())
