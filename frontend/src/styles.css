@@ -222,8 +222,6 @@ img { display: block; max-width: 100%; }
 .site-header-home-compact .main-nav button { color: #6b7169; font-weight: 550; }
 .site-header-home-compact .main-nav button:hover, .site-header-home-compact .main-nav button.nav-active { color: var(--green); }
 .site-header-home-compact .main-nav button.nav-active::after { background: #71925e; }
-.site-header-home .header-bottom .sell-button { position: absolute; top: 72px; right: 0; background: #17345f; }
-.site-header-home .header-bottom .sell-button:hover { background: #244b80; }
 .site-header-home:not(.site-header-home-compact) .brand { gap: 8px; padding: 6px 14px; border-radius: 999px; background: #fff; box-shadow: 0 3px 12px rgb(23 52 95 / 10%); }
 .site-header-home:not(.site-header-home-compact) .brand-copy small { display: none; }
 .site-header-home:not(.site-header-home-compact) .header-actions { gap: 9px; }
