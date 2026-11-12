@@ -65,7 +65,7 @@ export function ExplorePage({ listings, savedIds, onOpen, onToggleSaved, onCateg
       </section>
 
       <section className="seller-banner">
-        <div><span className="section-eyebrow">MÓN ĐỒ CỦA BẠN CŨNG XỨNG ĐÁNG ĐƯỢC YÊU</span><h2>Dọn nhà một chút.<br />Niềm vui thêm nhiều.</h2><p>Đăng tin miễn phí, kết nối với người đang cần món đồ bạn có.</p></div>
+        <div><span className="section-eyebrow">MÓN ĐỒ CỦA BẠN CŨNG XỨNG ĐÁNG ĐƯỢC YÊU THƯƠNG</span><h2>Dọn nhà một chút.<br />Niềm vui thêm nhiều.</h2><p>Đăng tin miễn phí, kết nối với người đang cần món đồ bạn có.</p></div>
         <div className="seller-banner-note"><ChoHoiWordmark className="seller-wordmark" /><strong>Điều tốt<br />được trao tay.</strong><span className="banner-spark">✳</span></div>
       </section>
     </div>
