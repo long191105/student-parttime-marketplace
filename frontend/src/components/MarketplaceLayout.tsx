@@ -21,10 +21,12 @@ interface MarketplaceLayoutProps {
   favoritesCount: number
   unreadCount: number
   user: AuthUser | null
+  authNotice: string
+  onDismissAuthNotice: () => void
 }
 
 export function MarketplaceLayout({
-  children, view, query, location, onQueryChange, onLocationChange, onNavigate, onAdminNavigate, onSearch, onSignOut, favoritesCount, unreadCount, user,
+  children, view, query, location, onQueryChange, onLocationChange, onNavigate, onAdminNavigate, onSearch, onSignOut, favoritesCount, unreadCount, user, authNotice, onDismissAuthNotice,
 }: MarketplaceLayoutProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [accountMenuOpen, setAccountMenuOpen] = useState(false)
@@ -218,8 +220,12 @@ export function MarketplaceLayout({
                 </section>
               )}
             </div>
-            {view === 'home' && !homeHeaderCompact && (
-              <button className="sell-button home-sell-button" type="button" onClick={() => navigate('sell')}><Plus size={18} /> Đăng tin miễn phí</button>
+            <button className="sell-button" type="button" onClick={() => navigate('sell')}><Plus size={18} /> Đăng tin miễn phí</button>
+            {authNotice && (
+              <div className="toast-message auth-toast-message" role="status">
+                {authNotice}
+                <button type="button" onClick={onDismissAuthNotice} aria-label="Đóng thông báo">×</button>
+              </div>
             )}
           </div>
           <button className="mobile-menu-toggle" type="button" aria-label={mobileMenuOpen ? 'Đóng menu' : 'Mở menu'} onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>{mobileMenuOpen ? <X /> : <Menu />}</button>
@@ -235,9 +241,14 @@ export function MarketplaceLayout({
               <button className="mobile-nav-only" onClick={() => navigate('profile')}>Tài khoản</button>
               <button className="mobile-nav-only" onClick={() => navigate('auth')}>Đăng xuất</button>
             </nav>
-            {(view !== 'home' || homeHeaderCompact) && <button className="sell-button" onClick={() => navigate('sell')}><Plus size={18} /> Đăng tin miễn phí</button>}
           </div>
         </div>
+        {authNotice && (
+          <div className="toast-message auth-toast-message-mobile" role="status">
+            {authNotice}
+            <button type="button" onClick={onDismissAuthNotice} aria-label="Đóng thông báo">×</button>
+          </div>
+        )}
       </header>
       <main className="page-container page-content">{children}</main>
       <footer className="site-footer">

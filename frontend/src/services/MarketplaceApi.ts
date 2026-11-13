@@ -104,7 +104,7 @@ export class MarketplaceApi {
   }
 
   async toggleFavorite(id: string, save: boolean): Promise<void> {
-    await this.request<void>(`/favorites/${encodeURIComponent(id)}`, { method: save ? 'POST' : 'DELETE' })
+    await this.request<void>(`/favorites/${encodeURIComponent(id)}`, { method: save ? 'POST' : 'DELETE' }, false)
   }
 
   async login(email: string, password: string): Promise<AuthSession> {
@@ -170,7 +170,7 @@ export class MarketplaceApi {
     }
   }
 
-  private async request<T>(path: string, init: RequestInit = {}): Promise<T> {
+  private async request<T>(path: string, init: RequestInit = {}, expectJson = true): Promise<T> {
     const headers = new Headers(init.headers)
     headers.set('Accept', 'application/json')
     if (init.body) headers.set('Content-Type', 'application/json')
@@ -201,7 +201,7 @@ export class MarketplaceApi {
       throw new Error(message)
     }
 
-    if (response.status === 204) return undefined as T
+    if (!expectJson || response.status === 204) return undefined as T
     return response.json() as Promise<T>
   }
 }
