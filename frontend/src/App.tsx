@@ -17,7 +17,7 @@ import { MarketplaceApi, type AuthSession, type AuthUser } from './services/Mark
 import { MarketplaceService } from './services/MarketplaceService'
 
 const api = new MarketplaceApi()
-const authenticationRequiredViews: AppView[] = ['sell', 'my-listings', 'messages', 'notifications']
+const authenticationRequiredViews: AppView[] = ['sell', 'my-listings', 'messages', 'notifications', 'check-in']
 
 export function App() {
   const [service] = useState(() => new MarketplaceService())
@@ -34,6 +34,7 @@ export function App() {
   const [location, setLocation] = useState('Toàn quốc')
   const [category, setCategory] = useState('Tất cả')
   const [notice, setNotice] = useState('')
+  const [authNotice, setAuthNotice] = useState('')
 
   const selectedListing = listings.find((listing) => listing.id === selectedId)
   const activeListings = listings.filter((listing) => {
@@ -49,6 +50,12 @@ export function App() {
     const timer = window.setTimeout(() => setNotice(''), 3500)
     return () => window.clearTimeout(timer)
   }, [notice])
+
+  useEffect(() => {
+    if (!authNotice) return
+    const timer = window.setTimeout(() => setAuthNotice(''), 3500)
+    return () => window.clearTimeout(timer)
+  }, [authNotice])
 
   useEffect(() => {
     function syncAdminRoute() {
@@ -315,7 +322,7 @@ export function App() {
     try {
       api.saveSession(session)
       setUser(session.user)
-      setNotice('Đăng nhập thành công. Chào mừng đến với Chợ Hời!')
+      setAuthNotice('Đăng nhập thành công. Chào mừng đến với Chợ Hời!')
       await reloadFromApi(session.user)
       if (session.user.role === 'ADMIN') {
         if (window.location.pathname.replace(/\/+$/, '') !== '/admin') {
@@ -328,7 +335,7 @@ export function App() {
       navigate(previousView === 'auth' ? 'home' : previousView)
     } catch (error) {
       console.error('Không thể tải dữ liệu tài khoản.', error)
-      setNotice(error instanceof Error ? error.message : 'Đăng nhập thành công nhưng không tải được dữ liệu.')
+      setAuthNotice(error instanceof Error ? error.message : 'Đăng nhập thành công nhưng không tải được dữ liệu.')
     }
   }
 
@@ -337,7 +344,7 @@ export function App() {
     setUser(null)
     setSavedIds([])
     navigate('home')
-    setNotice('Bạn đã đăng xuất.')
+    setAuthNotice('Bạn đã đăng xuất.')
   }
 
   async function retryConnection() {
@@ -400,6 +407,8 @@ export function App() {
       favoritesCount={savedIds.length}
       unreadCount={user && apiState === 'connected' ? 1 : 0}
       user={user}
+      authNotice={authNotice}
+      onDismissAuthNotice={() => setAuthNotice('')}
     >
       {apiState === 'offline' && <div className="api-status-banner" role="status"><span>DEMO · Chưa kết nối database; thao tác chỉ lưu trên trình duyệt.</span><button onClick={retryConnection}>Thử kết nối lại</button><small>{apiError}</small></div>}
       {apiState === 'connecting' && <div className="api-status-banner api-status-connecting" role="status"><span>Đang kết nối Chợ Hời API...</span></div>}

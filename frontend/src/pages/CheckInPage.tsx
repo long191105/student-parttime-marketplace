@@ -73,7 +73,7 @@ export function CheckInPage({ userId, onBack }: CheckInPageProps) {
   const currentReward = DAILY_REWARDS[currentDay - 1]
 
   function claimDailyReward() {
-    if (isCheckedInToday) return
+    if (userId === null || isCheckedInToday) return
 
     const nextProgress: CheckInProgress = {
       checkedInDate: today,
@@ -127,8 +127,12 @@ export function CheckInPage({ userId, onBack }: CheckInPageProps) {
             )
           })}
         </div>
-        <button className="check-in-claim-button" type="button" onClick={claimDailyReward} disabled={isCheckedInToday}>
-          {isCheckedInToday ? <><Check size={17} /> Đã điểm danh hôm nay</> : <><Gift size={17} /> Điểm danh nhận {currentReward} điểm</>}
+        <button className="check-in-claim-button" type="button" onClick={claimDailyReward} disabled={userId === null || isCheckedInToday}>
+          {userId === null
+            ? <><Gift size={17} /> Đăng nhập để điểm danh</>
+            : isCheckedInToday
+              ? <><Check size={17} /> Đã điểm danh hôm nay</>
+              : <><Gift size={17} /> Điểm danh nhận {currentReward} điểm</>}
         </button>
         <p className="check-in-footnote">Mỗi ngày điểm danh một lần. Bỏ lỡ một ngày sẽ bắt đầu lại chuỗi.</p>
       </section>
