@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Eye, FilePenLine, Plus, Send, ShieldAlert, Trash2 } from 'lucide-react'
 import type { Listing, ListingStatus } from '../domain/Listing'
 import type { ListingFormDraft } from '../services/MarketplaceApi'
+import { useAppDialog } from '../components/AppDialogContext'
 
 interface MyListingsPageProps {
   listings: Listing[]
@@ -31,6 +32,7 @@ const statusNames: Record<ListingStatus, string> = {
 }
 
 export function MyListingsPage({ listings, onStatusChange, onOpen, onSell, onEditDraft, sellerId, onLoadDraft, onDeleteDraft, onPublishDraft }: MyListingsPageProps) {
+  const { showConfirm } = useAppDialog()
   const [activeTab, setActiveTab] = useState<ListingsTab>('ALL')
   const [draft, setDraft] = useState<ListingFormDraft | null>(null)
   const [isLoadingDraft, setIsLoadingDraft] = useState(true)
@@ -56,7 +58,7 @@ export function MyListingsPage({ listings, onStatusChange, onOpen, onSell, onEdi
   }, [onLoadDraft])
 
   async function deleteDraft() {
-    if (!window.confirm('Bạn có chắc muốn xóa bản nháp này?')) return
+    if (!await showConfirm('Bạn có chắc muốn xóa bản nháp này?', 'Xóa bản nháp', 'Xóa nháp')) return
     setIsDeletingDraft(true)
     setDraftActionError('')
     try {
@@ -72,7 +74,7 @@ export function MyListingsPage({ listings, onStatusChange, onOpen, onSell, onEdi
 
   async function publishDraft() {
     if (!draft) return
-    if (!window.confirm('Gửi bản nháp này để quản trị viên kiểm duyệt?')) return
+    if (!await showConfirm('Gửi bản nháp này để quản trị viên kiểm duyệt?', 'Gửi tin đăng', 'Gửi chờ duyệt')) return
     setIsPublishingDraft(true)
     setDraftActionError('')
     try {
@@ -127,8 +129,8 @@ export function MyListingsPage({ listings, onStatusChange, onOpen, onSell, onEdi
           <div className="my-listing-content"><span className={`status-pill status-${listing.status.toLowerCase()}`}><i />{statusNames[listing.status]}</span><button className="my-listing-title" onClick={() => onOpen(listing)}>{listing.title}</button><strong>{listing.priceLabel}</strong><span className="my-listing-date">{listing.postedAt} <span>·</span> <Eye size={14} /> {listing.views} lượt xem</span>{listing.status === 'REJECTED' && <span className="reject-reason"><ShieldAlert size={14} /> {listing.reviewReason ?? 'Tin đăng chưa đạt tiêu chuẩn, vui lòng chỉnh sửa và gửi lại.'}</span>}</div>
           {(listing.status === 'ACTIVE' || listing.status === 'HIDDEN' || listing.status === 'PENDING') && <div className="my-listing-actions">
             {listing.status === 'ACTIVE' && <>
-              <button className="row-action-primary" onClick={() => {
-                if (window.confirm(`Xác nhận đánh dấu tin "${listing.title}" là đã bán?`)) {
+              <button className="row-action-primary" onClick={async () => {
+                if (await showConfirm(`Xác nhận đánh dấu tin "${listing.title}" là đã bán?`, 'Xác nhận đã bán', 'Đánh dấu đã bán')) {
                   onStatusChange(listing.id, 'SOLD')
                 }
               }}>Đánh dấu đã bán</button>

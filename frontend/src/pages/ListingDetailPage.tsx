@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { ArrowLeft, Flag, Heart, MapPin, MessageCircle, Phone, ShieldCheck } from 'lucide-react'
 import type { Listing } from '../domain/Listing'
 import { ListingCard } from '../components/ListingCard'
+import { useAppDialog } from '../components/AppDialogContext'
 
 interface ListingDetailPageProps {
   listing: Listing
@@ -16,6 +17,7 @@ interface ListingDetailPageProps {
 }
 
 export function ListingDetailPage({ listing, related, saved, onBack, onToggleSaved, onOpen, onContact, onSeller, onRevealPhone }: ListingDetailPageProps) {
+  const { showPrompt } = useAppDialog()
   const [phone, setPhone] = useState('')
   const [phoneError, setPhoneError] = useState('')
   const [isLoadingPhone, setIsLoadingPhone] = useState(false)
@@ -39,8 +41,8 @@ export function ListingDetailPage({ listing, related, saved, onBack, onToggleSav
     }
   }
 
-  function reportListing() {
-    const reason = window.prompt('Bạn muốn báo cáo tin này vì lý do gì?')
+  async function reportListing() {
+    const reason = await showPrompt('Bạn muốn báo cáo tin này vì lý do gì?', 'Báo cáo tin đăng', 'Nhập lý do báo cáo...')
     if (reason?.trim()) setReported(true)
   }
 
@@ -78,7 +80,7 @@ export function ListingDetailPage({ listing, related, saved, onBack, onToggleSav
             <button className="contact-chat" onClick={onContact}><MessageCircle size={18} /> Chat với người bán</button>
             <button className={`detail-save ${saved ? 'detail-save-active' : ''}`} onClick={() => onToggleSaved(listing.id)}><Heart size={17} fill={saved ? 'currentColor' : 'none'} />{saved ? 'Đã lưu tin' : 'Lưu tin này'}</button>
           </div>
-          <button className={`report-link ${reported ? 'report-sent' : ''}`} onClick={reportListing}><Flag size={14} />{reported ? 'Đã gửi báo cáo' : 'Báo cáo tin này'}</button>
+          <button className={`report-link ${reported ? 'report-sent' : ''}`} onClick={() => void reportListing()}><Flag size={14} />{reported ? 'Đã gửi báo cáo' : 'Báo cáo tin này'}</button>
           <div className="buyer-tip"><span>✦ MẸO NHỎ</span><p>Đừng chuyển tiền trước khi xem hàng. Hẹn gặp ở nơi công cộng để giao dịch an toàn nhé!</p></div>
         </aside>
       </div>
