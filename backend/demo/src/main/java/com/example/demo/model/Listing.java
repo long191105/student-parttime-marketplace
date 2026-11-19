@@ -84,6 +84,9 @@ public class Listing {
     @Column(nullable = false)
     private boolean negotiable;
 
+    @Column(nullable = false, columnDefinition = "boolean not null default false")
+    private boolean giveaway;
+
     @Column(name = "specs_text", nullable = false, columnDefinition = "text")
     private String specsText = "";
 
@@ -130,6 +133,26 @@ public class Listing {
             boolean negotiable,
             String specsText,
             UserAccount seller) {
+        this(title, category, price, condition, location, contactPhone, imageUrl, images,
+                sellerName, sellerInitials, description, negotiable, false, specsText, seller);
+    }
+
+    public Listing(
+            String title,
+            String category,
+            BigDecimal price,
+            ListingCondition condition,
+            String location,
+            String contactPhone,
+            String imageUrl,
+            List<String> images,
+            String sellerName,
+            String sellerInitials,
+            String description,
+            boolean negotiable,
+            boolean giveaway,
+            String specsText,
+            UserAccount seller) {
         this.title = title;
         this.category = category;
         this.price = price;
@@ -142,6 +165,7 @@ public class Listing {
         this.sellerInitials = sellerInitials;
         this.description = description;
         this.negotiable = negotiable;
+        this.giveaway = giveaway;
         this.specsText = specsText;
         this.seller = seller;
         this.status = ListingStatus.PENDING;
@@ -218,6 +242,10 @@ public class Listing {
 
     public boolean isNegotiable() {
         return negotiable;
+    }
+
+    public boolean isGiveaway() {
+        return giveaway;
     }
 
     public String getSpecsText() {

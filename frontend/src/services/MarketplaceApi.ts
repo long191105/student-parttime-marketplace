@@ -18,6 +18,34 @@ export interface AuthSession {
   user: AuthUser
 }
 
+export interface ChatConversation {
+  id: string
+  listingId: string
+  listingTitle: string
+  listingImage: string
+  price: number
+  giveaway: boolean
+  participantName: string
+  participantInitials: string
+  lastMessage: string
+  updatedAt: string
+  unreadCount: number
+}
+
+export interface ChatMessage {
+  id: string
+  conversationId: string
+  senderId: string
+  senderName: string
+  content: string
+  sentAt: string
+}
+
+export type ChatSocketEvent =
+  | { type: 'authenticated' }
+  | { type: 'message'; message: ChatMessage }
+  | { type: 'error'; message: string }
+
 export interface ListingDraft {
   title: string
   category: string
@@ -34,6 +62,7 @@ export interface ListingDraft {
   sellerReviews: number
   description: string
   negotiable: boolean
+  giveaway?: boolean
   specs: string[]
 }
 
@@ -50,6 +79,7 @@ export interface ListingFormDraft {
   phone: string
   description: string
   negotiable: boolean
+  giveaway: boolean
   photos: Array<{ id: string; src: string }>
   coverPhotoId: string | null
   activeStep: number
@@ -89,6 +119,7 @@ export class MarketplaceApi {
         images: draft.images?.length ? draft.images : [draft.image],
         description: draft.description,
         negotiable: draft.negotiable,
+        giveaway: draft.giveaway ?? false,
         specs: draft.specs,
       }),
     })
@@ -171,6 +202,47 @@ export class MarketplaceApi {
 
   async getCurrentUser(): Promise<AuthUser> {
     return this.request<AuthUser>('/auth/me')
+  }
+
+  async listChatConversations(): Promise<ChatConversation[]> {
+    return this.request<ChatConversation[]>('/chat/conversations')
+  }
+
+  async openChatForListing(listingId: string): Promise<ChatConversation> {
+    return this.request<ChatConversation>(`/chat/listings/${encodeURIComponent(listingId)}`, { method: 'POST' })
+  }
+
+  async getChatMessages(conversationId: string): Promise<ChatMessage[]> {
+    return this.request<ChatMessage[]>(`/chat/conversations/${encodeURIComponent(conversationId)}/messages`)
+  }
+
+  connectChat(onEvent: (event: ChatSocketEvent) => void): WebSocket {
+    const session = this.readSession()
+    if (!session) throw new Error('Vui lòng đăng nhập để kết nối hộp thư.')
+
+    const socketUrl = new URL(API_BASE_URL)
+    socketUrl.protocol = socketUrl.protocol === 'https:' ? 'wss:' : 'ws:'
+    socketUrl.pathname = socketUrl.pathname.replace(/\/api\/?$/, '/ws/chat')
+    if (!socketUrl.pathname.endsWith('/ws/chat')) socketUrl.pathname = `${socketUrl.pathname.replace(/\/+$/, '')}/ws/chat`
+
+    const socket = new WebSocket(socketUrl)
+    socket.addEventListener('open', () => {
+      socket.send(JSON.stringify({ type: 'auth', token: session.accessToken }))
+    }, { once: true })
+    socket.addEventListener('message', (event: MessageEvent<string>) => {
+      try {
+        const payload = JSON.parse(event.data) as ChatSocketEvent
+        if (payload.type === 'authenticated' || payload.type === 'error'
+          || (payload.type === 'message' && payload.message?.conversationId && payload.message.id)) {
+          onEvent(payload)
+        } else {
+          console.error('Nhận được sự kiện chat không hợp lệ.')
+        }
+      } catch (error) {
+        console.error('Không thể đọc sự kiện chat realtime.', error)
+      }
+    })
+    return socket
   }
 
   saveSession(session: AuthSession): void {

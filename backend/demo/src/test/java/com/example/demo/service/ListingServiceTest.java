@@ -1,7 +1,9 @@
 package com.example.demo.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -138,6 +140,7 @@ class ListingServiceTest {
                 images,
                 "Máy ảnh còn hoạt động tốt, có bao da và dây đeo.",
                 true,
+                false,
                 List.of("Canon", "35mm"));
 
         ListingResponse response = listingService.create(request);
@@ -146,6 +149,62 @@ class ListingServiceTest {
         assertEquals(images.getFirst(), response.image());
         verify(listingRepository).save(any(Listing.class));
         verify(listingDraftService).deleteForSeller(7L);
+    }
+
+    @Test
+    void createGiveawayListingPersistsFreePriceAndGiveawayFlag() {
+        when(currentUserService.requireUser()).thenReturn(seller);
+        when(categoryRepository.existsByNameIgnoreCase("Điện tử")).thenReturn(true);
+        when(listingRepository.save(any(Listing.class))).thenAnswer(invocation -> {
+            Listing saved = invocation.getArgument(0);
+            ReflectionTestUtils.setField(saved, "id", 43L);
+            return saved;
+        });
+        CreateListingRequest request = new CreateListingRequest(
+                "Tặng máy ảnh film Canon",
+                "Điện tử",
+                BigDecimal.ZERO,
+                ListingCondition.USED,
+                "Quận 3, TP. Hồ Chí Minh",
+                "0912345678",
+                "https://example.com/camera.jpg",
+                List.of("https://example.com/camera.jpg"),
+                "Máy ảnh còn hoạt động tốt, tặng cho người cần dùng.",
+                true,
+                true,
+                List.of("Canon", "35mm"));
+
+        ListingResponse response = listingService.create(request);
+
+        assertEquals(BigDecimal.ZERO, response.price());
+        assertTrue(response.giveaway());
+        assertFalse(response.negotiable());
+        verify(listingDraftService).deleteForSeller(7L);
+    }
+
+    @Test
+    void giveawayListingCannotHaveACharge() {
+        when(currentUserService.requireUser()).thenReturn(seller);
+        when(categoryRepository.existsByNameIgnoreCase("Điện tử")).thenReturn(true);
+        CreateListingRequest request = new CreateListingRequest(
+                "Tặng máy ảnh film Canon",
+                "Điện tử",
+                BigDecimal.valueOf(100_000),
+                ListingCondition.USED,
+                "Quận 3, TP. Hồ Chí Minh",
+                "0912345678",
+                "https://example.com/camera.jpg",
+                List.of("https://example.com/camera.jpg"),
+                "Máy ảnh còn hoạt động tốt, tặng cho người cần dùng.",
+                false,
+                true,
+                List.of("Canon", "35mm"));
+
+        ResponseStatusException exception = assertThrows(
+                ResponseStatusException.class,
+                () -> listingService.create(request));
+
+        assertEquals(HttpStatus.BAD_REQUEST, exception.getStatusCode());
     }
 
     @Test
@@ -164,6 +223,7 @@ class ListingServiceTest {
                 images,
                 "Máy ảnh còn hoạt động tốt, có bao da và dây đeo.",
                 true,
+                false,
                 List.of("Canon", "35mm"));
 
         ResponseStatusException exception = assertThrows(

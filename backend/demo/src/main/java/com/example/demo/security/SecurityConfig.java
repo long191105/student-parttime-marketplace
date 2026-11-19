@@ -43,6 +43,7 @@ public class SecurityConfig {
                 .authenticationProvider(authenticationProvider())
                 .authorizeHttpRequests(authorize -> authorize
                         .requestMatchers("/api/health", "/error").permitAll()
+                        .requestMatchers("/ws/chat").permitAll()
                         .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers("/api/listings/draft").authenticated()
                         .requestMatchers(HttpMethod.GET, "/api/listings/mine").authenticated()

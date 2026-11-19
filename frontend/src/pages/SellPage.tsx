@@ -49,6 +49,7 @@ export function SellPage({ onCancel, onSubmit, onLoadDraft, onSaveDraft, sellerN
   const [wardLoadAttempt, setWardLoadAttempt] = useState(0)
   const [phone, setPhone] = useState('')
   const [negotiable, setNegotiable] = useState(true)
+  const [giveaway, setGiveaway] = useState(false)
   const [photos, setPhotos] = useState<ProductPhoto[]>([])
   const [coverPhotoId, setCoverPhotoId] = useState<string | null>(null)
   const [isProcessingPhotos, setIsProcessingPhotos] = useState(false)
@@ -93,6 +94,7 @@ export function SellPage({ onCancel, onSubmit, onLoadDraft, onSaveDraft, sellerN
       setDetailAddress(draft.detailAddress ?? '')
       setPhone(draft.phone ?? '')
       setNegotiable(draft.negotiable ?? true)
+      setGiveaway(draft.giveaway ?? false)
       setPhotos(draft.photos ?? [])
       setCoverPhotoId(draft.coverPhotoId ?? draft.photos?.[0]?.id ?? null)
       setActiveStep(Math.min(4, Math.max(1, draft.activeStep ?? 1)))
@@ -266,6 +268,7 @@ export function SellPage({ onCancel, onSubmit, onLoadDraft, onSaveDraft, sellerN
         phone,
         description,
         negotiable,
+        giveaway,
         photos,
         coverPhotoId,
         activeStep,
@@ -293,7 +296,7 @@ export function SellPage({ onCancel, onSubmit, onLoadDraft, onSaveDraft, sellerN
       setErrorMessage('Mô tả cần có ít nhất 20 ký tự.')
       return
     }
-    if (!price.trim() || !Number.isFinite(Number(price)) || Number(price) < 0) {
+    if (!giveaway && (!price.trim() || !Number.isFinite(Number(price)) || Number(price) < 0)) {
       setErrorMessage('Vui lòng nhập mức giá hợp lệ.')
       return
     }
@@ -317,9 +320,9 @@ export function SellPage({ onCancel, onSubmit, onLoadDraft, onSaveDraft, sellerN
     const sellerInitials = sellerName.split(/\s+/).filter(Boolean).slice(-2).map((part) => part[0]).join('').toUpperCase()
     try {
       await onSubmit({
-        title: title.trim(), category, price: Number(price), condition, location: fullLocation, contactPhone: phone.replace(/\D/g, ''), image: listingImages[0], images: listingImages,
+        title: title.trim(), category, price: giveaway ? 0 : Number(price), condition, location: fullLocation, contactPhone: phone.replace(/\D/g, ''), image: listingImages[0], images: listingImages,
         seller: sellerName, sellerId: 'long', sellerInitials: sellerInitials || 'BN', sellerRating: 4.9, sellerReviews: 12,
-        description: description.trim(), negotiable, specs: [condition === 'NEW' ? 'Hàng mới' : 'Đã sử dụng'],
+        description: description.trim(), negotiable: giveaway ? false : negotiable, giveaway, specs: [condition === 'NEW' ? 'Hàng mới' : 'Đã sử dụng'],
       })
     } catch (error) {
       console.error('Không thể đăng tin.', error)
@@ -380,8 +383,12 @@ export function SellPage({ onCancel, onSubmit, onLoadDraft, onSaveDraft, sellerN
           </section>
           <section className="form-section sell-step-section" id="sell-step-2" data-sell-step="2">
             <div className="form-section-heading"><span className="form-step">2</span><div><h2>Chi tiết sản phẩm</h2><p>Thông tin rõ ràng giúp người mua dễ quyết định.</p></div></div>
+            <div className="listing-type-choice" role="group" aria-label="Hình thức đăng tin">
+              <button type="button" className={!giveaway ? 'listing-type-choice-active' : ''} aria-pressed={!giveaway} onClick={() => setGiveaway(false)}>Bán</button>
+              <button type="button" className={giveaway ? 'listing-type-choice-active' : ''} aria-pressed={giveaway} onClick={() => setGiveaway(true)}>Tặng miễn phí</button>
+            </div>
             <div className="form-grid form-grid-two">
-              <label>Giá bán (đ) <input required type="number" min="0" value={price} onChange={(event) => setPrice(event.target.value)} placeholder="Nhập giá bạn mong muốn" /></label>
+              <label>Giá bán (đ) <input required={!giveaway} type="number" min="0" disabled={giveaway} value={giveaway ? '0' : price} onChange={(event) => setPrice(event.target.value)} placeholder={giveaway ? 'Món đồ sẽ được tặng miễn phí' : 'Nhập giá bạn mong muốn'} />{giveaway && <small>Món đồ được tặng, không thu phí.</small>}</label>
               <SellDropdown id="listing-condition" label="Tình trạng" value={condition} options={[{ value: 'USED', label: 'Đã sử dụng' }, { value: 'NEW', label: 'Mới' }]} required onChange={(value) => { if (value === 'USED' || value === 'NEW') setCondition(value) }} />
             </div>
             <label className="checkbox-label"><input type="checkbox" checked={negotiable} onChange={(event) => setNegotiable(event.target.checked)} /> Có thể thương lượng giá</label>
@@ -409,6 +416,7 @@ export function SellPage({ onCancel, onSubmit, onLoadDraft, onSaveDraft, sellerN
                 category={category}
                 condition={condition}
                 price={previewPrice}
+                giveaway={giveaway}
                 location={previewLocation || 'Khu vực giao dịch'}
                 description={description}
                 negotiable={negotiable}

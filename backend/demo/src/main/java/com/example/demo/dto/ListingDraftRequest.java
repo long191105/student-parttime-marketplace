@@ -24,6 +24,7 @@ public record ListingDraftRequest(
         @Size(max = 50) String phone,
         @Size(max = 2000) String description,
         boolean negotiable,
+        boolean giveaway,
         @Size(max = 10) List<@NotNull @Valid DraftPhoto> photos,
         @Size(max = 100) String coverPhotoId,
         @Min(1) @Max(4) int activeStep) {

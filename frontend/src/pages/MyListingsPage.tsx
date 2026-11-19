@@ -90,7 +90,9 @@ export function MyListingsPage({ listings, onStatusChange, onOpen, onSell, onEdi
 
   const draftImage = draft?.photos?.find((photo) => photo.id === draft.coverPhotoId)?.src ?? draft?.photos?.[0]?.src
   const draftPrice = Number(draft?.price)
-  const draftPriceLabel = !draft?.price?.trim()
+  const draftPriceLabel = draft?.giveaway
+    ? 'Miễn phí'
+    : !draft?.price?.trim()
     ? 'Chưa nhập giá'
     : Number.isFinite(draftPrice)
       ? draftPrice === 0 ? 'Thỏa thuận' : `${new Intl.NumberFormat('vi-VN').format(draftPrice)} đ`

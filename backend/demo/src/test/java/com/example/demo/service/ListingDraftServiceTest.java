@@ -57,6 +57,7 @@ class ListingDraftServiceTest {
                 "",
                 "",
                 true,
+                false,
                 List.of(),
                 null,
                 1);

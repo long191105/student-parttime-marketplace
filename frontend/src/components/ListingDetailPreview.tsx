@@ -11,6 +11,7 @@ interface ListingDetailPreviewProps {
   category: string
   condition: 'NEW' | 'USED'
   price: string
+  giveaway: boolean
   location: string
   description: string
   negotiable: boolean
@@ -27,6 +28,7 @@ export function ListingDetailPreview({
   category,
   condition,
   price,
+  giveaway,
   location,
   description,
   negotiable,
@@ -71,7 +73,7 @@ export function ListingDetailPreview({
           <div className="detail-info-card">
             <div className="detail-category-row"><span>{category}</span><span>{conditionLabel}</span><span>Đăng Vừa xong</span></div>
             <h1>{title || 'Tiêu đề tin của bạn'}</h1>
-            <div className="detail-price-row"><strong>{price}</strong>{negotiable && <span>Có thể thương lượng</span>}</div>
+            <div className="detail-price-row"><strong>{giveaway ? 'Miễn phí' : price}</strong>{giveaway ? <span className="giveaway-badge">Tặng miễn phí</span> : negotiable && <span>Có thể thương lượng</span>}</div>
             <div className="detail-location-row"><MapPin size={16} />{location || 'Chưa chọn khu vực'}<span>·</span><span>0 lượt xem</span></div>
             <div className="detail-divider" />
             <h3>Mô tả chi tiết</h3>

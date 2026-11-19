@@ -149,6 +149,9 @@ public class ListingService {
         if (!categoryRepository.existsByNameIgnoreCase(request.category().trim())) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Danh mục không tồn tại hoặc đã bị tắt.");
         }
+        if (request.giveaway() && request.price().compareTo(BigDecimal.ZERO) != 0) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Tin tặng miễn phí phải có giá bằng 0.");
+        }
         validateImage(request.image());
         List<String> images = request.images() == null || request.images().isEmpty()
                 ? List.of(request.image().trim())
@@ -173,7 +176,8 @@ public class ListingService {
                 seller.getFullName(),
                 initials,
                 request.description().trim(),
-                request.negotiable(),
+                request.giveaway() ? false : request.negotiable(),
+                request.giveaway(),
                 request.specs() == null ? "" : String.join("\n", request.specs()),
                 seller);
         Listing savedListing = listingRepository.save(listing);
