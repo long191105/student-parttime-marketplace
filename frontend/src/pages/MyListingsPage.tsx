@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { ArrowUpRight, Eye, Pencil, Plus, ShieldAlert } from 'lucide-react'
+import { Eye, Plus, ShieldAlert } from 'lucide-react'
 import type { Listing, ListingStatus } from '../domain/Listing'
 
 interface MyListingsPageProps {
@@ -35,7 +35,18 @@ export function MyListingsPage({ listings, onStatusChange, onOpen, onSell, selle
         {visibleListings.map((listing) => <article className="my-listing-row" key={listing.id}>
           <button className="my-listing-image" onClick={() => onOpen(listing)}><img src={listing.image} alt={listing.title} /></button>
           <div className="my-listing-content"><span className={`status-pill status-${listing.status.toLowerCase()}`}><i />{statusNames[listing.status]}</span><button className="my-listing-title" onClick={() => onOpen(listing)}>{listing.title}</button><strong>{listing.priceLabel}</strong><span className="my-listing-date">{listing.postedAt} <span>·</span> <Eye size={14} /> {listing.views} lượt xem</span>{listing.status === 'REJECTED' && <span className="reject-reason"><ShieldAlert size={14} /> {listing.reviewReason ?? 'Tin đăng chưa đạt tiêu chuẩn, vui lòng chỉnh sửa và gửi lại.'}</span>}</div>
-          <div className="my-listing-actions">{listing.status === 'REJECTED' ? <button className="row-action-primary" onClick={() => onStatusChange(listing.id, 'PENDING')}><Pencil size={14} /> Sửa & gửi lại</button> : listing.status === 'ACTIVE' ? <><button className="row-action-primary" onClick={() => onStatusChange(listing.id, 'SOLD')}>Đánh dấu đã bán</button><button className="row-action" onClick={() => onStatusChange(listing.id, 'HIDDEN')}>Ẩn tin</button><button className="row-action" onClick={() => onStatusChange(listing.id, 'ACTIVE')}><ArrowUpRight size={14} /> Đẩy tin</button></> : listing.status === 'PENDING' ? <span className="muted-status">Đang được kiểm duyệt</span> : <button className="row-action" onClick={() => onStatusChange(listing.id, 'ACTIVE')}>Hiển thị lại</button>}</div>
+          {(listing.status === 'ACTIVE' || listing.status === 'HIDDEN' || listing.status === 'PENDING') && <div className="my-listing-actions">
+            {listing.status === 'ACTIVE' && <>
+              <button className="row-action-primary" onClick={() => {
+                if (window.confirm(`Xác nhận đánh dấu tin "${listing.title}" là đã bán?`)) {
+                  onStatusChange(listing.id, 'SOLD')
+                }
+              }}>Đánh dấu đã bán</button>
+              <button className="row-action" onClick={() => onStatusChange(listing.id, 'HIDDEN')}>Ẩn tin</button>
+            </>}
+            {listing.status === 'HIDDEN' && <button className="row-action" onClick={() => onStatusChange(listing.id, 'ACTIVE')}>Hiển thị lại</button>}
+            {listing.status === 'PENDING' && <span className="muted-status">Đang được kiểm duyệt</span>}
+          </div>}
         </article>)}
         {!visibleListings.length && <div className="empty-state"><span>♡</span><h3>Chưa có tin trong mục này</h3><p>Đăng món đồ đầu tiên để bắt đầu nhé.</p><button className="button-primary" onClick={onSell}>Đăng tin ngay</button></div>}
       </div>

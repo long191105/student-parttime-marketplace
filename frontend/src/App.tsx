@@ -260,7 +260,8 @@ export function App() {
         return
       }
       try {
-        if (user.role === 'ADMIN' && (status === 'ACTIVE' || status === 'REJECTED')) {
+        const listing = listings.find((item) => item.id === id)
+        if (user.role === 'ADMIN' && listing?.status === 'PENDING' && (status === 'ACTIVE' || status === 'REJECTED')) {
           await api.moderateListing(id, status, reason)
         } else {
           await api.setListingStatus(id, status)
