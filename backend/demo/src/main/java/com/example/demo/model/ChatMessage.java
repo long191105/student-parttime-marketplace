@@ -4,6 +4,8 @@ import java.time.Instant;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -31,6 +33,19 @@ public class ChatMessage {
     @Column(nullable = false, columnDefinition = "text")
     private String content;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "message_type", nullable = false, length = 12, columnDefinition = "varchar(12) not null default 'TEXT'")
+    private ChatMessageType messageType = ChatMessageType.TEXT;
+
+    @Column(name = "latitude")
+    private Double latitude;
+
+    @Column(name = "longitude")
+    private Double longitude;
+
+    @Column(name = "map_url", columnDefinition = "text")
+    private String mapUrl;
+
     @Column(name = "sent_at", nullable = false)
     private Instant sentAt = Instant.now();
 
@@ -41,9 +56,24 @@ public class ChatMessage {
     }
 
     public ChatMessage(ChatConversation conversation, UserAccount sender, String content) {
+        this(conversation, sender, content, ChatMessageType.TEXT, null, null, null);
+    }
+
+    public ChatMessage(
+            ChatConversation conversation,
+            UserAccount sender,
+            String content,
+            ChatMessageType messageType,
+            Double latitude,
+            Double longitude,
+            String mapUrl) {
         this.conversation = conversation;
         this.sender = sender;
         this.content = content;
+        this.messageType = messageType;
+        this.latitude = latitude;
+        this.longitude = longitude;
+        this.mapUrl = mapUrl;
     }
 
     public Long getId() {
@@ -60,6 +90,22 @@ public class ChatMessage {
 
     public String getContent() {
         return content;
+    }
+
+    public ChatMessageType getMessageType() {
+        return messageType;
+    }
+
+    public Double getLatitude() {
+        return latitude;
+    }
+
+    public Double getLongitude() {
+        return longitude;
+    }
+
+    public String getMapUrl() {
+        return mapUrl;
     }
 
     public Instant getSentAt() {

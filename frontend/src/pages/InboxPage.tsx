@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { ArrowLeft, ExternalLink, MessageCircle, Search, Send } from 'lucide-react'
+import { ArrowLeft, ExternalLink, Map, MapPin, MessageCircle, Search, Send, X } from 'lucide-react'
 import type { AuthUser, ChatConversation, ChatMessage, ChatSocketEvent, MarketplaceApi } from '../services/MarketplaceApi'
 
 interface InboxPageProps {
@@ -18,9 +18,13 @@ export function InboxPage({ api, user, initialConversationId, onOpenListing, onU
   const [messagesByConversation, setMessagesByConversation] = useState<Record<string, ChatMessage[]>>({})
   const [loadedConversations, setLoadedConversations] = useState<Record<string, boolean>>({})
   const [message, setMessage] = useState('')
+  const [pinnedLocation, setPinnedLocation] = useState('')
   const [search, setSearch] = useState('')
   const [connection, setConnection] = useState<ConnectionState>('connecting')
   const [isLoadingConversations, setIsLoadingConversations] = useState(true)
+  const [isSharingLocation, setIsSharingLocation] = useState(false)
+  const [isPinningLocation, setIsPinningLocation] = useState(false)
+  const [locationError, setLocationError] = useState('')
   const [error, setError] = useState('')
   const socketRef = useRef<WebSocket | null>(null)
   const messageEndRef = useRef<HTMLDivElement>(null)
@@ -167,13 +171,94 @@ export function InboxPage({ api, user, initialConversationId, onOpenListing, onU
     event.preventDefault()
     const content = message.trim()
     if (!content || !activeChat) return
+    if (sendChatPayload(activeChat.id, { content, messageType: 'TEXT' })) setMessage('')
+  }
+
+  function sendChatPayload(conversationId: string, payload: Record<string, unknown>): boolean {
     const socket = socketRef.current
     if (!socket || socket.readyState !== WebSocket.OPEN || connectionRef.current !== 'connected') {
       setError('Đang kết nối lại hộp thư. Vui lòng thử gửi lại sau giây lát.')
+      return false
+    }
+    try {
+      socket.send(JSON.stringify({ type: 'message', conversationId, ...payload }))
+      setError('')
+      return true
+    } catch (sendError) {
+      console.error('Không thể gửi dữ liệu chat.', sendError)
+      setError('Không thể gửi tin nhắn lúc này. Vui lòng thử lại.')
+      return false
+    }
+  }
+
+  function shareCurrentLocation() {
+    if (!activeChat) return
+    if (!navigator.geolocation) {
+      setLocationError('Trình duyệt này không hỗ trợ chia sẻ vị trí.')
       return
     }
-    socket.send(JSON.stringify({ type: 'message', conversationId: activeChat.id, content }))
-    setMessage('')
+
+    setLocationError('')
+    setIsSharingLocation(true)
+    const conversationId = activeChat.id
+    try {
+      navigator.geolocation.getCurrentPosition(({ coords }) => {
+        const latitude = coords.latitude
+        const longitude = coords.longitude
+        const mapUrl = createCoordinatesMapUrl(latitude, longitude)
+        sendChatPayload(conversationId, {
+          content: 'Vị trí hiện tại',
+          messageType: 'LOCATION',
+          latitude,
+          longitude,
+          mapUrl,
+        })
+        setIsSharingLocation(false)
+      }, (geoError) => {
+        const description = geoError.code === geoError.PERMISSION_DENIED
+          ? 'Bạn chưa cho phép truy cập vị trí. Hãy bật quyền vị trí của trình duyệt rồi thử lại.'
+          : geoError.code === geoError.TIMEOUT
+            ? 'Không lấy được vị trí kịp thời. Vui lòng thử lại.'
+            : 'Không thể xác định vị trí hiện tại. Vui lòng thử lại.'
+        setLocationError(description)
+        setIsSharingLocation(false)
+      }, { enableHighAccuracy: true, timeout: 15_000, maximumAge: 60_000 })
+    } catch (geoError) {
+      console.error('Không thể yêu cầu vị trí hiện tại.', geoError)
+      setLocationError('Không thể yêu cầu quyền truy cập vị trí. Hãy thử lại trong môi trường HTTPS.')
+      setIsSharingLocation(false)
+    }
+  }
+
+  function sendPinnedLocation() {
+    const location = pinnedLocation.trim()
+    if (!activeChat || !location) {
+      setLocationError('Hãy nhập địa chỉ hoặc liên kết Google Maps cần ghim.')
+      return
+    }
+    const coordinates = parseCoordinates(location)
+    if (coordinates === 'invalid') {
+      setLocationError('Tọa độ cần nằm trong khoảng vĩ độ -90 đến 90 và kinh độ -180 đến 180.')
+      return
+    }
+    const mapUrl = coordinates
+      ? createCoordinatesMapUrl(coordinates.latitude, coordinates.longitude)
+      : toGoogleMapsUrl(location)
+    if (!mapUrl) {
+      setLocationError('Chỉ hỗ trợ liên kết HTTPS từ Google Maps. Bạn cũng có thể nhập tên địa điểm hoặc tọa độ.')
+      return
+    }
+    const locationMessage = {
+      content: `Vị trí ghim: ${location}`,
+      messageType: 'LOCATION',
+      mapUrl,
+      ...(coordinates ? { latitude: coordinates.latitude, longitude: coordinates.longitude } : {}),
+    }
+    if (sendChatPayload(activeChat.id, locationMessage)) {
+      setLocationError('')
+      setPinnedLocation('')
+      setIsPinningLocation(false)
+    }
   }
 
   function selectConversation(conversationId: string) {
@@ -236,13 +321,32 @@ export function InboxPage({ api, user, initialConversationId, onOpenListing, onU
                 {isLoadingMessages && <p className="chat-list-status">Đang tải tin nhắn...</p>}
                 {!isLoadingMessages && messages.length === 0 && <p className="chat-empty-thread"><MessageCircle size={20} />Gửi lời chào để bắt đầu trao đổi về tin đăng này.</p>}
                 {messages.map((chatMessage) => (
-                  <div className={`message-bubble ${chatMessage.senderId === String(user.id) ? 'message-outgoing' : 'message-incoming'}`} key={chatMessage.id}>
-                    {chatMessage.content}<small>{formatTime(chatMessage.sentAt)}</small>
-                  </div>
+                  chatMessage.messageType === 'LOCATION'
+                    ? <LocationMessage key={chatMessage.id} message={chatMessage} isOwnMessage={chatMessage.senderId === String(user.id)} />
+                    : <div className={`message-bubble ${chatMessage.senderId === String(user.id) ? 'message-outgoing' : 'message-incoming'}`} key={chatMessage.id}>
+                        {chatMessage.content}<small>{formatTime(chatMessage.sentAt)}</small>
+                      </div>
                 ))}
                 <div ref={messageEndRef} />
               </div>
+              {isPinningLocation && (
+                <div className="chat-location-pin-panel">
+                  <div className="chat-location-pin-heading"><MapPin size={16} /><strong>Ghim địa điểm trên Google Maps</strong><button type="button" aria-label="Đóng" onClick={() => setIsPinningLocation(false)}><X size={15} /></button></div>
+                  <input maxLength={500} value={pinnedLocation} onChange={(event) => setPinnedLocation(event.target.value)} placeholder="Địa chỉ, tọa độ hoặc liên kết Google Maps" aria-label="Địa chỉ, tọa độ hoặc liên kết Google Maps" />
+                  <small>Người nhận có thể mở ghim trực tiếp trên Google Maps.</small>
+                  <button type="button" className="button-primary" onClick={sendPinnedLocation} disabled={!pinnedLocation.trim() || connection !== 'connected'}>Gửi ghim vị trí</button>
+                </div>
+              )}
+              {locationError && <p className="location-share-error" role="alert">{locationError}</p>}
               <form className="chat-compose" onSubmit={sendMessage}>
+                <div className="chat-compose-tools">
+                  <button type="button" aria-label="Chia sẻ vị trí hiện tại" title="Chia sẻ vị trí hiện tại" onClick={shareCurrentLocation} disabled={connection !== 'connected' || isSharingLocation}>
+                    <MapPin size={18} />
+                  </button>
+                  <button type="button" aria-label="Ghim địa điểm Google Maps" title="Ghim địa điểm Google Maps" aria-expanded={isPinningLocation} onClick={() => { setIsPinningLocation((open) => !open); setLocationError('') }} disabled={connection !== 'connected'}>
+                    <Map size={18} />
+                  </button>
+                </div>
                 <input maxLength={2000} value={message} onChange={(event) => setMessage(event.target.value)} placeholder="Viết tin nhắn..." aria-label="Nội dung tin nhắn" />
                 <button className="send-message-button" type="submit" disabled={!message.trim() || connection !== 'connected'} aria-label="Gửi tin nhắn"><Send size={17} /></button>
               </form>
@@ -274,4 +378,71 @@ function formatRelativeTime(value: string): string {
   if (ageInMinutes < 60) return `${ageInMinutes} phút`
   if (ageInMinutes < 1440) return `${Math.floor(ageInMinutes / 60)} giờ`
   return new Date(value).toLocaleDateString('vi-VN')
+}
+
+function LocationMessage({ message, isOwnMessage }: { message: ChatMessage; isOwnMessage: boolean }) {
+  const mapUrl = message.mapUrl ? trustedGoogleMapsUrl(message.mapUrl) : null
+  const coordinates = message.latitude !== null && message.longitude !== null
+    ? `${message.latitude.toFixed(5)}, ${message.longitude.toFixed(5)}`
+    : 'Mở vị trí trên Google Maps'
+
+  return (
+    <div className={`message-bubble message-location ${isOwnMessage ? 'message-outgoing' : 'message-incoming'}`}>
+      {mapUrl
+        ? <a className="shared-location-link" href={mapUrl} target="_blank" rel="noreferrer">
+            <MapPin size={17} />
+            <span><strong>{message.content || 'Vị trí được chia sẻ'}</strong><small>{coordinates}</small></span>
+            <ExternalLink size={13} />
+          </a>
+        : <span>{message.content || 'Vị trí được chia sẻ'}</span>}
+      <small className="message-sent-time">{formatTime(message.sentAt)}</small>
+    </div>
+  )
+}
+
+function createCoordinatesMapUrl(latitude: number, longitude: number): string {
+  const url = new URL('https://www.google.com/maps/search/')
+  url.searchParams.set('api', '1')
+  url.searchParams.set('query', `${latitude},${longitude}`)
+  return url.toString()
+}
+
+function toGoogleMapsUrl(value: string): string | null {
+  const sharedMapUrl = trustedGoogleMapsUrl(value)
+  if (sharedMapUrl) return sharedMapUrl
+  if (/^https?:\/\//i.test(value)) return null
+
+  const url = new URL('https://www.google.com/maps/search/')
+  url.searchParams.set('api', '1')
+  url.searchParams.set('query', value)
+  return url.toString()
+}
+
+function parseCoordinates(value: string): { latitude: number; longitude: number } | 'invalid' | null {
+  const match = /^(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)$/.exec(value)
+  if (!match) return null
+  const latitude = Number(match[1])
+  const longitude = Number(match[2])
+  if (!Number.isFinite(latitude) || !Number.isFinite(longitude)
+    || latitude < -90 || latitude > 90 || longitude < -180 || longitude > 180) {
+    return 'invalid'
+  }
+  return { latitude, longitude }
+}
+
+function trustedGoogleMapsUrl(value: string): string | null {
+  try {
+    const url = new URL(value)
+    const host = url.hostname.toLocaleLowerCase('en-US')
+    const googleMapsPath = url.pathname.startsWith('/maps')
+    const trustedHost = ((host === 'google.com' || host === 'www.google.com') && googleMapsPath)
+      || host === 'maps.google.com'
+      || (host === 'maps.app.goo.gl' && url.pathname !== '/')
+      || (host === 'goo.gl' && googleMapsPath)
+    return url.protocol === 'https:' && trustedHost && !url.username && !url.password && !url.port
+      ? url.toString()
+      : null
+  } catch {
+    return null
+  }
 }

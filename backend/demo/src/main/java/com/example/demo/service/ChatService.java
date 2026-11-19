@@ -1,7 +1,10 @@
 package com.example.demo.service;
 
 import java.time.Instant;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.util.List;
+import java.util.Locale;
 import java.util.Set;
 
 import org.springframework.http.HttpStatus;
@@ -13,6 +16,7 @@ import com.example.demo.dto.ChatConversationResponse;
 import com.example.demo.dto.ChatMessageResponse;
 import com.example.demo.model.ChatConversation;
 import com.example.demo.model.ChatMessage;
+import com.example.demo.model.ChatMessageType;
 import com.example.demo.model.Listing;
 import com.example.demo.model.ListingStatus;
 import com.example.demo.model.UserAccount;
@@ -78,12 +82,44 @@ public class ChatService {
     @Transactional
     public ChatMessageResponse sendMessage(Long conversationId, String content) {
         UserAccount sender = currentUserService.requireUser();
-        String normalizedContent = content == null ? "" : content.trim();
-        if (normalizedContent.isEmpty() || normalizedContent.length() > 2000) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Tin nhắn phải có từ 1 đến 2.000 ký tự.");
+        String normalizedContent = validateContent(content == null ? "" : content.trim());
+        ChatConversation conversation = requireParticipant(conversationId, sender);
+        ChatMessage message = messageRepository.save(new ChatMessage(
+                conversation,
+                sender,
+                normalizedContent,
+                ChatMessageType.TEXT,
+                null,
+                null,
+                null));
+        conversation.touch();
+        conversationRepository.save(conversation);
+        return ChatMessageResponse.from(message);
+    }
+
+    @Transactional
+    public ChatMessageResponse sendLocationMessage(
+            Long conversationId,
+            String content,
+            Double latitude,
+            Double longitude,
+            String mapUrl) {
+        UserAccount sender = currentUserService.requireUser();
+        String normalizedMapUrl = validateMapUrl(mapUrl);
+        String normalizedContent = validateContent(content == null || content.isBlank() ? "Vị trí được chia sẻ" : content.trim());
+        if ((latitude == null) != (longitude == null)
+                || (latitude != null && (latitude < -90 || latitude > 90 || longitude < -180 || longitude > 180))) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Tọa độ vị trí không hợp lệ.");
         }
         ChatConversation conversation = requireParticipant(conversationId, sender);
-        ChatMessage message = messageRepository.save(new ChatMessage(conversation, sender, normalizedContent));
+        ChatMessage message = messageRepository.save(new ChatMessage(
+                conversation,
+                sender,
+                normalizedContent,
+                ChatMessageType.LOCATION,
+                latitude,
+                longitude,
+                normalizedMapUrl));
         conversation.touch();
         conversationRepository.save(conversation);
         return ChatMessageResponse.from(message);
@@ -135,5 +171,37 @@ public class ChatService {
         String[] parts = fullName.trim().split("\\s+");
         if (parts.length == 1) return parts[0].substring(0, 1).toUpperCase();
         return (parts[parts.length - 2].substring(0, 1) + parts[parts.length - 1].substring(0, 1)).toUpperCase();
+    }
+
+    private static String validateContent(String content) {
+        if (content.isEmpty() || content.length() > 2000) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Tin nhắn phải có từ 1 đến 2.000 ký tự.");
+        }
+        return content;
+    }
+
+    private static String validateMapUrl(String value) {
+        if (value == null || value.isBlank() || value.length() > 2000) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Liên kết Google Maps không hợp lệ.");
+        }
+        try {
+            URI uri = new URI(value.trim());
+            String host = uri.getHost() == null ? "" : uri.getHost().toLowerCase(Locale.ROOT);
+            String path = uri.getPath() == null ? "" : uri.getPath();
+            boolean secure = "https".equalsIgnoreCase(uri.getScheme())
+                    && uri.getUserInfo() == null
+                    && uri.getPort() == -1;
+            boolean googleMapsLink = (host.equals("google.com") || host.equals("www.google.com"))
+                    && path.startsWith("/maps");
+            boolean mapsSubdomain = host.equals("maps.google.com");
+            boolean shortGoogleMapsLink = host.equals("maps.app.goo.gl") && !path.equals("/");
+            boolean legacyGoogleMapsLink = host.equals("goo.gl") && path.startsWith("/maps");
+            if (!secure || !(googleMapsLink || mapsSubdomain || shortGoogleMapsLink || legacyGoogleMapsLink)) {
+                throw new URISyntaxException(value, "URL is not a trusted Google Maps link");
+            }
+            return uri.toASCIIString();
+        } catch (URISyntaxException exception) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Chỉ hỗ trợ liên kết Google Maps an toàn (HTTPS).", exception);
+        }
     }
 }
