@@ -1,7 +1,8 @@
-import { useState, type FormEvent } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
 import { ArrowLeft, ArrowRight, Check, ImagePlus, Info, Star, X } from 'lucide-react'
 import type { ListingData } from '../domain/Listing'
-import { categories } from '../data/categories'
+import { categories, locations } from '../data/categories'
+import { listLegacyDistricts, listLegacyWards, type LocationOption } from '../services/LegacyLocationApi'
 
 interface SellPageProps {
   onCancel: () => void
@@ -13,19 +14,80 @@ interface ProductPhoto {
   src: string
 }
 
+const maxLocationLength = 160
+
 export function SellPage({ onCancel, onSubmit }: SellPageProps) {
   const [title, setTitle] = useState('')
   const [category, setCategory] = useState('Điện tử')
   const [price, setPrice] = useState('')
   const [condition, setCondition] = useState<'NEW' | 'USED'>('USED')
   const [description, setDescription] = useState('')
-  const [location, setLocation] = useState('Quận 3, TP. Hồ Chí Minh')
+  const [location, setLocation] = useState('TP. Hồ Chí Minh')
+  const [districtCode, setDistrictCode] = useState('')
+  const [wardCode, setWardCode] = useState('')
+  const [detailAddress, setDetailAddress] = useState('')
+  const [districts, setDistricts] = useState<LocationOption[]>([])
+  const [wards, setWards] = useState<LocationOption[]>([])
+  const [isLoadingDistricts, setIsLoadingDistricts] = useState(true)
+  const [isLoadingWards, setIsLoadingWards] = useState(false)
+  const [districtError, setDistrictError] = useState('')
+  const [wardError, setWardError] = useState('')
+  const [districtLoadAttempt, setDistrictLoadAttempt] = useState(0)
+  const [wardLoadAttempt, setWardLoadAttempt] = useState(0)
   const [phone, setPhone] = useState('')
   const [negotiable, setNegotiable] = useState(true)
   const [photos, setPhotos] = useState<ProductPhoto[]>([])
   const [coverPhotoId, setCoverPhotoId] = useState<string | null>(null)
   const [isProcessingPhotos, setIsProcessingPhotos] = useState(false)
   const [errorMessage, setErrorMessage] = useState('')
+  const selectedDistrict = districts.find((district) => String(district.code) === districtCode)
+  const selectedWard = wards.find((ward) => String(ward.code) === wardCode)
+  const baseLocation = selectedDistrict && selectedWard
+    ? `${selectedWard.name}, ${selectedDistrict.name}, ${location}`
+    : ''
+  const maxDetailAddressLength = Math.max(0, maxLocationLength - baseLocation.length - (baseLocation ? 2 : 0))
+
+  useEffect(() => {
+    const controller = new AbortController()
+    let active = true
+
+    void listLegacyDistricts(location, controller.signal).then((nextDistricts) => {
+      if (active) setDistricts(nextDistricts)
+    }).catch((error: unknown) => {
+      if (!active || isAbortError(error)) return
+      console.error('Không thể tải danh sách quận/huyện.', error)
+      setDistrictError(error instanceof Error ? error.message : 'Không thể tải danh sách quận/huyện.')
+    }).finally(() => {
+      if (active) setIsLoadingDistricts(false)
+    })
+
+    return () => {
+      active = false
+      controller.abort()
+    }
+  }, [location, districtLoadAttempt])
+
+  useEffect(() => {
+    if (!districtCode) return
+
+    const controller = new AbortController()
+    let active = true
+
+    void listLegacyWards(Number(districtCode), controller.signal).then((nextWards) => {
+      if (active) setWards(nextWards)
+    }).catch((error: unknown) => {
+      if (!active || isAbortError(error)) return
+      console.error('Không thể tải danh sách phường/xã.', error)
+      setWardError(error instanceof Error ? error.message : 'Không thể tải danh sách phường/xã.')
+    }).finally(() => {
+      if (active) setIsLoadingWards(false)
+    })
+
+    return () => {
+      active = false
+      controller.abort()
+    }
+  }, [districtCode, wardLoadAttempt])
 
   async function handlePhotoChange(event: React.ChangeEvent<HTMLInputElement>) {
     const files = Array.from(event.target.files ?? [])
@@ -106,6 +168,15 @@ export function SellPage({ onCancel, onSubmit }: SellPageProps) {
       setErrorMessage('Số điện thoại cần có 10 hoặc 11 chữ số.')
       return
     }
+    if (!selectedDistrict || !selectedWard) {
+      setErrorMessage('Vui lòng chọn đầy đủ quận/huyện và phường/xã.')
+      return
+    }
+    const fullLocation = [detailAddress.trim(), baseLocation].filter(Boolean).join(', ')
+    if (fullLocation.length > maxLocationLength) {
+      setErrorMessage(`Địa chỉ đầy đủ không được vượt quá ${maxLocationLength} ký tự. Vui lòng rút gọn phần chi tiết.`)
+      return
+    }
     const user = { name: 'Long Nguyễn', id: 'long', initials: 'LN' }
     const coverPhoto = photos.find((photo) => photo.id === coverPhotoId) ?? photos[0]
     const listingImages = coverPhoto
@@ -113,7 +184,7 @@ export function SellPage({ onCancel, onSubmit }: SellPageProps) {
       : ['https://images.unsplash.com/photo-1490312278390-ab64016e0aa9?auto=format&fit=crop&w=900&q=85']
     try {
       await onSubmit({
-        title: title.trim(), category, price: Number(price), condition, location, contactPhone: phone.replace(/\D/g, ''), image: listingImages[0], images: listingImages,
+        title: title.trim(), category, price: Number(price), condition, location: fullLocation, contactPhone: phone.replace(/\D/g, ''), image: listingImages[0], images: listingImages,
         seller: user.name, sellerId: user.id, sellerInitials: user.initials, sellerRating: 4.9, sellerReviews: 12,
         description: description.trim(), negotiable, specs: [condition === 'NEW' ? 'Hàng mới' : 'Đã sử dụng'],
       })
@@ -141,10 +212,14 @@ export function SellPage({ onCancel, onSubmit }: SellPageProps) {
           </div>
           <small className="upload-photo-count">{photos.length}/10 ảnh · Nhấn ảnh nhỏ để chọn ảnh bìa</small>
         </div></div>
-        <div className="form-section"><div className="form-section-heading"><span className="form-step">04</span><div><h2>Khu vực & liên hệ</h2><p>Chia sẻ khu vực giao dịch để người mua gần bạn dễ kết nối.</p></div></div><div className="form-grid form-grid-two"><label>Tỉnh / thành phố, quận / huyện <input required maxLength={160} value={location} onChange={(event) => setLocation(event.target.value)} placeholder="Ví dụ: Quận 3, TP. Hồ Chí Minh" /></label><label>Số điện thoại liên hệ <input required inputMode="tel" value={phone} onChange={(event) => setPhone(event.target.value)} placeholder="09xx xxx xxx" /></label></div><div className="review-notice"><Info size={17} /><span>Tin đăng sẽ được gửi đến quản trị viên kiểm duyệt trước khi hiển thị công khai.</span></div></div>
+        <div className="form-section"><div className="form-section-heading"><span className="form-step">04</span><div><h2>Khu vực & liên hệ</h2><p>Chia sẻ khu vực giao dịch để người mua gần bạn dễ kết nối.</p></div></div><div className="form-grid form-grid-two"><label>Tỉnh / thành phố <select required value={location} onChange={(event) => { setLocation(event.target.value); setDistricts([]); setWards([]); setDistrictCode(''); setWardCode(''); setDistrictError(''); setWardError(''); setIsLoadingDistricts(true); setIsLoadingWards(false) }}>{locations.filter((item) => item !== 'Toàn quốc').map((item) => <option key={item} value={item}>{item}</option>)}</select></label><label>Quận / huyện <select required value={districtCode} disabled={isLoadingDistricts || districts.length === 0} onChange={(event) => { setDistrictCode(event.target.value); setWards([]); setWardCode(''); setWardError(''); setIsLoadingWards(Boolean(event.target.value)) }}><option value="">{isLoadingDistricts ? 'Đang tải quận/huyện...' : 'Chọn quận/huyện'}</option>{districts.map((district) => <option key={district.code} value={district.code}>{district.name}</option>)}</select></label><label>Phường / xã <select required value={wardCode} disabled={!districtCode || isLoadingWards || wards.length === 0} onChange={(event) => setWardCode(event.target.value)}><option value="">{isLoadingWards ? 'Đang tải phường/xã...' : 'Chọn phường/xã'}</option>{wards.map((ward) => <option key={ward.code} value={ward.code}>{ward.name}</option>)}</select></label><label>Số điện thoại liên hệ <input required inputMode="tel" value={phone} onChange={(event) => setPhone(event.target.value)} placeholder="09xx xxx xxx" /></label></div><label className="form-full-label">Địa chỉ chi tiết (không bắt buộc) <textarea rows={2} maxLength={maxDetailAddressLength} value={detailAddress} onChange={(event) => setDetailAddress(event.target.value)} placeholder="Tên đường, khu dân cư, tòa nhà..." /><small>{detailAddress.length}/{maxDetailAddressLength} ký tự · Không cần cung cấp số nhà nếu bạn không muốn chia sẻ.</small></label>{districtError && <p className="form-error" role="alert">{districtError}<button type="button" onClick={() => { setDistrictError(''); setIsLoadingDistricts(true); setDistrictLoadAttempt((attempt) => attempt + 1) }}>Thử tải lại</button></p>}{wardError && <p className="form-error" role="alert">{wardError}<button type="button" onClick={() => { setWardError(''); setIsLoadingWards(true); setWardLoadAttempt((attempt) => attempt + 1) }}>Thử tải lại</button></p>}<div className="review-notice"><Info size={17} /><span>Danh sách quận/huyện và phường/xã được tải qua Internet. Tin đăng sẽ được gửi đến quản trị viên kiểm duyệt trước khi hiển thị công khai.</span></div></div>
         {errorMessage && <div className="form-error" role="alert">{errorMessage}</div>}
         <div className="form-actions"><button type="button" className="button-secondary" onClick={onCancel}>Hủy</button><button type="submit" className="button-primary" disabled={isProcessingPhotos}>{isProcessingPhotos ? 'Đang xử lý ảnh...' : 'Gửi tin chờ duyệt'} {!isProcessingPhotos && <ArrowRight size={16} />}</button></div>
       </form>
     </div>
   )
+}
+
+function isAbortError(error: unknown): boolean {
+  return error instanceof DOMException && error.name === 'AbortError'
 }
