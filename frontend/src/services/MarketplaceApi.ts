@@ -38,6 +38,10 @@ export interface ChatMessage {
   senderId: string
   senderName: string
   content: string
+  messageType: 'TEXT' | 'LOCATION'
+  latitude: number | null
+  longitude: number | null
+  mapUrl: string | null
   sentAt: string
 }
 

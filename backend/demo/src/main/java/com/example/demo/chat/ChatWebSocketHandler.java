@@ -95,9 +95,22 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
         }
         long conversationId = request.path("conversationId").asLong(0);
         try {
-            ChatMessageResponse savedMessage = chatService.sendMessage(
-                    conversationId,
-                    request.path("content").asString(""));
+            String content = request.path("content").asString("");
+            String messageType = request.path("messageType").asString("TEXT");
+            ChatMessageResponse savedMessage;
+            if ("TEXT".equals(messageType)) {
+                savedMessage = chatService.sendMessage(conversationId, content);
+            } else if ("LOCATION".equals(messageType)) {
+                savedMessage = chatService.sendLocationMessage(
+                        conversationId,
+                        content,
+                        optionalNumber(request, "latitude"),
+                        optionalNumber(request, "longitude"),
+                        request.path("mapUrl").asString(""));
+            } else {
+                sendError(session, "Loại tin nhắn không được hỗ trợ.");
+                return;
+            }
             Set<Long> participants = chatService.getParticipantIds(conversationId);
             broadcast(participants, Map.of("type", "message", "message", savedMessage));
         } catch (ResponseStatusException exception) {
@@ -180,6 +193,11 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
             sessions.remove(session);
             if (sessions.isEmpty()) sessionsByUser.remove(userId, sessions);
         }
+    }
+
+    private static Double optionalNumber(JsonNode node, String field) {
+        JsonNode value = node.get(field);
+        return value != null && value.isNumber() ? value.doubleValue() : null;
     }
 
     private static void closeQuietly(WebSocketSession session, CloseStatus status) {

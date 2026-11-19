@@ -1,6 +1,7 @@
 package com.example.demo.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -130,6 +131,79 @@ class ChatServiceTest {
         assertEquals("Chào bạn!", response.content());
         assertEquals("11", response.senderId());
         verify(conversationRepository).save(conversation);
+    }
+
+    @Test
+    void persistsGpsCoordinatesAsARestrictedGoogleMapsLocation() {
+        when(currentUserService.requireUser()).thenReturn(buyer);
+        when(conversationRepository.findById(31L)).thenReturn(Optional.of(conversation));
+        when(messageRepository.save(any(ChatMessage.class))).thenAnswer(invocation -> {
+            ChatMessage saved = invocation.getArgument(0);
+            ReflectionTestUtils.setField(saved, "id", 46L);
+            return saved;
+        });
+
+        var response = chatService.sendLocationMessage(
+                31L,
+                "Vị trí hiện tại",
+                10.7769,
+                106.7009,
+                "https://www.google.com/maps/search/?api=1&query=10.7769%2C106.7009");
+
+        assertEquals("LOCATION", response.messageType());
+        assertEquals(Double.valueOf(10.7769), response.latitude());
+        assertEquals(Double.valueOf(106.7009), response.longitude());
+        assertEquals("https://www.google.com/maps/search/?api=1&query=10.7769%2C106.7009", response.mapUrl());
+    }
+
+    @Test
+    void persistsPinnedGoogleMapsPlacesWithoutSharingDeviceCoordinates() {
+        when(currentUserService.requireUser()).thenReturn(buyer);
+        when(conversationRepository.findById(31L)).thenReturn(Optional.of(conversation));
+        when(messageRepository.save(any(ChatMessage.class))).thenAnswer(invocation -> {
+            ChatMessage saved = invocation.getArgument(0);
+            ReflectionTestUtils.setField(saved, "id", 47L);
+            return saved;
+        });
+
+        var response = chatService.sendLocationMessage(
+                31L,
+                "Vị trí ghim: Chợ Bến Thành",
+                null,
+                null,
+                "https://www.google.com/maps/search/?api=1&query=Ch%E1%BB%A3+B%E1%BA%BFn+Th%C3%A0nh");
+
+        assertEquals("LOCATION", response.messageType());
+        assertNull(response.latitude());
+        assertNull(response.longitude());
+        assertTrue(response.mapUrl().startsWith("https://www.google.com/maps/"));
+    }
+
+    @Test
+    void rejectsInvalidLocationCoordinatesAndNonGoogleLinks() {
+        when(currentUserService.requireUser()).thenReturn(buyer);
+
+        ResponseStatusException invalidCoordinates = assertThrows(
+                ResponseStatusException.class,
+                () -> chatService.sendLocationMessage(
+                        31L,
+                        "Vị trí ghim",
+                        91.0,
+                        106.0,
+                        "https://www.google.com/maps/search/?api=1&query=10%2C106"));
+        ResponseStatusException untrustedLink = assertThrows(
+                ResponseStatusException.class,
+                () -> chatService.sendLocationMessage(
+                        31L,
+                        "Vị trí ghim",
+                        null,
+                        null,
+                        "https://example.com/maps"));
+
+        assertEquals(HttpStatus.BAD_REQUEST, invalidCoordinates.getStatusCode());
+        assertEquals(HttpStatus.BAD_REQUEST, untrustedLink.getStatusCode());
+        verify(conversationRepository, never()).findById(31L);
+        verify(messageRepository, never()).save(any(ChatMessage.class));
     }
 
     @Test

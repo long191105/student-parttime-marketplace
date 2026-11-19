@@ -10,6 +10,10 @@ public record ChatMessageResponse(
         String senderId,
         String senderName,
         String content,
+        String messageType,
+        Double latitude,
+        Double longitude,
+        String mapUrl,
         Instant sentAt) {
 
     public static ChatMessageResponse from(ChatMessage message) {
@@ -19,6 +23,10 @@ public record ChatMessageResponse(
                 message.getSender().getId().toString(),
                 message.getSender().getFullName(),
                 message.getContent(),
+                message.getMessageType().name(),
+                message.getLatitude(),
+                message.getLongitude(),
+                message.getMapUrl(),
                 message.getSentAt());
     }
 }
