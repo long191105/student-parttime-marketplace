@@ -1,7 +1,8 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import { ArrowLeft, ArrowRight, Check, ImagePlus, Info, Star, X } from 'lucide-react'
+import { ArrowLeft, ArrowRight, Check, ImagePlus, Info, Lightbulb, Megaphone, ShieldCheck, Star, X } from 'lucide-react'
 import type { ListingData } from '../domain/Listing'
 import { categories, locations } from '../data/categories'
+import { SellDropdown } from '../components/SellDropdown'
 import { listLegacyDistricts, listLegacyWards, type LocationOption } from '../services/LegacyLocationApi'
 
 interface SellPageProps {
@@ -15,6 +16,11 @@ interface ProductPhoto {
 }
 
 const maxLocationLength = 160
+const sellSteps = [
+  { id: 1, title: 'Thông tin cơ bản', description: 'Sản phẩm và hình ảnh' },
+  { id: 2, title: 'Chi tiết & liên hệ', description: 'Giá bán và địa chỉ' },
+  { id: 3, title: 'Hoàn tất', description: 'Kiểm tra và gửi tin' },
+]
 
 export function SellPage({ onCancel, onSubmit }: SellPageProps) {
   const [title, setTitle] = useState('')
@@ -40,12 +46,29 @@ export function SellPage({ onCancel, onSubmit }: SellPageProps) {
   const [coverPhotoId, setCoverPhotoId] = useState<string | null>(null)
   const [isProcessingPhotos, setIsProcessingPhotos] = useState(false)
   const [errorMessage, setErrorMessage] = useState('')
+  const [activeStep, setActiveStep] = useState(1)
   const selectedDistrict = districts.find((district) => String(district.code) === districtCode)
   const selectedWard = wards.find((ward) => String(ward.code) === wardCode)
   const baseLocation = selectedDistrict && selectedWard
     ? `${selectedWard.name}, ${selectedDistrict.name}, ${location}`
     : ''
   const maxDetailAddressLength = Math.max(0, maxLocationLength - baseLocation.length - (baseLocation ? 2 : 0))
+
+  useEffect(() => {
+    if (typeof IntersectionObserver === 'undefined') return
+
+    const sections = document.querySelectorAll('[data-sell-step]')
+    const observer = new IntersectionObserver((entries) => {
+      const currentSection = entries
+        .filter((entry) => entry.isIntersecting)
+        .sort((left, right) => left.boundingClientRect.top - right.boundingClientRect.top)[0]
+      const step = Number(currentSection?.target.getAttribute('data-sell-step'))
+      if (Number.isInteger(step) && step > 0) setActiveStep(step)
+    }, { rootMargin: '-18% 0px -62% 0px' })
+
+    sections.forEach((section) => observer.observe(section))
+    return () => observer.disconnect()
+  }, [])
 
   useEffect(() => {
     const controller = new AbortController()
@@ -88,6 +111,12 @@ export function SellPage({ onCancel, onSubmit }: SellPageProps) {
       controller.abort()
     }
   }, [districtCode, wardLoadAttempt])
+
+  function navigateToStep(step: number) {
+    setActiveStep(step)
+    const targetId = step === 3 ? 'sell-step-4' : `sell-step-${step}`
+    document.getElementById(targetId)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
 
   async function handlePhotoChange(event: React.ChangeEvent<HTMLInputElement>) {
     const files = Array.from(event.target.files ?? [])
@@ -197,24 +226,93 @@ export function SellPage({ onCancel, onSubmit }: SellPageProps) {
   return (
     <div className="sell-page">
       <div className="breadcrumbs"><button onClick={onCancel}><ArrowLeft size={14} /> Trang chủ</button><span>/</span><strong>Đăng tin</strong></div>
-      <div className="sell-heading"><span className="section-eyebrow">BÁN ĐỒ, TRAO NIỀM VUI</span><h1>Đăng tin mới</h1><p>Chia sẻ món đồ bạn không còn dùng với người đang cần.</p></div>
+      <header className="sell-page-heading">
+        <span className="sell-page-heading-icon"><Megaphone size={24} /></span>
+        <div><h1>Đăng tin mới</h1><p>Điền thông tin sản phẩm để kết nối với người mua phù hợp.</p></div>
+      </header>
       <form className="sell-form" onSubmit={handleSubmit}>
-        <div className="form-section"><div className="form-section-heading"><span className="form-step">01</span><div><h2>Danh mục sản phẩm</h2><p>Chọn danh mục phù hợp để người mua dễ tìm thấy tin của bạn.</p></div></div><div className="form-grid"><label>Danh mục <select value={category} onChange={(event) => setCategory(event.target.value)}>{categories.map((item) => <option key={item.name}>{item.name}</option>)}</select></label><label>Tiêu đề tin <input required minLength={10} maxLength={150} value={title} onChange={(event) => setTitle(event.target.value)} placeholder="Ví dụ: iPhone 13 128GB còn bảo hành" /><small>{title.length}/150 ký tự</small></label></div></div>
-        <div className="form-section"><div className="form-section-heading"><span className="form-step">02</span><div><h2>Thông tin món đồ</h2><p>Mô tả rõ ràng giúp bạn tìm đúng người mua hơn.</p></div></div><div className="form-grid form-grid-two"><label>Giá bán (đ) <input required type="number" min="0" value={price} onChange={(event) => setPrice(event.target.value)} placeholder="Nhập giá bạn mong muốn" /></label><label>Tình trạng <select value={condition} onChange={(event) => setCondition(event.target.value as 'NEW' | 'USED')}><option value="USED">Đã sử dụng</option><option value="NEW">Mới</option></select></label></div><label className="form-full-label">Mô tả chi tiết <textarea required minLength={20} maxLength={2000} rows={5} value={description} onChange={(event) => setDescription(event.target.value)} placeholder="Mô tả tình trạng, đặc điểm nổi bật và lý do bạn muốn nhượng lại..." /><small>{description.length}/2000 ký tự</small></label><label className="checkbox-label"><input type="checkbox" checked={negotiable} onChange={(event) => setNegotiable(event.target.checked)} /> Có thể thương lượng giá</label></div>
-        <div className="form-section"><div className="form-section-heading"><span className="form-step">03</span><div><h2>Hình ảnh sản phẩm</h2><p>Ảnh rõ nét giúp tin đăng được quan tâm hơn. Tối đa 10 ảnh, 5 MB mỗi ảnh.</p></div></div><div className="upload-gallery">
-          {photos.length > 0 && <div className="upload-cover-preview"><img src={(photos.find((photo) => photo.id === coverPhotoId) ?? photos[0]).src} alt="Ảnh bìa xem trước" /><span><Check size={13} /> Ảnh bìa</span></div>}
-          <div className="upload-thumbnails">
-            {photos.map((photo, index) => <div className={`upload-thumbnail${photo.id === coverPhotoId ? ' upload-thumbnail-cover' : ''}`} key={photo.id}>
-              <button className="upload-thumbnail-select" type="button" aria-label={photo.id === coverPhotoId ? `Ảnh bìa, ảnh ${index + 1}` : `Chọn ảnh ${index + 1} làm ảnh bìa`} aria-pressed={photo.id === coverPhotoId} onClick={() => setCoverPhotoId(photo.id)}><img src={photo.src} alt="" />{photo.id === coverPhotoId && <span><Star size={11} fill="currentColor" /> Ảnh bìa</span>}</button>
-              <button className="upload-thumbnail-remove" type="button" aria-label={`Xóa ảnh ${index + 1}`} onClick={() => removePhoto(photo.id)}><X size={12} /></button>
-            </div>)}
-            {photos.length < 10 && <label className={`upload-box${photos.length > 0 ? ' upload-box-small' : ''}`}><input type="file" accept="image/*" multiple disabled={isProcessingPhotos} onChange={(event) => void handlePhotoChange(event)} /><ImagePlus size={20} /><strong>{isProcessingPhotos ? 'Đang xử lý...' : photos.length > 0 ? 'Thêm ảnh' : 'Tải ảnh lên'}</strong>{photos.length === 0 && <span>JPG, PNG · tối đa 5 MB</span>}</label>}
+        <aside className="sell-step-nav" aria-label="Các bước đăng tin">
+          <span className="sell-step-nav-heading">QUY TRÌNH ĐĂNG TIN</span>
+          <ol>
+            {sellSteps.map((step) => (
+              <li key={step.id}>
+                <button className={activeStep === step.id ? 'sell-step-link sell-step-link-active' : 'sell-step-link'} type="button" aria-current={activeStep === step.id ? 'step' : undefined} onClick={() => navigateToStep(step.id)}>
+                  <span className="sell-step-number">{step.id}</span>
+                  <span><strong>{step.title}</strong><small>{step.description}</small></span>
+                </button>
+              </li>
+            ))}
+          </ol>
+          <div className="sell-privacy-note"><ShieldCheck size={18} /><span>Thông tin của bạn được bảo mật.</span></div>
+        </aside>
+        <div className="sell-main">
+          <section className="form-section sell-step-section" id="sell-step-1" data-sell-step="1">
+            <div className="form-section-heading"><span className="form-step">1</span><div><h2>Thông tin cơ bản</h2><p>Giúp người mua nhận biết món đồ của bạn.</p></div></div>
+            <div className="form-grid">
+              <SellDropdown id="listing-category" label="Danh mục sản phẩm" value={category} options={categories.map((item) => ({ value: item.name, label: item.name }))} required onChange={setCategory} />
+              <label>Tiêu đề tin <input required minLength={10} maxLength={150} value={title} onChange={(event) => setTitle(event.target.value)} placeholder="Ví dụ: iPhone 13 128GB còn bảo hành" /><small>{title.length}/150 ký tự</small></label>
+            </div>
+            <div className="sell-field-block">
+              <div className="sell-field-heading"><strong>Hình ảnh sản phẩm</strong><span>Tối đa 10 ảnh, 5 MB mỗi ảnh</span></div>
+              <div className="upload-gallery">
+                {photos.length > 0 && <div className="upload-cover-preview"><img src={(photos.find((photo) => photo.id === coverPhotoId) ?? photos[0]).src} alt="Ảnh bìa xem trước" /><span><Check size={13} /> Ảnh bìa</span></div>}
+                <div className="upload-thumbnails">
+                  {photos.map((photo, index) => <div className={`upload-thumbnail${photo.id === coverPhotoId ? ' upload-thumbnail-cover' : ''}`} key={photo.id}>
+                    <button className="upload-thumbnail-select" type="button" aria-label={photo.id === coverPhotoId ? `Ảnh bìa, ảnh ${index + 1}` : `Chọn ảnh ${index + 1} làm ảnh bìa`} aria-pressed={photo.id === coverPhotoId} onClick={() => setCoverPhotoId(photo.id)}><img src={photo.src} alt="" />{photo.id === coverPhotoId && <span><Star size={11} fill="currentColor" /> Ảnh bìa</span>}</button>
+                    <button className="upload-thumbnail-remove" type="button" aria-label={`Xóa ảnh ${index + 1}`} onClick={() => removePhoto(photo.id)}><X size={12} /></button>
+                  </div>)}
+                  {photos.length < 10 && <label className={`upload-box${photos.length > 0 ? ' upload-box-small' : ''}`}><input type="file" accept="image/*" multiple disabled={isProcessingPhotos} onChange={(event) => void handlePhotoChange(event)} /><ImagePlus size={20} /><strong>{isProcessingPhotos ? 'Đang xử lý...' : photos.length > 0 ? 'Thêm ảnh' : 'Tải ảnh lên'}</strong>{photos.length === 0 && <span>JPG, PNG · tối đa 5 MB</span>}</label>}
+                </div>
+                <small className="upload-photo-count">{photos.length}/10 ảnh · Nhấn ảnh nhỏ để chọn ảnh bìa</small>
+              </div>
+            </div>
+            <label className="form-full-label">Mô tả chi tiết <textarea required minLength={20} maxLength={2000} rows={5} value={description} onChange={(event) => setDescription(event.target.value)} placeholder="Mô tả tình trạng, đặc điểm nổi bật và lý do bạn muốn nhượng lại..." /><small>{description.length}/2000 ký tự</small></label>
+          </section>
+          <section className="form-section sell-step-section" id="sell-step-2" data-sell-step="2">
+            <div className="form-section-heading"><span className="form-step">2</span><div><h2>Chi tiết sản phẩm</h2><p>Thông tin rõ ràng giúp người mua dễ quyết định.</p></div></div>
+            <div className="form-grid form-grid-two">
+              <label>Giá bán (đ) <input required type="number" min="0" value={price} onChange={(event) => setPrice(event.target.value)} placeholder="Nhập giá bạn mong muốn" /></label>
+              <SellDropdown id="listing-condition" label="Tình trạng" value={condition} options={[{ value: 'USED', label: 'Đã sử dụng' }, { value: 'NEW', label: 'Mới' }]} required onChange={(value) => { if (value === 'USED' || value === 'NEW') setCondition(value) }} />
+            </div>
+            <label className="checkbox-label"><input type="checkbox" checked={negotiable} onChange={(event) => setNegotiable(event.target.checked)} /> Có thể thương lượng giá</label>
+          </section>
+          <section className="form-section sell-step-section" id="sell-step-3" data-sell-step="2">
+            <div className="form-section-heading"><span className="form-step">3</span><div><h2>Khu vực & liên hệ</h2><p>Chọn địa điểm để người mua gần bạn dễ tìm thấy tin đăng.</p></div></div>
+            <div className="form-grid form-grid-two">
+              <SellDropdown id="listing-province" label="Tỉnh / thành phố" value={location} options={locations.filter((item) => item !== 'Toàn quốc').map((item) => ({ value: item, label: item }))} required onChange={(value) => { setLocation(value); setDistricts([]); setWards([]); setDistrictCode(''); setWardCode(''); setDistrictError(''); setWardError(''); setIsLoadingDistricts(true); setIsLoadingWards(false) }} />
+              <SellDropdown id="listing-district" label="Quận / huyện" value={districtCode} options={districts.map((district) => ({ value: String(district.code), label: district.name }))} placeholder={isLoadingDistricts ? 'Đang tải quận/huyện...' : 'Chọn quận/huyện'} disabled={isLoadingDistricts || districts.length === 0} required onChange={(value) => { setDistrictCode(value); setWards([]); setWardCode(''); setWardError(''); setIsLoadingWards(Boolean(value)) }} />
+              <SellDropdown id="listing-ward" label="Phường / xã" value={wardCode} options={wards.map((ward) => ({ value: String(ward.code), label: ward.name }))} placeholder={isLoadingWards ? 'Đang tải phường/xã...' : 'Chọn phường/xã'} disabled={!districtCode || isLoadingWards || wards.length === 0} required onChange={setWardCode} />
+              <label>Số điện thoại liên hệ <input required inputMode="tel" value={phone} onChange={(event) => setPhone(event.target.value)} placeholder="09xx xxx xxx" /></label>
+            </div>
+            <label className="form-full-label">Địa chỉ chi tiết (không bắt buộc) <textarea rows={2} maxLength={maxDetailAddressLength} value={detailAddress} onChange={(event) => setDetailAddress(event.target.value)} placeholder="Tên đường, khu dân cư, tòa nhà..." /><small>{detailAddress.length}/{maxDetailAddressLength} ký tự · Không cần cung cấp số nhà nếu bạn không muốn chia sẻ.</small></label>
+            {districtError && <p className="form-error" role="alert">{districtError}<button type="button" onClick={() => { setDistrictError(''); setIsLoadingDistricts(true); setDistrictLoadAttempt((attempt) => attempt + 1) }}>Thử tải lại</button></p>}
+            {wardError && <p className="form-error" role="alert">{wardError}<button type="button" onClick={() => { setWardError(''); setIsLoadingWards(true); setWardLoadAttempt((attempt) => attempt + 1) }}>Thử tải lại</button></p>}
+          </section>
+          <section className="form-section sell-step-section" id="sell-step-4" data-sell-step="3">
+            <div className="form-section-heading"><span className="form-step">4</span><div><h2>Kiểm tra & hoàn tất</h2><p>Tin đăng sẽ được kiểm duyệt trước khi hiển thị công khai.</p></div></div>
+            <div className="review-notice"><Info size={17} /><span>Danh sách quận/huyện và phường/xã được tải qua Internet. Vui lòng kiểm tra thông tin trước khi gửi tin chờ duyệt.</span></div>
+          </section>
+          {errorMessage && <div className="form-error" role="alert">{errorMessage}</div>}
+        </div>
+        <aside className="sell-sidebar">
+          <section className="sell-side-card">
+            <h2><Lightbulb size={17} /> Mẹo đăng tin hiệu quả</h2>
+            <ul className="sell-tips">
+              <li><Check size={15} /> Chọn đúng danh mục sản phẩm.</li>
+              <li><Check size={15} /> Chụp ảnh rõ nét, đủ góc.</li>
+              <li><Check size={15} /> Mô tả trung thực tình trạng.</li>
+              <li><Check size={15} /> Đặt mức giá phù hợp.</li>
+            </ul>
+          </section>
+          <section className="sell-side-card sell-side-promise">
+            <h2><ShieldCheck size={17} /> Cam kết Chợ Hời</h2>
+            <p>Tin đăng được kiểm duyệt để giữ môi trường mua bán an toàn và minh bạch.</p>
+          </section>
+          <div className="sell-side-actions">
+            <button type="submit" className="button-primary" disabled={isProcessingPhotos}>{isProcessingPhotos ? 'Đang xử lý ảnh...' : 'Gửi tin chờ duyệt'} {!isProcessingPhotos && <ArrowRight size={16} />}</button>
+            <button type="button" className="button-secondary" onClick={onCancel}>Hủy đăng tin</button>
           </div>
-          <small className="upload-photo-count">{photos.length}/10 ảnh · Nhấn ảnh nhỏ để chọn ảnh bìa</small>
-        </div></div>
-        <div className="form-section"><div className="form-section-heading"><span className="form-step">04</span><div><h2>Khu vực & liên hệ</h2><p>Chia sẻ khu vực giao dịch để người mua gần bạn dễ kết nối.</p></div></div><div className="form-grid form-grid-two"><label>Tỉnh / thành phố <select required value={location} onChange={(event) => { setLocation(event.target.value); setDistricts([]); setWards([]); setDistrictCode(''); setWardCode(''); setDistrictError(''); setWardError(''); setIsLoadingDistricts(true); setIsLoadingWards(false) }}>{locations.filter((item) => item !== 'Toàn quốc').map((item) => <option key={item} value={item}>{item}</option>)}</select></label><label>Quận / huyện <select required value={districtCode} disabled={isLoadingDistricts || districts.length === 0} onChange={(event) => { setDistrictCode(event.target.value); setWards([]); setWardCode(''); setWardError(''); setIsLoadingWards(Boolean(event.target.value)) }}><option value="">{isLoadingDistricts ? 'Đang tải quận/huyện...' : 'Chọn quận/huyện'}</option>{districts.map((district) => <option key={district.code} value={district.code}>{district.name}</option>)}</select></label><label>Phường / xã <select required value={wardCode} disabled={!districtCode || isLoadingWards || wards.length === 0} onChange={(event) => setWardCode(event.target.value)}><option value="">{isLoadingWards ? 'Đang tải phường/xã...' : 'Chọn phường/xã'}</option>{wards.map((ward) => <option key={ward.code} value={ward.code}>{ward.name}</option>)}</select></label><label>Số điện thoại liên hệ <input required inputMode="tel" value={phone} onChange={(event) => setPhone(event.target.value)} placeholder="09xx xxx xxx" /></label></div><label className="form-full-label">Địa chỉ chi tiết (không bắt buộc) <textarea rows={2} maxLength={maxDetailAddressLength} value={detailAddress} onChange={(event) => setDetailAddress(event.target.value)} placeholder="Tên đường, khu dân cư, tòa nhà..." /><small>{detailAddress.length}/{maxDetailAddressLength} ký tự · Không cần cung cấp số nhà nếu bạn không muốn chia sẻ.</small></label>{districtError && <p className="form-error" role="alert">{districtError}<button type="button" onClick={() => { setDistrictError(''); setIsLoadingDistricts(true); setDistrictLoadAttempt((attempt) => attempt + 1) }}>Thử tải lại</button></p>}{wardError && <p className="form-error" role="alert">{wardError}<button type="button" onClick={() => { setWardError(''); setIsLoadingWards(true); setWardLoadAttempt((attempt) => attempt + 1) }}>Thử tải lại</button></p>}<div className="review-notice"><Info size={17} /><span>Danh sách quận/huyện và phường/xã được tải qua Internet. Tin đăng sẽ được gửi đến quản trị viên kiểm duyệt trước khi hiển thị công khai.</span></div></div>
-        {errorMessage && <div className="form-error" role="alert">{errorMessage}</div>}
-        <div className="form-actions"><button type="button" className="button-secondary" onClick={onCancel}>Hủy</button><button type="submit" className="button-primary" disabled={isProcessingPhotos}>{isProcessingPhotos ? 'Đang xử lý ảnh...' : 'Gửi tin chờ duyệt'} {!isProcessingPhotos && <ArrowRight size={16} />}</button></div>
+        </aside>
       </form>
     </div>
   )
