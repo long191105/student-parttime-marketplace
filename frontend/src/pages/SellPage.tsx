@@ -259,6 +259,7 @@ export function SellPage({ onCancel, onSubmit, onLoadDraft, onSaveDraft, sellerN
         price,
         condition,
         location,
+        fullLocation: previewLocation,
         districtCode,
         wardCode,
         detailAddress,

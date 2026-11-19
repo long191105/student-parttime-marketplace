@@ -48,6 +48,11 @@ public class ListingDraftService {
     }
 
     @Transactional
+    public void deleteCurrentDraft() {
+        listingDraftRepository.deleteBySellerId(currentUserService.requireUser().getId());
+    }
+
+    @Transactional
     public void deleteForSeller(Long sellerId) {
         listingDraftRepository.deleteBySellerId(sellerId);
     }

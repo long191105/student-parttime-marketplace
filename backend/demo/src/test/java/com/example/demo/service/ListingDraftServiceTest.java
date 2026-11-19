@@ -55,6 +55,7 @@ class ListingDraftServiceTest {
                 "",
                 "",
                 "",
+                "",
                 true,
                 List.of(),
                 null,
@@ -74,6 +75,15 @@ class ListingDraftServiceTest {
     @Test
     void removesTheUsersDraftAfterPublishing() {
         listingDraftService.deleteForSeller(7L);
+
+        verify(listingDraftRepository).deleteBySellerId(7L);
+    }
+
+    @Test
+    void deletesTheCurrentUsersDraft() {
+        when(currentUserService.requireUser()).thenReturn(seller);
+
+        listingDraftService.deleteCurrentDraft();
 
         verify(listingDraftRepository).deleteBySellerId(7L);
     }

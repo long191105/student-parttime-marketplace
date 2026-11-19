@@ -17,6 +17,7 @@ public record ListingDraftRequest(
         @Size(max = 50) String price,
         ListingCondition condition,
         @Size(max = 160) String location,
+        @Size(max = 160) String fullLocation,
         @Size(max = 20) String districtCode,
         @Size(max = 20) String wardCode,
         @Size(max = 160) String detailAddress,

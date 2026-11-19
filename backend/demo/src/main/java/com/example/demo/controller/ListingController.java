@@ -6,6 +6,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -70,6 +71,12 @@ public class ListingController {
     @PutMapping("/draft")
     public ResponseEntity<Void> saveDraft(@Valid @RequestBody ListingDraftRequest request) {
         listingDraftService.saveCurrentDraft(request);
+        return ResponseEntity.noContent().build();
+    }
+
+    @DeleteMapping("/draft")
+    public ResponseEntity<Void> deleteDraft() {
+        listingDraftService.deleteCurrentDraft();
         return ResponseEntity.noContent().build();
     }
 

@@ -43,6 +43,7 @@ export interface ListingFormDraft {
   price: string
   condition: 'NEW' | 'USED'
   location: string
+  fullLocation?: string
   districtCode: string
   wardCode: string
   detailAddress: string
@@ -104,6 +105,10 @@ export class MarketplaceApi {
       method: 'PUT',
       body: JSON.stringify(draft),
     }, false)
+  }
+
+  async deleteListingDraft(): Promise<void> {
+    await this.request<void>('/listings/draft', { method: 'DELETE' }, false)
   }
 
   async setListingStatus(id: string, status: ListingStatus): Promise<Listing> {

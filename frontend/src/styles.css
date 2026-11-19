@@ -637,7 +637,15 @@ img { display: block; max-width: 100%; }
 .my-listing-row:last-child { border-bottom: 0; }
 .my-listing-image { width: 112px; height: 91px; overflow: hidden; padding: 0; border: 0; border-radius: 3px; background: #f0f0e9; }
 .my-listing-image img { width: 100%; height: 100%; object-fit: cover; }
+.draft-image-placeholder { display: grid; width: 100%; height: 100%; place-items: center; color: #858e83; font-size: 9px; }
 .my-listing-content { display: grid; justify-items: start; gap: 5px; }
+.draft-status-pill { padding: 4px 7px; border-radius: 3px; background: #f0f1ed; color: #697466; font-size: 9px; font-weight: 700; }
+.draft-listing-title { color: #414a3f; font-size: 12px; }
+.draft-listing-meta { color: #92988e; font-size: 9px; }
+.draft-listing-actions { max-width: 290px; }
+.draft-listing-actions button { min-height: 31px; }
+.draft-listing-actions button:disabled { opacity: .6; cursor: wait; }
+.draft-list-error { padding: 14px; color: #b2533d; font-size: 10px; }
 .status-pill { display: inline-flex; align-items: center; gap: 5px; padding: 4px 6px; border-radius: 3px; font-size: 9px; font-weight: 650; white-space: nowrap; }
 .status-pill i { width: 5px; height: 5px; border-radius: 50%; background: currentColor; }
 .status-active { background: #edf5e9; color: #5f8550; }
