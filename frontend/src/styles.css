@@ -542,6 +542,23 @@ img { display: block; max-width: 100%; }
 .sell-main .upload-box { border-radius: 6px; }
 .sell-main .review-notice { margin-top: 0; padding: 11px; border: 1px solid #e4e8e0; border-radius: 5px; background: #f7f8f5; color: #61735a; font-size: 10px; line-height: 1.5; }
 .sell-main .form-error { margin-top: 0; padding: 10px 12px; border: 1px solid #edd8d0; border-radius: 5px; line-height: 1.5; }
+.sell-draft-loading, .sell-draft-status { padding: 11px 13px; border: 1px solid #dfe7d9; border-radius: 5px; background: #f5f8f2; color: #536f49; font-size: 10px; line-height: 1.5; }
+.listing-preview-panel { display: grid; justify-items: stretch; gap: 12px; margin-top: 16px; padding: 14px; border: 1px solid #e6e9e3; border-radius: 6px; background: #fbfcfa; }
+.listing-preview-heading { display: flex; width: 100%; align-items: center; justify-content: space-between; gap: 12px; }
+.listing-preview-heading > div { display: grid; gap: 4px; }
+.listing-preview-heading strong { color: #344034; font-size: 11px; }
+.listing-preview-heading > div > span { color: #818a7e; font-size: 9px; }
+.listing-preview-badge { color: #68805d; font-size: 8px; font-weight: 750; letter-spacing: .45px; }
+.listing-detail-preview { min-width: 0; }
+.listing-detail-preview .detail-layout { grid-template-columns: minmax(0, 1fr) 245px; gap: 14px; }
+.listing-detail-preview .detail-main-image { height: min(410px, 42vw); min-height: 220px; }
+.listing-detail-preview .detail-category-row { flex-wrap: wrap; }
+.listing-detail-preview .detail-info-card h1 { overflow-wrap: anywhere; font-size: 20px; }
+.listing-detail-preview .detail-location-row { flex-wrap: wrap; }
+.listing-detail-preview .seller-sidebar { position: static; }
+.listing-detail-preview .seller-profile-link { cursor: default; }
+.listing-detail-preview .preview-action { pointer-events: none; cursor: default; }
+.preview-contact-note { margin: 8px 0 0; color: #92988e; font-size: 9px; line-height: 1.5; }
 .sell-dropdown { position: relative; display: grid; min-width: 0; align-content: start; gap: 7px; }
 .sell-dropdown-label { color: #4d584d; font-size: 10px; font-weight: 650; }
 .sell-dropdown-trigger { display: flex; width: 100%; min-height: 41px; align-items: center; justify-content: space-between; gap: 10px; padding: 0 11px; border: 1px solid #dfe4dc; border-radius: 5px; background: #fff; color: #344033; font-size: 11px; text-align: left; }
@@ -1021,6 +1038,7 @@ img { display: block; max-width: 100%; }
   .admin-app { margin-inline: -24px; }
   .detail-layout { grid-template-columns: minmax(0, 1fr) 260px; gap: 15px; }
   .detail-main-image { height: 350px; }
+  .listing-detail-preview .detail-layout { grid-template-columns: minmax(0, 1fr); }
 }
 
 @media (max-width: 760px) {

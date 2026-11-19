@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { MarketplaceLayout, type AppView } from './components/MarketplaceLayout'
 import { AdminPage } from './pages/AdminPage'
 import { AuthPage } from './pages/AuthPage'
@@ -13,7 +13,7 @@ import { ProfilePage } from './pages/ProfilePage'
 import { SearchPage } from './pages/SearchPage'
 import { SellPage } from './pages/SellPage'
 import type { Listing, ListingData, ListingStatus } from './domain/Listing'
-import { MarketplaceApi, type AuthSession, type AuthUser } from './services/MarketplaceApi'
+import { MarketplaceApi, type AuthSession, type AuthUser, type ListingFormDraft } from './services/MarketplaceApi'
 import { MarketplaceService } from './services/MarketplaceService'
 
 const api = new MarketplaceApi()
@@ -21,6 +21,8 @@ const authenticationRequiredViews: AppView[] = ['sell', 'my-listings', 'messages
 
 export function App() {
   const [service] = useState(() => new MarketplaceService())
+  const loadListingDraft = useCallback(() => api.getListingDraft(), [])
+  const saveListingDraft = useCallback((draft: ListingFormDraft) => api.saveListingDraft(draft), [])
   const [listings, setListings] = useState<Listing[]>(() => service.getListings())
   const [savedIds, setSavedIds] = useState<string[]>(() => service.getFavorites())
   const [user, setUser] = useState<AuthUser | null>(() => api.readSession()?.user ?? null)
@@ -426,7 +428,7 @@ export function App() {
         return api.getSellerPhone(id)
       }} />}
       {view === 'detail' && !selectedListing && <div className="empty-state"><h3>Không tìm thấy tin đăng</h3><button className="button-primary" onClick={() => navigate('home')}>Về trang chủ</button></div>}
-      {view === 'sell' && <SellPage onCancel={() => navigate('home')} onSubmit={createListing} />}
+      {view === 'sell' && <SellPage onCancel={() => navigate('home')} onSubmit={createListing} onLoadDraft={loadListingDraft} onSaveDraft={saveListingDraft} sellerName={user?.fullName ?? 'Người bán'} />}
       {view === 'my-listings' && <MyListingsPage listings={listings} onStatusChange={changeStatus} onOpen={openListing} onSell={() => navigate('sell')} sellerId={currentSellerId} />}
       {view === 'favorites' && <FavoritesPage listings={listings} savedIds={savedIds} onOpen={openListing} onToggleSaved={toggleSaved} />}
       {view === 'check-in' && <CheckInPage userId={user?.id ?? null} onBack={() => navigate('home')} />}

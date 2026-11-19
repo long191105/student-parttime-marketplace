@@ -42,13 +42,16 @@ class ListingServiceTest {
     @Mock
     private CurrentUserService currentUserService;
 
+    @Mock
+    private ListingDraftService listingDraftService;
+
     private ListingService listingService;
     private UserAccount seller;
     private Listing pendingListing;
 
     @BeforeEach
     void setUp() {
-        listingService = new ListingService(listingRepository, categoryRepository, currentUserService);
+        listingService = new ListingService(listingRepository, categoryRepository, currentUserService, listingDraftService);
         seller = new UserAccount("Nguyen Long", "long@example.com", "hashed", null, UserRole.MEMBER);
         ReflectionTestUtils.setField(seller, "id", 7L);
         pendingListing = new Listing(
@@ -142,6 +145,7 @@ class ListingServiceTest {
         assertEquals(images, response.images());
         assertEquals(images.getFirst(), response.image());
         verify(listingRepository).save(any(Listing.class));
+        verify(listingDraftService).deleteForSeller(7L);
     }
 
     @Test

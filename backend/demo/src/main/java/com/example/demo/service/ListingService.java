@@ -35,14 +35,17 @@ public class ListingService {
     private final ListingRepository listingRepository;
     private final CategoryRepository categoryRepository;
     private final CurrentUserService currentUserService;
+    private final ListingDraftService listingDraftService;
 
     public ListingService(
             ListingRepository listingRepository,
             CategoryRepository categoryRepository,
-            CurrentUserService currentUserService) {
+            CurrentUserService currentUserService,
+            ListingDraftService listingDraftService) {
         this.listingRepository = listingRepository;
         this.categoryRepository = categoryRepository;
         this.currentUserService = currentUserService;
+        this.listingDraftService = listingDraftService;
     }
 
     @Transactional(readOnly = true)
@@ -173,7 +176,9 @@ public class ListingService {
                 request.negotiable(),
                 request.specs() == null ? "" : String.join("\n", request.specs()),
                 seller);
-        return ListingResponse.from(listingRepository.save(listing));
+        Listing savedListing = listingRepository.save(listing);
+        listingDraftService.deleteForSeller(seller.getId());
+        return ListingResponse.from(savedListing);
     }
 
     @Transactional

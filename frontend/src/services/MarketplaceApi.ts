@@ -37,6 +37,23 @@ export interface ListingDraft {
   specs: string[]
 }
 
+export interface ListingFormDraft {
+  title: string
+  category: string
+  price: string
+  condition: 'NEW' | 'USED'
+  location: string
+  districtCode: string
+  wardCode: string
+  detailAddress: string
+  phone: string
+  description: string
+  negotiable: boolean
+  photos: Array<{ id: string; src: string }>
+  coverPhotoId: string | null
+  activeStep: number
+}
+
 interface PageResponse<T> {
   content: T[]
 }
@@ -75,6 +92,18 @@ export class MarketplaceApi {
       }),
     })
     return new Listing(response)
+  }
+
+  async getListingDraft(): Promise<ListingFormDraft | null> {
+    const response = await this.request<ListingFormDraft | null>('/listings/draft')
+    return response ?? null
+  }
+
+  async saveListingDraft(draft: ListingFormDraft): Promise<void> {
+    await this.request<void>('/listings/draft', {
+      method: 'PUT',
+      body: JSON.stringify(draft),
+    }, false)
   }
 
   async setListingStatus(id: string, status: ListingStatus): Promise<Listing> {
