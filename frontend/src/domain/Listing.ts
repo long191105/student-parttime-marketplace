@@ -20,6 +20,7 @@ export interface ListingData {
   status: ListingStatus
   views: number
   negotiable: boolean
+  giveaway?: boolean
   specs: string[]
   reviewReason?: string
 }
@@ -43,6 +44,7 @@ export class Listing implements ListingData {
   readonly status: ListingStatus
   readonly views: number
   readonly negotiable: boolean
+  readonly giveaway: boolean
   readonly specs: string[]
   readonly reviewReason?: string
 
@@ -66,11 +68,13 @@ export class Listing implements ListingData {
     this.status = data.status
     this.views = data.views
     this.negotiable = data.negotiable
+    this.giveaway = data.giveaway ?? false
     this.specs = data.specs
     this.reviewReason = data.reviewReason
   }
 
   get priceLabel(): string {
+    if (this.giveaway) return 'Miễn phí'
     if (this.price === 0) return 'Thỏa thuận'
     return `${new Intl.NumberFormat('vi-VN').format(this.price)} đ`
   }

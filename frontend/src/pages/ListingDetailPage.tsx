@@ -2,11 +2,13 @@ import { useState } from 'react'
 import { ArrowLeft, Flag, Heart, MapPin, MessageCircle, Phone, ShieldCheck } from 'lucide-react'
 import type { Listing } from '../domain/Listing'
 import { ListingCard } from '../components/ListingCard'
+import { useAppDialog } from '../components/AppDialogContext'
 
 interface ListingDetailPageProps {
   listing: Listing
   related: Listing[]
   saved: boolean
+  currentUserId: string | null
   onBack: () => void
   onToggleSaved: (id: string) => void
   onOpen: (listing: Listing) => void
@@ -15,7 +17,8 @@ interface ListingDetailPageProps {
   onRevealPhone: (id: string) => Promise<string>
 }
 
-export function ListingDetailPage({ listing, related, saved, onBack, onToggleSaved, onOpen, onContact, onSeller, onRevealPhone }: ListingDetailPageProps) {
+export function ListingDetailPage({ listing, related, saved, currentUserId, onBack, onToggleSaved, onOpen, onContact, onSeller, onRevealPhone }: ListingDetailPageProps) {
+  const { showPrompt } = useAppDialog()
   const [phone, setPhone] = useState('')
   const [phoneError, setPhoneError] = useState('')
   const [isLoadingPhone, setIsLoadingPhone] = useState(false)
@@ -39,8 +42,8 @@ export function ListingDetailPage({ listing, related, saved, onBack, onToggleSav
     }
   }
 
-  function reportListing() {
-    const reason = window.prompt('Bạn muốn báo cáo tin này vì lý do gì?')
+  async function reportListing() {
+    const reason = await showPrompt('Bạn muốn báo cáo tin này vì lý do gì?', 'Báo cáo tin đăng', 'Nhập lý do báo cáo...')
     if (reason?.trim()) setReported(true)
   }
 
@@ -56,7 +59,7 @@ export function ListingDetailPage({ listing, related, saved, onBack, onToggleSav
           <div className="detail-info-card">
             <div className="detail-category-row"><span>{listing.category}</span><span>{listing.conditionLabel}</span><span>Đăng {listing.postedAt}</span></div>
             <h1>{listing.title}</h1>
-            <div className="detail-price-row"><strong>{listing.priceLabel}</strong>{listing.negotiable && <span>Có thể thương lượng</span>}</div>
+            <div className="detail-price-row"><strong>{listing.priceLabel}</strong>{listing.giveaway ? <span className="giveaway-badge">Tặng miễn phí</span> : listing.negotiable && <span>Có thể thương lượng</span>}</div>
             <div className="detail-location-row"><MapPin size={16} />{listing.location}<span>·</span><span>{listing.views.toLocaleString('vi-VN')} lượt xem</span></div>
             <div className="detail-divider" />
             <h3>Mô tả chi tiết</h3>
@@ -75,10 +78,12 @@ export function ListingDetailPage({ listing, related, saved, onBack, onToggleSav
             <button className="seller-more-link" onClick={onSeller}>Xem hồ sơ & tin khác <span>→</span></button>
             <button className="contact-phone" onClick={() => void revealPhone()} disabled={isLoadingPhone}><Phone size={18} /><span><small>{isLoadingPhone ? 'Đang tải...' : phone ? 'Số điện thoại người bán' : 'Hiện số điện thoại'}</small><strong>{phone || '••• ••• •••'}</strong></span></button>
             {phoneError && <span className="contact-phone-error" role="alert">{phoneError}</span>}
-            <button className="contact-chat" onClick={onContact}><MessageCircle size={18} /> Chat với người bán</button>
+            {currentUserId !== listing.sellerId
+              ? <button className="contact-chat" onClick={onContact}><MessageCircle size={18} /> Chat với người bán</button>
+              : <span className="contact-chat-owner">Đây là tin đăng của bạn</span>}
             <button className={`detail-save ${saved ? 'detail-save-active' : ''}`} onClick={() => onToggleSaved(listing.id)}><Heart size={17} fill={saved ? 'currentColor' : 'none'} />{saved ? 'Đã lưu tin' : 'Lưu tin này'}</button>
           </div>
-          <button className={`report-link ${reported ? 'report-sent' : ''}`} onClick={reportListing}><Flag size={14} />{reported ? 'Đã gửi báo cáo' : 'Báo cáo tin này'}</button>
+          <button className={`report-link ${reported ? 'report-sent' : ''}`} onClick={() => void reportListing()}><Flag size={14} />{reported ? 'Đã gửi báo cáo' : 'Báo cáo tin này'}</button>
           <div className="buyer-tip"><span>✦ MẸO NHỎ</span><p>Đừng chuyển tiền trước khi xem hàng. Hẹn gặp ở nơi công cộng để giao dịch an toàn nhé!</p></div>
         </aside>
       </div>

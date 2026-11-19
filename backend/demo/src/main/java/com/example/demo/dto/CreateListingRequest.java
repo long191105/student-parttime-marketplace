@@ -22,5 +22,6 @@ public record CreateListingRequest(
         @Size(max = 10) List<@NotBlank @Size(max = 7_000_000) String> images,
         @NotBlank @Size(min = 20, max = 2000) String description,
         boolean negotiable,
+        boolean giveaway,
         @Size(max = 20) List<@NotBlank @Size(max = 100) String> specs) {
 }

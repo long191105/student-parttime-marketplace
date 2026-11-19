@@ -35,14 +35,17 @@ public class ListingService {
     private final ListingRepository listingRepository;
     private final CategoryRepository categoryRepository;
     private final CurrentUserService currentUserService;
+    private final ListingDraftService listingDraftService;
 
     public ListingService(
             ListingRepository listingRepository,
             CategoryRepository categoryRepository,
-            CurrentUserService currentUserService) {
+            CurrentUserService currentUserService,
+            ListingDraftService listingDraftService) {
         this.listingRepository = listingRepository;
         this.categoryRepository = categoryRepository;
         this.currentUserService = currentUserService;
+        this.listingDraftService = listingDraftService;
     }
 
     @Transactional(readOnly = true)
@@ -146,6 +149,9 @@ public class ListingService {
         if (!categoryRepository.existsByNameIgnoreCase(request.category().trim())) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Danh mục không tồn tại hoặc đã bị tắt.");
         }
+        if (request.giveaway() && request.price().compareTo(BigDecimal.ZERO) != 0) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Tin tặng miễn phí phải có giá bằng 0.");
+        }
         validateImage(request.image());
         List<String> images = request.images() == null || request.images().isEmpty()
                 ? List.of(request.image().trim())
@@ -170,10 +176,13 @@ public class ListingService {
                 seller.getFullName(),
                 initials,
                 request.description().trim(),
-                request.negotiable(),
+                request.giveaway() ? false : request.negotiable(),
+                request.giveaway(),
                 request.specs() == null ? "" : String.join("\n", request.specs()),
                 seller);
-        return ListingResponse.from(listingRepository.save(listing));
+        Listing savedListing = listingRepository.save(listing);
+        listingDraftService.deleteForSeller(seller.getId());
+        return ListingResponse.from(savedListing);
     }
 
     @Transactional
