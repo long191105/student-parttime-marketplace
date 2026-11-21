@@ -2,5 +2,7 @@ package com.example.demo.model;
 
 public enum ChatMessageType {
     TEXT,
-    LOCATION
+    LOCATION,
+    MISSED_CALL,
+    CALL
 }

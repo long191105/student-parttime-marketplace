@@ -1,6 +1,7 @@
 package com.example.demo.chat;
 
 import java.io.IOException;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -32,6 +33,10 @@ import tools.jackson.databind.ObjectMapper;
 public class ChatWebSocketHandler extends TextWebSocketHandler {
 
     private static final Logger logger = LoggerFactory.getLogger(ChatWebSocketHandler.class);
+    private static final int MAX_PAYLOAD_LENGTH = 65_536;
+    private static final Set<String> CALL_EVENT_TYPES = Set.of(
+            "call-invite", "call-accept", "call-decline", "call-offer",
+            "call-answer", "call-ice", "call-end", "call-busy");
     private static final String USER_ID_ATTRIBUTE = "chatUserId";
     private static final String USER_ATTRIBUTE = "chatUser";
 
@@ -54,7 +59,7 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
 
     @Override
     protected void handleTextMessage(WebSocketSession session, TextMessage message) throws IOException {
-        if (message.getPayload().length() > 4096) {
+        if (message.getPayload().length() > MAX_PAYLOAD_LENGTH) {
             sendError(session, "Dữ liệu gửi lên vượt quá giới hạn cho phép.");
             closeQuietly(session, CloseStatus.TOO_BIG_TO_PROCESS);
             return;
@@ -89,7 +94,12 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
     }
 
     private void handleAuthenticatedMessage(WebSocketSession session, JsonNode request) throws IOException {
-        if (!"message".equals(request.path("type").asString(""))) {
+        String type = request.path("type").asString("");
+        if (CALL_EVENT_TYPES.contains(type)) {
+            handleCallSignal(session, request, type);
+            return;
+        }
+        if (!"message".equals(type)) {
             sendError(session, "Loại dữ liệu gửi lên không được hỗ trợ.");
             return;
         }
@@ -115,6 +125,106 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
             broadcast(participants, Map.of("type", "message", "message", savedMessage));
         } catch (ResponseStatusException exception) {
             sendError(session, exception.getReason() == null ? "Không thể gửi tin nhắn." : exception.getReason());
+        }
+    }
+
+    private void handleCallSignal(WebSocketSession session, JsonNode request, String type) throws IOException {
+        long conversationId = request.path("conversationId").asLong(0);
+        try {
+            Set<Long> participants = chatService.getParticipantIds(conversationId);
+            Long senderId = (Long) session.getAttributes().get(USER_ID_ATTRIBUTE);
+            if (senderId == null) {
+                sendCallError(session, conversationId, "Phiên chat không hợp lệ.");
+                return;
+            }
+
+            Map<String, Object> event = new LinkedHashMap<>();
+            event.put("type", type);
+            event.put("conversationId", Long.toString(conversationId));
+            event.put("senderId", senderId.toString());
+
+            if ("call-invite".equals(type)) {
+                String callType = request.path("callType").asString("");
+                if (!"audio".equals(callType) && !"video".equals(callType)) {
+                    sendCallError(session, conversationId, "Loại cuộc gọi không hợp lệ.");
+                    return;
+                }
+                event.put("callType", callType);
+            } else if ("call-busy".equals(type) || "call-decline".equals(type)) {
+                String callType = request.path("callType").asString("");
+                if (!"audio".equals(callType) && !"video".equals(callType)) {
+                    sendCallError(session, conversationId, "Loại cuộc gọi không hợp lệ.");
+                    return;
+                }
+                String outcome = "call-busy".equals(type) ? "busy" : "declined";
+                ChatMessageResponse callMessage = chatService.recordCallStatusMessage(conversationId, callType, outcome);
+                broadcast(participants, Map.of("type", "message", "message", callMessage));
+                event.put("callType", callType);
+            } else if ("call-end".equals(type)) {
+                String outcome = request.path("outcome").asString("");
+                if (!outcome.isBlank()) {
+                    String callType = request.path("callType").asString("");
+                    if (!"audio".equals(callType) && !"video".equals(callType)) {
+                        sendCallError(session, conversationId, "Loại cuộc gọi không hợp lệ.");
+                        return;
+                    }
+                    ChatMessageResponse callMessage;
+                    if ("completed".equals(outcome)) {
+                        JsonNode duration = request.path("durationSeconds");
+                        if (!duration.isNumber()) {
+                            sendCallError(session, conversationId, "Thời lượng cuộc gọi không hợp lệ.");
+                            return;
+                        }
+                        callMessage = chatService.recordCompletedCall(
+                                conversationId,
+                                callType,
+                                duration.asLong(-1));
+                    } else if ("cancelled".equals(outcome) || "no-answer".equals(outcome)) {
+                        callMessage = chatService.recordCallStatusMessage(conversationId, callType, outcome);
+                    } else {
+                        sendCallError(session, conversationId, "Trạng thái cuộc gọi không hợp lệ.");
+                        return;
+                    }
+                    broadcast(participants, Map.of("type", "message", "message", callMessage));
+                }
+            } else if ("call-offer".equals(type) || "call-answer".equals(type)) {
+                JsonNode description = request.path("description");
+                String expectedType = "call-offer".equals(type) ? "offer" : "answer";
+                String sdp = description.path("sdp").asString("");
+                if (!description.isObject()
+                        || !expectedType.equals(description.path("type").asString(""))
+                        || sdp.isBlank() || sdp.length() > 32_000) {
+                    sendCallError(session, conversationId, "Thông tin thiết lập cuộc gọi không hợp lệ.");
+                    return;
+                }
+                event.put("description", description);
+            } else if ("call-ice".equals(type)) {
+                JsonNode candidate = request.path("candidate");
+                String value = candidate.path("candidate").asString("");
+                if (!candidate.isObject() || value.length() > 2_048) {
+                    sendCallError(session, conversationId, "Thông tin kết nối cuộc gọi không hợp lệ.");
+                    return;
+                }
+                event.put("candidate", candidate);
+            }
+
+            Set<Long> recipients = participants.stream()
+                    .filter(participantId -> !participantId.equals(senderId))
+                    .collect(java.util.stream.Collectors.toSet());
+            if ("call-invite".equals(type) && recipients.stream().noneMatch(this::hasOpenSession)) {
+                ChatMessageResponse callMessage = chatService.recordCallStatusMessage(
+                        conversationId,
+                        (String) event.get("callType"),
+                        "unavailable");
+                broadcast(participants, Map.of("type", "message", "message", callMessage));
+                sendCallError(session, conversationId, "Người nhận hiện không trực tuyến để nhận cuộc gọi.");
+                return;
+            }
+            broadcast(recipients, event);
+        } catch (ResponseStatusException exception) {
+            sendCallError(session, conversationId, exception.getReason() == null
+                    ? "Không thể chuyển tiếp tín hiệu cuộc gọi."
+                    : exception.getReason());
         }
     }
 
@@ -176,10 +286,24 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
         }
     }
 
+    private boolean hasOpenSession(Long userId) {
+        Set<WebSocketSession> sessions = sessionsByUser.get(userId);
+        return sessions != null && sessions.stream().anyMatch(WebSocketSession::isOpen);
+    }
+
     private void sendError(WebSocketSession session, String message) throws IOException {
         if (session.isOpen()) {
             session.sendMessage(new TextMessage(objectMapper.writeValueAsString(Map.of(
                     "type", "error",
+                    "message", message))));
+        }
+    }
+
+    private void sendCallError(WebSocketSession session, long conversationId, String message) throws IOException {
+        if (session.isOpen()) {
+            session.sendMessage(new TextMessage(objectMapper.writeValueAsString(Map.of(
+                    "type", "call-error",
+                    "conversationId", Long.toString(conversationId),
                     "message", message))));
         }
     }

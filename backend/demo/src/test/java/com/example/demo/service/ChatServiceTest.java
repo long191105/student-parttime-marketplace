@@ -14,6 +14,7 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 import com.example.demo.model.ChatConversation;
 import com.example.demo.model.ChatMessage;
@@ -134,6 +135,76 @@ class ChatServiceTest {
     }
 
     @Test
+    void recordsBusyCallAsAMissedCallMessage() {
+        when(currentUserService.requireUser()).thenReturn(buyer);
+        when(conversationRepository.findById(31L)).thenReturn(Optional.of(conversation));
+        when(messageRepository.save(any(ChatMessage.class))).thenAnswer(invocation -> {
+            ChatMessage saved = invocation.getArgument(0);
+            ReflectionTestUtils.setField(saved, "id", 48L);
+            return saved;
+        });
+
+        var response = chatService.recordMissedCall(31L, "video");
+
+        assertEquals("48", response.id());
+        assertEquals("Người nhận đang bận. Đã nhỡ cuộc gọi video", response.content());
+        assertEquals("TEXT", response.messageType());
+        verify(conversationRepository).save(conversation);
+    }
+
+    @Test
+    void rejectsUnsupportedMissedCallTypes() {
+        when(currentUserService.requireUser()).thenReturn(buyer);
+
+        ResponseStatusException exception = assertThrows(
+                ResponseStatusException.class,
+                () -> chatService.recordMissedCall(31L, "screen-share"));
+
+        assertEquals(HttpStatus.BAD_REQUEST, exception.getStatusCode());
+        verify(conversationRepository, never()).findById(31L);
+    }
+
+    @Test
+    void recordsCallFailuresInTheConversation() {
+        when(currentUserService.requireUser()).thenReturn(buyer);
+        when(conversationRepository.findById(31L)).thenReturn(Optional.of(conversation));
+        when(messageRepository.save(any(ChatMessage.class))).thenAnswer(invocation -> {
+            ChatMessage saved = invocation.getArgument(0);
+            ReflectionTestUtils.setField(saved, "id", 49L);
+            return saved;
+        });
+
+        var declined = chatService.recordCallStatusMessage(31L, "audio", "declined");
+        var unavailable = chatService.recordCallStatusMessage(31L, "video", "unavailable");
+        var cancelled = chatService.recordCallStatusMessage(31L, "audio", "cancelled");
+        var noAnswer = chatService.recordCallStatusMessage(31L, "video", "no-answer");
+
+        assertEquals("Người nhận đã từ chối cuộc gọi thoại", declined.content());
+        assertEquals("Người nhận hiện không trực tuyến để nhận cuộc gọi video", unavailable.content());
+        assertEquals("Cuộc gọi thoại đã bị hủy", cancelled.content());
+        assertEquals("Không có phản hồi cho cuộc gọi video", noAnswer.content());
+        assertEquals("TEXT", declined.messageType());
+        assertEquals("TEXT", unavailable.messageType());
+    }
+
+    @Test
+    void recordsCompletedCallWithItsDuration() {
+        when(currentUserService.requireUser()).thenReturn(buyer);
+        when(conversationRepository.findById(31L)).thenReturn(Optional.of(conversation));
+        when(messageRepository.save(any(ChatMessage.class))).thenAnswer(invocation -> {
+            ChatMessage saved = invocation.getArgument(0);
+            ReflectionTestUtils.setField(saved, "id", 50L);
+            return saved;
+        });
+
+        var response = chatService.recordCompletedCall(31L, "video", 125);
+
+        assertEquals("Cuộc gọi video đã kết thúc • 2 phút 5 giây", response.content());
+        assertEquals("TEXT", response.messageType());
+        verify(conversationRepository).save(conversation);
+    }
+
+    @Test
     void persistsGpsCoordinatesAsARestrictedGoogleMapsLocation() {
         when(currentUserService.requireUser()).thenReturn(buyer);
         when(conversationRepository.findById(31L)).thenReturn(Optional.of(conversation));
@@ -218,6 +289,27 @@ class ChatServiceTest {
 
         assertEquals(HttpStatus.NOT_FOUND, exception.getStatusCode());
         verify(messageRepository, never()).save(any(ChatMessage.class));
+    }
+
+    @Test
+    void returnsParticipantIdsOnlyToConversationMembers() {
+        when(currentUserService.requireUser()).thenReturn(buyer);
+        when(conversationRepository.findById(31L)).thenReturn(Optional.of(conversation));
+
+        assertEquals(Set.of(11L, 12L), chatService.getParticipantIds(31L));
+    }
+
+    @Test
+    void doesNotRevealParticipantIdsToUsersOutsideTheConversation() {
+        UserAccount outsider = user(13L, "Le An");
+        when(currentUserService.requireUser()).thenReturn(outsider);
+        when(conversationRepository.findById(31L)).thenReturn(Optional.of(conversation));
+
+        ResponseStatusException exception = assertThrows(
+                ResponseStatusException.class,
+                () -> chatService.getParticipantIds(31L));
+
+        assertEquals(HttpStatus.NOT_FOUND, exception.getStatusCode());
     }
 
     @Test

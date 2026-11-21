@@ -125,10 +125,69 @@ public class ChatService {
         return ChatMessageResponse.from(message);
     }
 
+    @Transactional
+    public ChatMessageResponse recordMissedCall(Long conversationId, String callType) {
+        return recordCallStatusMessage(conversationId, callType, "busy");
+    }
+
+    @Transactional
+    public ChatMessageResponse recordCallStatusMessage(Long conversationId, String callType, String outcome) {
+        UserAccount sender = currentUserService.requireUser();
+        if (!"audio".equals(callType) && !"video".equals(callType)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Loại cuộc gọi không hợp lệ.");
+        }
+        String callLabel = "video".equals(callType) ? "video" : "thoại";
+        String content = switch (outcome) {
+            case "busy" -> "Người nhận đang bận. Đã nhỡ cuộc gọi " + callLabel;
+            case "declined" -> "Người nhận đã từ chối cuộc gọi " + callLabel;
+            case "unavailable" -> "Người nhận hiện không trực tuyến để nhận cuộc gọi " + callLabel;
+            case "cancelled" -> "Cuộc gọi " + callLabel + " đã bị hủy";
+            case "no-answer" -> "Không có phản hồi cho cuộc gọi " + callLabel;
+            default -> throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Trạng thái cuộc gọi không hợp lệ.");
+        };
+        ChatConversation conversation = requireParticipant(conversationId, sender);
+        ChatMessage message = messageRepository.save(new ChatMessage(
+                conversation,
+                sender,
+                content,
+                ChatMessageType.TEXT,
+                null,
+                null,
+                null));
+        conversation.touch();
+        conversationRepository.save(conversation);
+        return ChatMessageResponse.from(message);
+    }
+
+    @Transactional
+    public ChatMessageResponse recordCompletedCall(Long conversationId, String callType, long durationSeconds) {
+        UserAccount sender = currentUserService.requireUser();
+        if (!"audio".equals(callType) && !"video".equals(callType)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Loại cuộc gọi không hợp lệ.");
+        }
+        if (durationSeconds < 0 || durationSeconds > 86_400) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Thời lượng cuộc gọi không hợp lệ.");
+        }
+        ChatConversation conversation = requireParticipant(conversationId, sender);
+        String callLabel = "video".equals(callType) ? "video" : "thoại";
+        String content = "Cuộc gọi " + callLabel + " đã kết thúc"
+                + (durationSeconds == 0 ? "" : " • " + formatCallDuration(durationSeconds));
+        ChatMessage message = messageRepository.save(new ChatMessage(
+                conversation,
+                sender,
+                content,
+                ChatMessageType.TEXT,
+                null,
+                null,
+                null));
+        conversation.touch();
+        conversationRepository.save(conversation);
+        return ChatMessageResponse.from(message);
+    }
+
     @Transactional(readOnly = true)
     public Set<Long> getParticipantIds(Long conversationId) {
-        ChatConversation conversation = conversationRepository.findById(conversationId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy cuộc trò chuyện."));
+        ChatConversation conversation = requireParticipant(conversationId, currentUserService.requireUser());
         return Set.of(conversation.getBuyer().getId(), conversation.getSeller().getId());
     }
 
@@ -178,6 +237,14 @@ public class ChatService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Tin nhắn phải có từ 1 đến 2.000 ký tự.");
         }
         return content;
+    }
+
+    private static String formatCallDuration(long seconds) {
+        long minutes = seconds / 60;
+        long remainingSeconds = seconds % 60;
+        if (minutes == 0) return seconds + " giây";
+        if (remainingSeconds == 0) return minutes + " phút";
+        return minutes + " phút " + remainingSeconds + " giây";
     }
 
     private static String validateMapUrl(String value) {

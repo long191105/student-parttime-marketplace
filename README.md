@@ -45,8 +45,11 @@ Trong terminal PowerShell thứ nhất:
 cd backend/demo
 $env:JAVA_HOME = "C:\Program Files\Java\jdk-21.0.12.1"
 .\mvnw.cmd spring-boot:run
-```
-hung :C:\Program Files\Java\jdk-21
+lệnh chạy môi trường java của hùng```
+$env:JAVA_HOME = "C:\Program Files\Java\jdk-21"
+Set-Location "C:\Users\lenovo\student-parttime-marketplace\backend\demo"
+.\mvnw.cmd spring-boot:run
+
 Nếu JDK được cài ở đường dẫn khác, cập nhật `JAVA_HOME`. API chạy tại `http://localhost:8080`; kiểm tra backend và database tại `http://localhost:8080/api/health`.
 
 Để khởi tạo tài khoản quản trị đầu tiên, đặt `ADMIN_EMAIL` và `ADMIN_PASSWORD` (ít nhất 12 ký tự) trong `.env` trước lần chạy đầu. Đăng ký công khai chỉ tạo tài khoản `MEMBER`. Trang quản trị được tách riêng tại `/admin` và chỉ tài khoản có quyền `ADMIN` mới truy cập được.
@@ -63,13 +66,17 @@ npm run dev
 
 Mở URL Vite hiển thị (mặc định `http://localhost:5173`). Frontend gọi API ở `http://localhost:8080/api`.
 
+## Gọi thoại và video
+
+Mở một cuộc trò chuyện trong Hộp thư rồi chọn biểu tượng điện thoại hoặc camera. Cả hai người cần đăng nhập, đang mở Hộp thư và cho phép trình duyệt truy cập micro/camera; khi chạy ngoài `localhost`, frontend cần được phục vụ qua HTTPS. Người nhận đang trực tuyến sẽ thấy và nghe thông báo cuộc gọi đến; hộp gọi hiển thị trạng thái đổ chuông, đang kết nối và các nút nhận/từ chối. Tín hiệu cuộc gọi đi qua WebSocket đã xác thực, còn âm thanh/hình ảnh truyền trực tiếp giữa hai trình duyệt bằng WebRTC. Hộp thư lưu lịch sử cuộc gọi đã kết nối (kèm thời lượng) và thông báo khi cuộc gọi bị hủy, nhỡ, từ chối, người nhận bận hoặc ngoại tuyến; các thẻ có nút gọi lại. Cuộc gọi không được ghi âm/lưu trữ. Một số mạng/NAT có thể cần máy chủ TURN; dự án hiện chưa cấu hình TURN.
+
 ## Cấu trúc
 
 - Backend: `backend/demo/src/main/java/com/example/demo/{controller,service,repository,model,dto,security,config}`.
 - Database migration: `backend/demo/src/main/resources/db/migration`.
 - Frontend: `frontend/src/{domain,data,services,components,pages}`.
 
-API hiện hỗ trợ đăng ký/đăng nhập JWT, duyệt và tìm kiếm tin, tạo tin chờ kiểm duyệt, quản lý trạng thái tin, yêu thích, danh mục và duyệt tin dành cho quản trị viên. Số điện thoại liên hệ được lưu theo từng tin và chỉ lấy qua API cần đăng nhập; hiện chưa có xác minh OTP. Xác thực email, nhắn tin lưu trữ và báo cáo vi phạm chưa được nối backend.
+API hiện hỗ trợ đăng ký/đăng nhập JWT, duyệt và tìm kiếm tin, tạo tin chờ kiểm duyệt, quản lý trạng thái tin, yêu thích, danh mục, nhắn tin và tín hiệu gọi realtime, cùng duyệt tin dành cho quản trị viên. Số điện thoại liên hệ được lưu theo từng tin và chỉ lấy qua API cần đăng nhập; hiện chưa có xác minh OTP. Báo cáo vi phạm chưa được nối backend.
 
 ## Kiểm tra
 

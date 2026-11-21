@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { ArrowLeft, ExternalLink, Map, MapPin, MessageCircle, Search, Send, X } from 'lucide-react'
-import type { AuthUser, ChatConversation, ChatMessage, ChatSocketEvent, MarketplaceApi } from '../services/MarketplaceApi'
+import { ArrowLeft, ExternalLink, Map, MapPin, MessageCircle, Mic, MicOff, Phone, PhoneOff, Search, Send, Video, VideoOff, X } from 'lucide-react'
+import type { AuthUser, CallType, ChatConversation, ChatMessage, ChatSocketEvent, MarketplaceApi } from '../services/MarketplaceApi'
 
 interface InboxPageProps {
   api: MarketplaceApi
@@ -11,6 +11,11 @@ interface InboxPageProps {
 }
 
 type ConnectionState = 'connecting' | 'connected' | 'disconnected' | 'error'
+type CallState =
+  | { status: 'idle' }
+  | { status: 'incoming' | 'outgoing' | 'connecting' | 'connected' | 'failed'; conversationId: string; callType: CallType; peerName: string; isCaller: boolean; error?: string }
+type ActiveCallState = Exclude<CallState, { status: 'idle' }>
+type CallSignalEvent = Extract<ChatSocketEvent, { type: `call-${string}` }>
 
 export function InboxPage({ api, user, initialConversationId, onOpenListing, onUnreadCountChange }: InboxPageProps) {
   const [conversations, setConversations] = useState<ChatConversation[]>([])
@@ -26,10 +31,27 @@ export function InboxPage({ api, user, initialConversationId, onOpenListing, onU
   const [isPinningLocation, setIsPinningLocation] = useState(false)
   const [locationError, setLocationError] = useState('')
   const [error, setError] = useState('')
+  const [callState, setCallState] = useState<CallState>({ status: 'idle' })
+  const [microphoneEnabled, setMicrophoneEnabled] = useState(true)
+  const [cameraEnabled, setCameraEnabled] = useState(true)
   const socketRef = useRef<WebSocket | null>(null)
   const messageEndRef = useRef<HTMLDivElement>(null)
+  const localVideoRef = useRef<HTMLVideoElement>(null)
+  const remoteVideoRef = useRef<HTMLVideoElement>(null)
+  const remoteAudioRef = useRef<HTMLAudioElement>(null)
   const activeIdRef = useRef(activeId)
   const connectionRef = useRef<ConnectionState>(connection)
+  const conversationsRef = useRef(conversations)
+  const callStateRef = useRef<CallState>(callState)
+  const callSignalHandlerRef = useRef<(event: CallSignalEvent) => Promise<void>>(async () => {})
+  const finishCallRef = useRef<() => void>(() => {})
+  const componentMountedRef = useRef(true)
+  const callInviteSentRef = useRef(false)
+  const callConnectedAtRef = useRef<number | null>(null)
+  const peerConnectionRef = useRef<RTCPeerConnection | null>(null)
+  const localStreamRef = useRef<MediaStream | null>(null)
+  const remoteStreamRef = useRef<MediaStream | null>(null)
+  const pendingCandidatesRef = useRef<RTCIceCandidateInit[]>([])
   const initialConversationAppliedRef = useRef(false)
   const refreshTimerRef = useRef<number | null>(null)
 
@@ -65,6 +87,251 @@ export function InboxPage({ api, user, initialConversationId, onOpenListing, onU
   }, [connection])
 
   useEffect(() => {
+    conversationsRef.current = conversations
+  }, [conversations])
+
+  useEffect(() => {
+    componentMountedRef.current = true
+    return () => {
+      componentMountedRef.current = false
+      const current = callStateRef.current
+      const socket = socketRef.current
+      if (current.status !== 'idle' && callInviteSentRef.current && socket?.readyState === WebSocket.OPEN) {
+        try {
+          const type = current.status === 'incoming' ? 'call-decline' : 'call-end'
+          const detail = current.status === 'incoming'
+            ? { callType: current.callType }
+            : getCallEndDetails(current)
+          socket.send(JSON.stringify({ type, conversationId: current.conversationId, ...detail }))
+        } catch (sendError) {
+          console.error('Không thể báo kết thúc cuộc gọi khi đóng hộp thư.', sendError)
+        }
+      }
+      peerConnectionRef.current?.close()
+      localStreamRef.current?.getTracks().forEach((track) => track.stop())
+      peerConnectionRef.current = null
+      localStreamRef.current = null
+      remoteStreamRef.current = null
+      pendingCandidatesRef.current = []
+    }
+  }, [])
+
+  function updateCallState(next: CallState | ((current: CallState) => CallState)) {
+    const resolved = typeof next === 'function' ? next(callStateRef.current) : next
+    if (resolved.status === 'connected' && callStateRef.current.status !== 'connected') {
+      callConnectedAtRef.current = Date.now()
+    }
+    if (resolved.status === 'idle') {
+      callConnectedAtRef.current = null
+      callInviteSentRef.current = false
+    }
+    callStateRef.current = resolved
+    setCallState(resolved)
+  }
+
+  function getCallState(): CallState {
+    return callStateRef.current
+  }
+
+  function getCallEndDetails(current: ActiveCallState, fallbackOutcome: 'cancelled' | 'no-answer' = 'cancelled') {
+    const connectedAt = callConnectedAtRef.current
+    return {
+      callType: current.callType,
+      outcome: connectedAt === null ? fallbackOutcome : 'completed',
+      durationSeconds: connectedAt === null ? 0 : Math.floor((Date.now() - connectedAt) / 1000),
+    }
+  }
+
+  function sendCallSignal(type: string, conversationId: string, detail: Record<string, unknown> = {}): boolean {
+    const socket = socketRef.current
+    if (!socket || socket.readyState !== WebSocket.OPEN || connectionRef.current !== 'connected') {
+      setError('Đang kết nối lại hộp thư. Không thể thực hiện cuộc gọi lúc này.')
+      return false
+    }
+    try {
+      socket.send(JSON.stringify({ type, conversationId, ...detail }))
+      return true
+    } catch (sendError) {
+      console.error('Không thể gửi tín hiệu cuộc gọi.', sendError)
+      setError('Không thể kết nối cuộc gọi lúc này. Vui lòng thử lại.')
+      return false
+    }
+  }
+
+  function disposeCallMedia() {
+    peerConnectionRef.current?.close()
+    peerConnectionRef.current = null
+    localStreamRef.current?.getTracks().forEach((track) => track.stop())
+    localStreamRef.current = null
+    remoteStreamRef.current = null
+    pendingCandidatesRef.current = []
+  }
+
+  function finishCall() {
+    disposeCallMedia()
+    updateCallState({ status: 'idle' })
+    setMicrophoneEnabled(true)
+    setCameraEnabled(true)
+  }
+
+  function createPeerConnection(conversationId: string): RTCPeerConnection {
+    const peer = new RTCPeerConnection({
+      iceServers: [{ urls: 'stun:stun.l.google.com:19302' }],
+    })
+    const localStream = localStreamRef.current
+    localStream?.getTracks().forEach((track) => peer.addTrack(track, localStream))
+    peer.ontrack = (event) => {
+      remoteStreamRef.current = event.streams[0] ?? new MediaStream([event.track])
+      updateCallState((current) => current.status === 'idle' ? current : {
+        ...current,
+        status: 'connected',
+      })
+    }
+    peer.onicecandidate = (event) => {
+      if (event.candidate) {
+        sendCallSignal('call-ice', conversationId, { candidate: event.candidate.toJSON() })
+      }
+    }
+    peer.onconnectionstatechange = () => {
+      if (peer.connectionState === 'failed') {
+        const current = callStateRef.current
+        if (current.status !== 'idle') {
+          disposeCallMedia()
+          updateCallState({ ...current, status: 'failed', error: 'Không thể thiết lập kết nối. Hãy thử gọi lại.' })
+        }
+      } else if (peer.connectionState === 'connected') {
+        updateCallState((current) => current.status === 'idle' ? current : { ...current, status: 'connected' })
+      }
+    }
+    peerConnectionRef.current = peer
+    return peer
+  }
+
+  async function applyPendingCandidates(peer: RTCPeerConnection) {
+    const candidates = pendingCandidatesRef.current
+    pendingCandidatesRef.current = []
+    for (const candidate of candidates) {
+      await peer.addIceCandidate(candidate)
+    }
+  }
+
+  function refreshCallHistory(conversationId: string) {
+    void api.getChatMessages(conversationId).then((nextMessages) => {
+      setMessagesByConversation((current) => ({ ...current, [conversationId]: nextMessages }))
+      setLoadedConversations((current) => ({ ...current, [conversationId]: true }))
+    }).catch((loadError: unknown) => {
+      console.error('Không thể tải lịch sử cuộc gọi.', loadError)
+      setError(loadError instanceof Error ? loadError.message : 'Không thể tải lịch sử cuộc gọi.')
+    })
+  }
+
+  async function handleCallSignal(event: CallSignalEvent) {
+    const current = callStateRef.current
+    if (event.type === 'call-invite') {
+      if (current.status !== 'idle') {
+        sendCallSignal('call-busy', event.conversationId, { callType: event.callType })
+        return
+      }
+      const peerName = conversationsRef.current.find((item) => item.id === event.conversationId)?.participantName
+        ?? 'Người dùng'
+      callInviteSentRef.current = true
+      setActiveId(event.conversationId)
+      setError('')
+      setMicrophoneEnabled(true)
+      setCameraEnabled(true)
+      updateCallState({
+        status: 'incoming',
+        conversationId: event.conversationId,
+        callType: event.callType,
+        peerName,
+        isCaller: false,
+      })
+      return
+    }
+
+    if (current.status === 'idle' || current.conversationId !== event.conversationId) return
+
+    if (event.type === 'call-error') {
+      finishCall()
+      setError(event.message)
+      refreshCallHistory(event.conversationId)
+      return
+    }
+
+    if (event.type === 'call-busy') {
+      finishCall()
+      refreshCallHistory(event.conversationId)
+      return
+    }
+
+    if (event.type === 'call-accept' && current.status === 'outgoing') {
+      updateCallState({ ...current, status: 'connecting' })
+      const peer = createPeerConnection(event.conversationId)
+      const offer = await peer.createOffer()
+      await peer.setLocalDescription(offer)
+      if (!peer.localDescription || !sendCallSignal('call-offer', event.conversationId, {
+        description: { type: peer.localDescription.type, sdp: peer.localDescription.sdp },
+      })) {
+        throw new Error('Không thể gửi lời mời thiết lập cuộc gọi.')
+      }
+      return
+    }
+
+    if (event.type === 'call-offer' && !current.isCaller) {
+      if (current.status !== 'connecting') return
+      const peer = peerConnectionRef.current
+      if (!peer) return
+      await peer.setRemoteDescription(event.description)
+      await applyPendingCandidates(peer)
+      const answer = await peer.createAnswer()
+      await peer.setLocalDescription(answer)
+      if (!peer.localDescription || !sendCallSignal('call-answer', event.conversationId, {
+        description: { type: peer.localDescription.type, sdp: peer.localDescription.sdp },
+      })) {
+        throw new Error('Không thể phản hồi thiết lập cuộc gọi.')
+      }
+      return
+    }
+
+    if (event.type === 'call-answer' && current.isCaller) {
+      if (current.status !== 'connecting') return
+      const peer = peerConnectionRef.current
+      if (!peer) return
+      await peer.setRemoteDescription(event.description)
+      await applyPendingCandidates(peer)
+      return
+    }
+
+    if (event.type === 'call-ice') {
+      if (current.status !== 'connecting' && current.status !== 'connected') return
+      const peer = peerConnectionRef.current
+      if (!peer) return
+      if (peer.remoteDescription) {
+        await peer.addIceCandidate(event.candidate)
+      } else {
+        pendingCandidatesRef.current.push(event.candidate)
+      }
+      return
+    }
+
+    if (event.type === 'call-decline') {
+      finishCall()
+      refreshCallHistory(event.conversationId)
+      return
+    }
+
+    if (event.type === 'call-end') {
+      finishCall()
+      refreshCallHistory(event.conversationId)
+    }
+  }
+
+  useEffect(() => {
+    callSignalHandlerRef.current = handleCallSignal
+    finishCallRef.current = finishCall
+  })
+
+  useEffect(() => {
     const timer = window.setTimeout(() => { void refreshConversations() }, 0)
     return () => window.clearTimeout(timer)
   }, [refreshConversations])
@@ -97,6 +364,22 @@ export function InboxPage({ api, user, initialConversationId, onOpenListing, onU
             return
           }
 
+          if (event.type !== 'message') {
+            void callSignalHandlerRef.current(event).catch((callError: unknown) => {
+              console.error('Không thể thiết lập cuộc gọi.', callError)
+              const current = getCallState()
+              if (current.status !== 'idle') {
+                disposeCallMedia()
+                updateCallState({
+                  ...current,
+                  status: 'failed',
+                  error: callError instanceof Error ? callError.message : 'Không thể thiết lập cuộc gọi.',
+                })
+              }
+            })
+            return
+          }
+
           setMessagesByConversation((current) => {
             const threadMessages = current[event.message.conversationId] ?? []
             if (threadMessages.some((item) => item.id === event.message.id)) {
@@ -117,6 +400,11 @@ export function InboxPage({ api, user, initialConversationId, onOpenListing, onU
         socket.addEventListener('close', () => {
           if (disposed) return
           socketRef.current = null
+          if (callStateRef.current.status !== 'idle') {
+            disposeCallMedia()
+            updateCallState({ status: 'idle' })
+            setError('Cuộc gọi đã bị ngắt do mất kết nối.')
+          }
           if (!reconnect) return
           setConnection('disconnected')
           refreshTimerRef.current = window.setTimeout(connect, 2500)
@@ -190,6 +478,189 @@ export function InboxPage({ api, user, initialConversationId, onOpenListing, onU
       return false
     }
   }
+
+  async function startCall(callType: CallType) {
+    if (!activeChat || callStateRef.current.status !== 'idle') return
+    if (!navigator.mediaDevices?.getUserMedia) {
+      setError('Trình duyệt không hỗ trợ gọi audio/video. Hãy dùng trình duyệt mới và HTTPS.')
+      return
+    }
+
+    const conversationId = activeChat.id
+    callInviteSentRef.current = false
+    updateCallState({
+      status: 'connecting',
+      conversationId,
+      callType,
+      peerName: activeChat.participantName,
+      isCaller: true,
+    })
+    try {
+      const localStream = await navigator.mediaDevices.getUserMedia({
+        audio: true,
+        video: callType === 'video',
+      })
+      const current = getCallState()
+      if (!componentMountedRef.current || current.status !== 'connecting' || current.conversationId !== conversationId) {
+        localStream.getTracks().forEach((track) => track.stop())
+        return
+      }
+      localStreamRef.current = localStream
+      setMicrophoneEnabled(true)
+      setCameraEnabled(true)
+      updateCallState({
+        status: 'outgoing',
+        conversationId,
+        callType,
+        peerName: activeChat.participantName,
+        isCaller: true,
+      })
+      if (!sendCallSignal('call-invite', conversationId, { callType })) finishCall()
+      else callInviteSentRef.current = true
+    } catch (callError) {
+      const current = getCallState()
+      if (current.status === 'idle' || current.conversationId !== conversationId) return
+      console.error('Không thể truy cập micro hoặc camera.', callError)
+      setError(callError instanceof DOMException && callError.name === 'NotAllowedError'
+        ? 'Bạn cần cho phép truy cập micro/camera để gọi.'
+        : callError instanceof Error ? callError.message : 'Không thể bắt đầu cuộc gọi.')
+      finishCall()
+    }
+  }
+
+  async function acceptCall() {
+    const current = callStateRef.current
+    if (current.status !== 'incoming') return
+    if (!navigator.mediaDevices?.getUserMedia) {
+      setError('Trình duyệt không hỗ trợ gọi audio/video. Hãy dùng trình duyệt mới và HTTPS.')
+      finishCall()
+      return
+    }
+
+    updateCallState({ ...current, status: 'connecting' })
+    try {
+      const localStream = await navigator.mediaDevices.getUserMedia({
+        audio: true,
+        video: current.callType === 'video',
+      })
+      const latest = getCallState()
+      if (!componentMountedRef.current || latest.status !== 'connecting' || latest.conversationId !== current.conversationId) {
+        localStream.getTracks().forEach((track) => track.stop())
+        return
+      }
+      localStreamRef.current = localStream
+      setMicrophoneEnabled(true)
+      setCameraEnabled(true)
+      callInviteSentRef.current = true
+      createPeerConnection(current.conversationId)
+      updateCallState({ ...current, status: 'connecting' })
+      if (!sendCallSignal('call-accept', current.conversationId)) {
+        throw new Error('Không thể chấp nhận cuộc gọi do mất kết nối.')
+      }
+    } catch (callError) {
+      const latest = getCallState()
+      if (latest.status === 'idle' || latest.conversationId !== current.conversationId) return
+      console.error('Không thể chấp nhận cuộc gọi.', callError)
+      sendCallSignal('call-decline', current.conversationId)
+      disposeCallMedia()
+      updateCallState({ ...current, status: 'failed', error: callError instanceof DOMException && callError.name === 'NotAllowedError'
+        ? 'Bạn cần cho phép truy cập micro/camera để nhận cuộc gọi.'
+        : callError instanceof Error ? callError.message : 'Không thể nhận cuộc gọi.' })
+    }
+  }
+
+  function declineCall() {
+    const current = callStateRef.current
+    if (current.status !== 'incoming') return
+    sendCallSignal('call-decline', current.conversationId, { callType: current.callType })
+    finishCall()
+  }
+
+  function hangUpCall() {
+    const current = callStateRef.current
+    if (current.status === 'idle') return
+    if (callInviteSentRef.current) {
+      sendCallSignal('call-end', current.conversationId, getCallEndDetails(current))
+    }
+    finishCall()
+  }
+
+  function toggleMicrophone() {
+    const enabled = !microphoneEnabled
+    localStreamRef.current?.getAudioTracks().forEach((track) => { track.enabled = enabled })
+    setMicrophoneEnabled(enabled)
+  }
+
+  function toggleCamera() {
+    const enabled = !cameraEnabled
+    localStreamRef.current?.getVideoTracks().forEach((track) => { track.enabled = enabled })
+    setCameraEnabled(enabled)
+  }
+
+  useEffect(() => {
+    if (localVideoRef.current) localVideoRef.current.srcObject = localStreamRef.current
+    if (remoteVideoRef.current) remoteVideoRef.current.srcObject = remoteStreamRef.current
+    if (remoteAudioRef.current) remoteAudioRef.current.srcObject = remoteStreamRef.current
+  }, [callState])
+
+  const ringingCallType = callState.status === 'incoming' || callState.status === 'outgoing'
+    ? callState.callType
+    : null
+
+  useEffect(() => {
+    if (!ringingCallType || !window.AudioContext) return
+    let context: AudioContext
+    try {
+      context = new AudioContext()
+    } catch (ringError) {
+      console.warn('Không thể phát âm báo cuộc gọi; giao diện vẫn hiển thị trạng thái đổ chuông.', ringError)
+      return
+    }
+
+    function playRing() {
+      if (context.state !== 'running') return
+      for (const frequency of [440, 480]) {
+        const oscillator = context.createOscillator()
+        const volume = context.createGain()
+        const startAt = context.currentTime
+        oscillator.frequency.setValueAtTime(frequency, startAt)
+        volume.gain.setValueAtTime(0.0001, startAt)
+        volume.gain.exponentialRampToValueAtTime(0.035, startAt + 0.025)
+        volume.gain.setValueAtTime(0.035, startAt + 0.24)
+        volume.gain.exponentialRampToValueAtTime(0.0001, startAt + 0.32)
+        oscillator.connect(volume)
+        volume.connect(context.destination)
+        oscillator.start(startAt)
+        oscillator.stop(startAt + 0.33)
+      }
+    }
+
+    const interval = window.setInterval(playRing, 1600)
+    void context.resume().then(playRing).catch((ringError: unknown) => {
+      console.info('Trình duyệt đã chặn âm báo tự động; trạng thái đổ chuông vẫn hiển thị.', ringError)
+    })
+    return () => {
+      window.clearInterval(interval)
+      if (context.state !== 'closed') {
+        void context.close().catch((ringError: unknown) => {
+          console.debug('Không thể đóng âm báo cuộc gọi.', ringError)
+        })
+      }
+    }
+  }, [ringingCallType])
+
+  useEffect(() => {
+    if (callState.status !== 'outgoing') return
+    const { conversationId } = callState
+    const timeout = window.setTimeout(() => {
+      const current = callStateRef.current
+      if (current.status !== 'outgoing' || current.conversationId !== conversationId) return
+      sendCallSignal('call-end', conversationId, getCallEndDetails(current, 'no-answer'))
+      finishCallRef.current()
+      setError('Không có phản hồi. Cuộc gọi đã kết thúc.')
+    }, 30_000)
+    return () => window.clearTimeout(timeout)
+  }, [callState])
 
   function shareCurrentLocation() {
     if (!activeChat) return
@@ -311,6 +782,14 @@ export function InboxPage({ api, user, initialConversationId, onOpenListing, onU
                 <button className="chat-back" aria-label="Đóng cuộc trò chuyện" onClick={() => setActiveId('')}><ArrowLeft size={18} /></button>
                 <span className="avatar avatar-tone-green">{activeChat.participantInitials}</span>
                 <span className="chat-person"><strong>{activeChat.participantName}</strong><small>{connectionLabel}</small></span>
+                <div className="chat-header-actions">
+                  <button type="button" aria-label="Gọi thoại" title="Gọi thoại" onClick={() => { void startCall('audio') }} disabled={connection !== 'connected' || callState.status !== 'idle'}>
+                    <Phone size={17} />
+                  </button>
+                  <button type="button" aria-label="Gọi video" title="Gọi video" onClick={() => { void startCall('video') }} disabled={connection !== 'connected' || callState.status !== 'idle'}>
+                    <Video size={18} />
+                  </button>
+                </div>
               </header>
               <button className="chat-product-card" onClick={() => onOpenListing(activeChat.listingId)}>
                 <img src={activeChat.listingImage} alt={activeChat.listingTitle} />
@@ -323,6 +802,14 @@ export function InboxPage({ api, user, initialConversationId, onOpenListing, onU
                 {messages.map((chatMessage) => (
                   chatMessage.messageType === 'LOCATION'
                     ? <LocationMessage key={chatMessage.id} message={chatMessage} isOwnMessage={chatMessage.senderId === String(user.id)} />
+                    : isCallHistoryMessage(chatMessage)
+                      ? <CallHistoryMessage
+                          key={chatMessage.id}
+                          message={chatMessage}
+                          isOwnMessage={chatMessage.senderId === String(user.id)}
+                          onCallBack={(callType) => { void startCall(callType) }}
+                          disabled={connection !== 'connected' || callState.status !== 'idle'}
+                        />
                     : <div className={`message-bubble ${chatMessage.senderId === String(user.id) ? 'message-outgoing' : 'message-incoming'}`} key={chatMessage.id}>
                         {chatMessage.content}<small>{formatTime(chatMessage.sentAt)}</small>
                       </div>
@@ -360,6 +847,57 @@ export function InboxPage({ api, user, initialConversationId, onOpenListing, onU
           )}
         </section>
       </div>
+      {callState.status !== 'idle' && (
+        <div className="call-overlay">
+          <section className={`call-dialog${callState.status === 'incoming' || callState.status === 'outgoing' ? ' call-dialog-ringing' : ''}`} role="dialog" aria-modal="true" aria-label="Cuộc gọi">
+            <header className="call-dialog-heading">
+              <span>{callState.callType === 'video' ? 'Cuộc gọi video' : 'Cuộc gọi thoại'}</span>
+              <button type="button" aria-label="Đóng cuộc gọi" onClick={callState.status === 'incoming' ? declineCall : hangUpCall}><X size={18} /></button>
+            </header>
+            {callState.callType === 'video' && callState.status !== 'incoming' ? (
+              <div className="call-video-stage">
+                <video ref={remoteVideoRef} autoPlay playsInline aria-label={`Video của ${callState.peerName}`} />
+                <video className="call-local-video" ref={localVideoRef} autoPlay playsInline muted aria-label="Video của bạn" />
+              </div>
+            ) : (
+              <div className="call-audio-stage">
+                <span className="avatar avatar-tone-green">{callState.peerName.trim().slice(0, 1).toLocaleUpperCase('vi')}</span>
+                <strong>{callState.peerName}</strong>
+                <audio ref={remoteAudioRef} autoPlay aria-label={`Âm thanh từ ${callState.peerName}`} />
+              </div>
+            )}
+            <p className={`call-status${callState.status === 'incoming' || callState.status === 'outgoing' ? ' call-status-ringing' : ''}`} role="status">
+              {callState.status === 'incoming' ? 'Đang đổ chuông...'
+                : callState.status === 'outgoing' ? 'Đang đổ chuông...'
+                  : callState.status === 'connecting' ? 'Đang kết nối...'
+                    : callState.status === 'connected' ? 'Đã kết nối'
+                      : callState.error}
+            </p>
+            {callState.status === 'incoming' ? (
+              <div className="call-controls">
+                <button type="button" className="call-control-decline" onClick={declineCall}><PhoneOff size={19} />Từ chối</button>
+                <button type="button" className="call-control-accept" onClick={() => { void acceptCall() }}><Phone size={19} />Trả lời</button>
+              </div>
+            ) : callState.status === 'failed' ? (
+              <div className="call-controls">
+                <button type="button" className="call-control-accept" onClick={hangUpCall}>Đóng</button>
+              </div>
+            ) : (
+              <div className="call-controls">
+                <button type="button" className={`call-control-toggle${microphoneEnabled ? '' : ' call-control-muted'}`} onClick={toggleMicrophone} aria-label={microphoneEnabled ? 'Tắt micro' : 'Bật micro'}>
+                  {microphoneEnabled ? <Mic size={19} /> : <MicOff size={19} />}
+                </button>
+                {callState.callType === 'video' && (
+                  <button type="button" className={`call-control-toggle${cameraEnabled ? '' : ' call-control-muted'}`} onClick={toggleCamera} aria-label={cameraEnabled ? 'Tắt camera' : 'Bật camera'}>
+                    {cameraEnabled ? <Video size={19} /> : <VideoOff size={19} />}
+                  </button>
+                )}
+                <button type="button" className="call-control-decline" onClick={hangUpCall} aria-label="Kết thúc cuộc gọi"><PhoneOff size={19} /></button>
+              </div>
+            )}
+          </section>
+        </div>
+      )}
     </div>
   )
 }
@@ -370,6 +908,20 @@ function formatPrice(price: number, giveaway: boolean): string {
 
 function formatTime(value: string): string {
   return new Date(value).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })
+}
+
+function isCallHistoryMessage(message: ChatMessage): boolean {
+  if (message.messageType === 'MISSED_CALL' || message.messageType === 'CALL') return true
+  return [
+    'Người nhận đang bận. Đã nhỡ cuộc gọi ',
+    'Người nhận đã từ chối cuộc gọi ',
+    'Người nhận hiện không trực tuyến để nhận cuộc gọi ',
+    'Cuộc gọi thoại đã bị hủy',
+    'Cuộc gọi video đã bị hủy',
+    'Không có phản hồi cho cuộc gọi ',
+    'Cuộc gọi thoại đã kết thúc',
+    'Cuộc gọi video đã kết thúc',
+  ].some((prefix) => message.content.startsWith(prefix))
 }
 
 function formatRelativeTime(value: string): string {
@@ -396,6 +948,33 @@ function LocationMessage({ message, isOwnMessage }: { message: ChatMessage; isOw
           </a>
         : <span>{message.content || 'Vị trí được chia sẻ'}</span>}
       <small className="message-sent-time">{formatTime(message.sentAt)}</small>
+    </div>
+  )
+}
+
+function CallHistoryMessage({
+  message,
+  isOwnMessage,
+  onCallBack,
+  disabled,
+}: {
+  message: ChatMessage
+  isOwnMessage: boolean
+  onCallBack: (callType: CallType) => void
+  disabled: boolean
+}) {
+  const callType: CallType = message.content.toLocaleLowerCase('vi').includes('video') ? 'video' : 'audio'
+  const isCompletedCall = message.messageType === 'CALL' || message.content.includes('đã kết thúc')
+
+  return (
+    <div className={`call-history-card ${isOwnMessage ? 'call-history-outgoing' : 'call-history-incoming'}`}>
+      <div className="call-history-details">
+        <span className={`call-history-icon${isCompletedCall ? ' call-history-icon-completed' : ''}`}>
+          {isCompletedCall ? callType === 'video' ? <Video size={17} /> : <Phone size={17} /> : <PhoneOff size={17} />}
+        </span>
+        <span><strong>{message.content}</strong><small>{formatTime(message.sentAt)}</small></span>
+      </div>
+      <button type="button" onClick={() => onCallBack(callType)} disabled={disabled}>Gọi lại</button>
     </div>
   )
 }
