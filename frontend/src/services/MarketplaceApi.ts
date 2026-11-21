@@ -38,17 +38,37 @@ export interface ChatMessage {
   senderId: string
   senderName: string
   content: string
-  messageType: 'TEXT' | 'LOCATION'
+  messageType: 'TEXT' | 'LOCATION' | 'MISSED_CALL' | 'CALL'
   latitude: number | null
   longitude: number | null
   mapUrl: string | null
   sentAt: string
 }
 
+export type CallType = 'audio' | 'video'
+
 export type ChatSocketEvent =
   | { type: 'authenticated' }
   | { type: 'message'; message: ChatMessage }
+  | { type: 'call-invite'; conversationId: string; senderId: string; callType: CallType }
+  | { type: 'call-accept' | 'call-decline' | 'call-end'; conversationId: string; senderId: string }
+  | { type: 'call-busy'; conversationId: string; senderId: string; callType: CallType }
+  | { type: 'call-offer' | 'call-answer'; conversationId: string; senderId: string; description: RTCSessionDescriptionInit }
+  | { type: 'call-ice'; conversationId: string; senderId: string; candidate: RTCIceCandidateInit }
+  | { type: 'call-error'; conversationId: string; message: string }
   | { type: 'error'; message: string }
+
+function isCallSocketEvent(event: ChatSocketEvent): event is Extract<ChatSocketEvent, { type: `call-${string}` }> {
+  return event.type === 'call-invite'
+    || event.type === 'call-accept'
+    || event.type === 'call-decline'
+    || event.type === 'call-busy'
+    || event.type === 'call-end'
+    || event.type === 'call-offer'
+    || event.type === 'call-answer'
+    || event.type === 'call-ice'
+    || event.type === 'call-error'
+}
 
 export interface ListingDraft {
   title: string
@@ -237,7 +257,9 @@ export class MarketplaceApi {
       try {
         const payload = JSON.parse(event.data) as ChatSocketEvent
         if (payload.type === 'authenticated' || payload.type === 'error'
-          || (payload.type === 'message' && payload.message?.conversationId && payload.message.id)) {
+          || (payload.type === 'message' && payload.message?.conversationId && payload.message.id)
+          || (isCallSocketEvent(payload) && payload.conversationId
+            && (payload.type === 'call-error' ? payload.message : payload.senderId))) {
           onEvent(payload)
         } else {
           console.error('Nhận được sự kiện chat không hợp lệ.')
