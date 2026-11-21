@@ -4,10 +4,13 @@ import java.math.BigDecimal;
 
 import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -15,10 +18,12 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
 import com.example.demo.dto.CreateListingRequest;
+import com.example.demo.dto.ListingDraftRequest;
 import com.example.demo.dto.ListingResponse;
 import com.example.demo.dto.PhoneResponse;
 import com.example.demo.dto.StatusRequest;
 import com.example.demo.model.ListingStatus;
+import com.example.demo.service.ListingDraftService;
 import com.example.demo.service.ListingService;
 
 import jakarta.validation.Valid;
@@ -28,9 +33,11 @@ import jakarta.validation.Valid;
 public class ListingController {
 
     private final ListingService listingService;
+    private final ListingDraftService listingDraftService;
 
-    public ListingController(ListingService listingService) {
+    public ListingController(ListingService listingService, ListingDraftService listingDraftService) {
         this.listingService = listingService;
+        this.listingDraftService = listingDraftService;
     }
 
     @GetMapping
@@ -55,6 +62,24 @@ public class ListingController {
         return listingService.getMyListings(status, page, size);
     }
 
+    @GetMapping("/draft")
+    public ResponseEntity<ListingDraftRequest> getDraft() {
+        ListingDraftRequest draft = listingDraftService.getCurrentDraft();
+        return draft == null ? ResponseEntity.noContent().build() : ResponseEntity.ok(draft);
+    }
+
+    @PutMapping("/draft")
+    public ResponseEntity<Void> saveDraft(@Valid @RequestBody ListingDraftRequest request) {
+        listingDraftService.saveCurrentDraft(request);
+        return ResponseEntity.noContent().build();
+    }
+
+    @DeleteMapping("/draft")
+    public ResponseEntity<Void> deleteDraft() {
+        listingDraftService.deleteCurrentDraft();
+        return ResponseEntity.noContent().build();
+    }
+
     @GetMapping("/{id}")
     public ListingResponse detail(@PathVariable String id) {
         return listingService.getActiveListing(parseId(id));
@@ -66,8 +91,8 @@ public class ListingController {
     }
 
     @PostMapping
-    public org.springframework.http.ResponseEntity<ListingResponse> create(@Valid @RequestBody CreateListingRequest request) {
-        return org.springframework.http.ResponseEntity.status(HttpStatus.CREATED).body(listingService.create(request));
+    public ResponseEntity<ListingResponse> create(@Valid @RequestBody CreateListingRequest request) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(listingService.create(request));
     }
 
     @PatchMapping("/{id}/status")

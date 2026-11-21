@@ -26,6 +26,7 @@ public record ListingResponse(
         String status,
         long views,
         boolean negotiable,
+        boolean giveaway,
         List<String> specs,
         String reviewReason,
         List<String> images) {
@@ -53,6 +54,7 @@ public record ListingResponse(
                 listing.getStatus().name(),
                 listing.getViews(),
                 listing.isNegotiable(),
+                listing.isGiveaway(),
                 specs,
                 listing.getReviewReason(),
                 listing.getImages());

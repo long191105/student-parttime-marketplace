@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { MarketplaceLayout, type AppView } from './components/MarketplaceLayout'
 import { AdminPage } from './pages/AdminPage'
 import { AuthPage } from './pages/AuthPage'
@@ -13,7 +13,7 @@ import { ProfilePage } from './pages/ProfilePage'
 import { SearchPage } from './pages/SearchPage'
 import { SellPage } from './pages/SellPage'
 import type { Listing, ListingData, ListingStatus } from './domain/Listing'
-import { MarketplaceApi, type AuthSession, type AuthUser } from './services/MarketplaceApi'
+import { MarketplaceApi, type AuthSession, type AuthUser, type ListingFormDraft } from './services/MarketplaceApi'
 import { MarketplaceService } from './services/MarketplaceService'
 
 const api = new MarketplaceApi()
@@ -21,20 +21,27 @@ const authenticationRequiredViews: AppView[] = ['sell', 'my-listings', 'messages
 
 export function App() {
   const [service] = useState(() => new MarketplaceService())
+  const loadListingDraft = useCallback(() => api.getListingDraft(), [])
+  const saveListingDraft = useCallback((draft: ListingFormDraft) => api.saveListingDraft(draft), [])
+  const deleteListingDraft = useCallback(() => api.deleteListingDraft(), [])
   const [listings, setListings] = useState<Listing[]>(() => service.getListings())
   const [savedIds, setSavedIds] = useState<string[]>(() => service.getFavorites())
   const [user, setUser] = useState<AuthUser | null>(() => api.readSession()?.user ?? null)
   const [apiState, setApiState] = useState<'connecting' | 'connected' | 'offline'>('connecting')
   const [apiError, setApiError] = useState('')
   const [view, setView] = useState<AppView>('home')
+  const [sellReturnView, setSellReturnView] = useState<AppView>('home')
   const [isAdminRoute, setIsAdminRoute] = useState(() => window.location.pathname.replace(/\/+$/, '') === '/admin')
   const [previousView, setPreviousView] = useState<AppView>('home')
   const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null)
+  const [unreadMessageCount, setUnreadMessageCount] = useState(0)
   const [query, setQuery] = useState('')
   const [location, setLocation] = useState('Toàn quốc')
   const [category, setCategory] = useState('Tất cả')
   const [notice, setNotice] = useState('')
   const [authNotice, setAuthNotice] = useState('')
+  const updateUnreadMessageCount = useCallback((count: number) => setUnreadMessageCount(count), [])
 
   const selectedListing = listings.find((listing) => listing.id === selectedId)
   const activeListings = listings.filter((listing) => {
@@ -134,6 +141,28 @@ export function App() {
   }, [apiState])
 
   useEffect(() => {
+    if (apiState !== 'connected' || !user) return
+
+    let active = true
+    async function refreshUnreadCount() {
+      try {
+        const conversations = await api.listChatConversations()
+        if (active) setUnreadMessageCount(conversations.reduce((total, item) => total + item.unreadCount, 0))
+      } catch (error) {
+        console.error('Không thể làm mới số tin nhắn chưa đọc.', error)
+      }
+    }
+
+    const initialTimer = window.setTimeout(() => { void refreshUnreadCount() }, 0)
+    const interval = window.setInterval(() => { void refreshUnreadCount() }, 30_000)
+    return () => {
+      active = false
+      window.clearTimeout(initialTimer)
+      window.clearInterval(interval)
+    }
+  }, [apiState, user])
+
+  useEffect(() => {
     if (apiState !== 'connected' || !isAdminRoute || user?.role !== 'ADMIN') return
 
     let active = true
@@ -163,6 +192,7 @@ export function App() {
   }, [apiState, isAdminRoute, user?.role])
 
   function navigate(nextView: AppView) {
+    if (nextView === 'sell' && view !== 'my-listings') setSellReturnView('home')
     if (nextView === 'auth') {
       setPreviousView(view === 'auth' ? previousView : view)
       setView('auth')
@@ -173,6 +203,16 @@ export function App() {
       setView(nextView)
     }
     window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  function startNewListing() {
+    setSellReturnView('home')
+    navigate('sell')
+  }
+
+  function editSavedDraft() {
+    setSellReturnView('my-listings')
+    navigate('sell')
   }
 
   function leaveAdminRoute() {
@@ -202,6 +242,26 @@ export function App() {
     setPreviousView(view === 'detail' ? previousView : view)
     setSelectedId(listing.id)
     navigate('detail')
+  }
+
+  async function openChat(listingId: string) {
+    if (!user) {
+      setNotice('Đăng nhập để trò chuyện với người bán.')
+      navigate('auth')
+      return
+    }
+    if (apiState !== 'connected') {
+      setNotice('Hộp thư chỉ khả dụng khi kết nối được backend.')
+      return
+    }
+    try {
+      const conversation = await api.openChatForListing(listingId)
+      setSelectedConversationId(conversation.id)
+      navigate('messages')
+    } catch (error) {
+      console.error('Không thể mở cuộc trò chuyện với người bán.', error)
+      setNotice(error instanceof Error ? error.message : 'Không thể mở cuộc trò chuyện.')
+    }
   }
 
   async function reloadFromApi(userOverride: AuthUser | null = user) {
@@ -313,6 +373,62 @@ export function App() {
     setNotice('Tin demo đã được lưu trên trình duyệt và đang chờ duyệt.')
   }
 
+  async function publishSavedDraft(draft: ListingFormDraft): Promise<void> {
+    if (!user || apiState !== 'connected') {
+      throw new Error('Cần đăng nhập và kết nối backend để gửi bản nháp.')
+    }
+
+    const price = Number(draft.price)
+    if (draft.title.trim().length < 10) throw new Error('Tiêu đề cần có ít nhất 10 ký tự. Hãy sửa bản nháp trước khi gửi.')
+    if (!draft.giveaway && (!Number.isFinite(price) || price < 0)) throw new Error('Vui lòng bổ sung mức giá hợp lệ trong bản nháp.')
+    if (!draft.category.trim()) throw new Error('Hãy chọn danh mục cho tin trước khi gửi.')
+    if (draft.condition !== 'NEW' && draft.condition !== 'USED') throw new Error('Hãy chọn tình trạng sản phẩm trước khi gửi.')
+    if (draft.description.trim().length < 20) throw new Error('Mô tả cần có ít nhất 20 ký tự. Hãy sửa bản nháp trước khi gửi.')
+    if (!/^\d{10,11}$/.test(draft.phone.replace(/\D/g, ''))) throw new Error('Số điện thoại cần có 10 hoặc 11 chữ số.')
+    if (!draft.districtCode || !draft.wardCode) throw new Error('Hãy chọn quận/huyện và phường/xã trong bản nháp trước khi gửi.')
+    const fullLocation = draft.fullLocation?.trim()
+    if (!fullLocation || fullLocation.length > 160) throw new Error('Hãy mở sửa nháp, chọn đầy đủ khu vực và lưu lại trước khi gửi.')
+
+    const coverPhoto = draft.photos.find((photo) => photo.id === draft.coverPhotoId) ?? draft.photos[0]
+    const images = coverPhoto
+      ? [coverPhoto, ...draft.photos.filter((photo) => photo.id !== coverPhoto.id)].map((photo) => photo.src)
+      : ['https://images.unsplash.com/photo-1490312278390-ab64016e0aa9?auto=format&fit=crop&w=900&q=85']
+    const sellerInitials = user.fullName.split(/\s+/).filter(Boolean).slice(-2).map((part) => part[0]).join('').toUpperCase()
+
+    try {
+      await api.createListing({
+        title: draft.title.trim(),
+        category: draft.category,
+        price: draft.giveaway ? 0 : price,
+        condition: draft.condition,
+        location: fullLocation,
+        contactPhone: draft.phone.replace(/\D/g, ''),
+        image: images[0],
+        images,
+        seller: user.fullName,
+        sellerId: String(user.id),
+        sellerInitials: sellerInitials || 'BN',
+        sellerRating: 5,
+        sellerReviews: 0,
+        description: draft.description.trim(),
+        negotiable: draft.giveaway ? false : draft.negotiable,
+        giveaway: draft.giveaway,
+        specs: [draft.condition === 'NEW' ? 'Hàng mới' : 'Đã sử dụng'],
+      })
+      setView('my-listings')
+      setNotice('Tin đăng đã được gửi và đang chờ quản trị viên duyệt.')
+      try {
+        await reloadFromApi()
+      } catch (refreshError) {
+        console.error('Tin đã gửi nhưng không thể làm mới danh sách.', refreshError)
+        setNotice('Tin đã được gửi chờ duyệt, nhưng chưa thể làm mới danh sách. Vui lòng tải lại trang.')
+      }
+    } catch (error) {
+      console.error('Không thể gửi bản nháp chờ duyệt.', error)
+      throw error
+    }
+  }
+
   async function authenticate(mode: 'login' | 'register', fullName: string, email: string, password: string, phone: string): Promise<AuthSession | null> {
     if (mode === 'login') return api.login(email, password)
     await api.register(fullName, email, password, phone.replace(/\D/g, ''))
@@ -344,6 +460,7 @@ export function App() {
     api.clearSession()
     setUser(null)
     setSavedIds([])
+    setUnreadMessageCount(0)
     navigate('home')
     setAuthNotice('Bạn đã đăng xuất.')
   }
@@ -406,7 +523,7 @@ export function App() {
       onSearch={submitSearch}
       onSignOut={signOut}
       favoritesCount={savedIds.length}
-      unreadCount={user && apiState === 'connected' ? 1 : 0}
+      unreadCount={unreadMessageCount}
       user={user}
       authNotice={authNotice}
       onDismissAuthNotice={() => setAuthNotice('')}
@@ -416,7 +533,7 @@ export function App() {
       {notice && <div className="toast-message" role="status">{notice}<button onClick={() => setNotice('')} aria-label="Đóng thông báo">×</button></div>}
       {view === 'home' && <ExplorePage listings={activeListings} savedIds={savedIds} onOpen={openListing} onToggleSaved={toggleSaved} onCategory={selectCategory} />}
       {view === 'search' && <SearchPage listings={activeListings} savedIds={savedIds} query={query} category={category} onQueryChange={setQuery} onCategoryChange={setCategory} onOpen={openListing} onToggleSaved={toggleSaved} />}
-      {view === 'detail' && selectedListing && <ListingDetailPage key={selectedListing.id} listing={selectedListing} related={relatedListings} saved={savedIds.includes(selectedListing.id)} onBack={() => navigate(previousView === 'detail' ? 'home' : previousView)} onToggleSaved={toggleSaved} onOpen={openListing} onContact={() => navigate('messages')} onSeller={() => navigate('profile')} onRevealPhone={async (id) => {
+      {view === 'detail' && selectedListing && <ListingDetailPage key={selectedListing.id} listing={selectedListing} related={relatedListings} saved={savedIds.includes(selectedListing.id)} currentUserId={user ? String(user.id) : null} onBack={() => navigate(previousView === 'detail' ? 'home' : previousView)} onToggleSaved={toggleSaved} onOpen={openListing} onContact={() => void openChat(selectedListing.id)} onSeller={() => navigate('profile')} onRevealPhone={async (id) => {
         if (apiState !== 'connected') throw new Error('Backend chưa kết nối; không thể tải số điện thoại thật.')
         if (!user) {
           setNotice('Đăng nhập để xem số điện thoại người bán.')
@@ -426,11 +543,16 @@ export function App() {
         return api.getSellerPhone(id)
       }} />}
       {view === 'detail' && !selectedListing && <div className="empty-state"><h3>Không tìm thấy tin đăng</h3><button className="button-primary" onClick={() => navigate('home')}>Về trang chủ</button></div>}
-      {view === 'sell' && <SellPage onCancel={() => navigate('home')} onSubmit={createListing} />}
-      {view === 'my-listings' && <MyListingsPage listings={listings} onStatusChange={changeStatus} onOpen={openListing} onSell={() => navigate('sell')} sellerId={currentSellerId} />}
+      {view === 'sell' && <SellPage onCancel={() => navigate(sellReturnView)} onSubmit={createListing} onLoadDraft={loadListingDraft} onSaveDraft={saveListingDraft} sellerName={user?.fullName ?? 'Người bán'} />}
+      {view === 'my-listings' && <MyListingsPage listings={listings} onStatusChange={changeStatus} onOpen={openListing} onSell={startNewListing} onEditDraft={editSavedDraft} sellerId={currentSellerId} onLoadDraft={loadListingDraft} onDeleteDraft={deleteListingDraft} onPublishDraft={publishSavedDraft} />}
       {view === 'favorites' && <FavoritesPage listings={listings} savedIds={savedIds} onOpen={openListing} onToggleSaved={toggleSaved} />}
       {view === 'check-in' && <CheckInPage userId={user?.id ?? null} onBack={() => navigate('home')} />}
-      {view === 'messages' && <InboxPage />}
+      {view === 'messages' && user && apiState === 'connected' && <InboxPage api={api} user={user} initialConversationId={selectedConversationId} onUnreadCountChange={updateUnreadMessageCount} onOpenListing={(id) => {
+        const listing = listings.find((item) => item.id === id)
+        if (listing) openListing(listing)
+        else setNotice('Không tìm thấy tin đăng liên quan đến cuộc trò chuyện này.')
+      }} />}
+      {view === 'messages' && apiState !== 'connected' && <div className="empty-state"><h3>Không thể kết nối hộp thư</h3><p>{apiError || 'Đang kết nối backend. Vui lòng thử lại sau.'}</p><button className="button-primary" onClick={retryConnection}>Thử kết nối lại</button></div>}
       {view === 'notifications' && <NotificationsPage onNavigate={navigate} />}
       {view === 'profile' && user && <ProfilePage listings={listings} onOpen={openListing} onToggleSaved={toggleSaved} onAuth={signOut} fullName={currentSellerName} sellerId={currentSellerId} />}
       {view === 'profile' && !user && <div className="empty-state"><h3>Đăng nhập để xem hồ sơ của bạn</h3><button className="button-primary" onClick={() => navigate('auth')}>Đăng nhập</button></div>}
