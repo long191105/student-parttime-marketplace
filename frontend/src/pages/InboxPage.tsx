@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { ArrowLeft, ExternalLink, Map, MapPin, MessageCircle, Mic, MicOff, Phone, PhoneOff, Search, Send, Video, VideoOff, X } from 'lucide-react'
 import type { AuthUser, CallType, ChatConversation, ChatMessage, ChatSocketEvent, MarketplaceApi } from '../services/MarketplaceApi'
 
@@ -6,6 +7,7 @@ interface InboxPageProps {
   api: MarketplaceApi
   user: AuthUser
   initialConversationId: string | null
+  isVisible: boolean
   onOpenListing: (listingId: string) => void
   onUnreadCountChange: (count: number) => void
 }
@@ -13,11 +15,11 @@ interface InboxPageProps {
 type ConnectionState = 'connecting' | 'connected' | 'disconnected' | 'error'
 type CallState =
   | { status: 'idle' }
-  | { status: 'incoming' | 'outgoing' | 'connecting' | 'connected' | 'failed'; conversationId: string; callType: CallType; peerName: string; isCaller: boolean; error?: string }
+  | { status: 'incoming' | 'contacting' | 'outgoing' | 'connecting' | 'connected' | 'failed'; conversationId: string; callType: CallType; peerName: string; isCaller: boolean; error?: string }
 type ActiveCallState = Exclude<CallState, { status: 'idle' }>
 type CallSignalEvent = Extract<ChatSocketEvent, { type: `call-${string}` }>
 
-export function InboxPage({ api, user, initialConversationId, onOpenListing, onUnreadCountChange }: InboxPageProps) {
+export function InboxPage({ api, user, initialConversationId, isVisible, onOpenListing, onUnreadCountChange }: InboxPageProps) {
   const [conversations, setConversations] = useState<ChatConversation[]>([])
   const [activeId, setActiveId] = useState(initialConversationId ?? '')
   const [messagesByConversation, setMessagesByConversation] = useState<Record<string, ChatMessage[]>>({})
@@ -40,6 +42,8 @@ export function InboxPage({ api, user, initialConversationId, onOpenListing, onU
   const remoteVideoRef = useRef<HTMLVideoElement>(null)
   const remoteAudioRef = useRef<HTMLAudioElement>(null)
   const activeIdRef = useRef(activeId)
+  const isVisibleRef = useRef(isVisible)
+  isVisibleRef.current = isVisible
   const connectionRef = useRef<ConnectionState>(connection)
   const conversationsRef = useRef(conversations)
   const callStateRef = useRef<CallState>(callState)
@@ -52,7 +56,7 @@ export function InboxPage({ api, user, initialConversationId, onOpenListing, onU
   const localStreamRef = useRef<MediaStream | null>(null)
   const remoteStreamRef = useRef<MediaStream | null>(null)
   const pendingCandidatesRef = useRef<RTCIceCandidateInit[]>([])
-  const initialConversationAppliedRef = useRef(false)
+  const appliedInitialConversationIdRef = useRef<string | null>(null)
   const refreshTimerRef = useRef<number | null>(null)
 
   const refreshConversations = useCallback(async () => {
@@ -60,23 +64,31 @@ export function InboxPage({ api, user, initialConversationId, onOpenListing, onU
       const nextConversations = await api.listChatConversations()
       setConversations(nextConversations)
       onUnreadCountChange(nextConversations.reduce((total, item) => total + item.unreadCount, 0))
-      if (!initialConversationAppliedRef.current
-        && initialConversationId
-        && nextConversations.some((item) => item.id === initialConversationId)) {
-        initialConversationAppliedRef.current = true
-        setActiveId(initialConversationId)
-      } else {
-        setActiveId((current) => current && nextConversations.some((item) => item.id === current)
-          ? current
-          : nextConversations[0]?.id ?? '')
-      }
+      setActiveId((current) => current && nextConversations.some((item) => item.id === current)
+        ? current
+        : isVisibleRef.current ? nextConversations[0]?.id ?? '' : '')
       setError('')
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : 'Không thể tải hộp thư.')
     } finally {
       setIsLoadingConversations(false)
     }
-  }, [api, initialConversationId, onUnreadCountChange])
+  }, [api, onUnreadCountChange])
+
+  const shouldLoadMessages = isVisible || callState.status !== 'idle'
+
+  useEffect(() => {
+    if (!isVisible) {
+      appliedInitialConversationIdRef.current = null
+      return
+    }
+    if (initialConversationId
+      && initialConversationId !== appliedInitialConversationIdRef.current
+      && conversations.some((item) => item.id === initialConversationId)) {
+      appliedInitialConversationIdRef.current = initialConversationId
+      setActiveId(initialConversationId)
+    }
+  }, [conversations, initialConversationId, isVisible])
 
   useEffect(() => {
     activeIdRef.current = activeId
@@ -182,10 +194,6 @@ export function InboxPage({ api, user, initialConversationId, onOpenListing, onU
     localStream?.getTracks().forEach((track) => peer.addTrack(track, localStream))
     peer.ontrack = (event) => {
       remoteStreamRef.current = event.streams[0] ?? new MediaStream([event.track])
-      updateCallState((current) => current.status === 'idle' ? current : {
-        ...current,
-        status: 'connected',
-      })
     }
     peer.onicecandidate = (event) => {
       if (event.candidate) {
@@ -251,6 +259,13 @@ export function InboxPage({ api, user, initialConversationId, onOpenListing, onU
 
     if (current.status === 'idle' || current.conversationId !== event.conversationId) return
 
+    if (event.type === 'call-contacting') return
+
+    if (event.type === 'call-ringing' && current.status === 'contacting') {
+      updateCallState({ ...current, status: 'outgoing' })
+      return
+    }
+
     if (event.type === 'call-error') {
       finishCall()
       setError(event.message)
@@ -264,7 +279,7 @@ export function InboxPage({ api, user, initialConversationId, onOpenListing, onU
       return
     }
 
-    if (event.type === 'call-accept' && current.status === 'outgoing') {
+    if (event.type === 'call-accept' && (current.status === 'contacting' || current.status === 'outgoing')) {
       updateCallState({ ...current, status: 'connecting' })
       const peer = createPeerConnection(event.conversationId)
       const offer = await peer.createOffer()
@@ -336,6 +351,14 @@ export function InboxPage({ api, user, initialConversationId, onOpenListing, onU
     return () => window.clearTimeout(timer)
   }, [refreshConversations])
 
+  const wasVisibleRef = useRef(isVisible)
+  useEffect(() => {
+    if (isVisible && !wasVisibleRef.current) {
+      void refreshConversations()
+    }
+    wasVisibleRef.current = isVisible
+  }, [isVisible, refreshConversations])
+
   useEffect(() => {
     let disposed = false
     let reconnect = true
@@ -388,7 +411,8 @@ export function InboxPage({ api, user, initialConversationId, onOpenListing, onU
             return { ...current, [event.message.conversationId]: [...threadMessages, event.message] }
           })
           void refreshConversations()
-          if (event.message.conversationId === activeIdRef.current) {
+          if (event.message.conversationId === activeIdRef.current
+            && (isVisibleRef.current || callStateRef.current.status !== 'idle')) {
             void api.getChatMessages(event.message.conversationId).then((nextMessages) => {
               setMessagesByConversation((current) => ({ ...current, [event.message.conversationId]: nextMessages }))
             }).catch((loadError: unknown) => {
@@ -397,8 +421,13 @@ export function InboxPage({ api, user, initialConversationId, onOpenListing, onU
           }
         })
         socketRef.current = socket
-        socket.addEventListener('close', () => {
+        socket.addEventListener('close', (closeEvent) => {
           if (disposed) return
+          console.warn('Chat WebSocket closed unexpectedly.', {
+            code: closeEvent.code,
+            reason: closeEvent.reason,
+            wasClean: closeEvent.wasClean,
+          })
           socketRef.current = null
           if (callStateRef.current.status !== 'idle') {
             disposeCallMedia()
@@ -423,13 +452,18 @@ export function InboxPage({ api, user, initialConversationId, onOpenListing, onU
       disposed = true
       reconnect = false
       if (refreshTimerRef.current !== null) window.clearTimeout(refreshTimerRef.current)
-      socket?.close()
+      if (socket?.readyState === WebSocket.CONNECTING) {
+        const pendingSocket = socket
+        pendingSocket.addEventListener('open', () => pendingSocket.close(), { once: true })
+      } else {
+        socket?.close()
+      }
       socketRef.current = null
     }
   }, [api, refreshConversations])
 
   useEffect(() => {
-    if (!activeId) {
+    if (!activeId || !shouldLoadMessages) {
       return
     }
 
@@ -447,7 +481,7 @@ export function InboxPage({ api, user, initialConversationId, onOpenListing, onU
       }
     })
     return () => { active = false }
-  }, [activeId, api, refreshConversations])
+  }, [activeId, api, refreshConversations, shouldLoadMessages])
 
   const activeChat = conversations.find((item) => item.id === activeId)
   const messages = messagesByConversation[activeId] ?? []
@@ -509,7 +543,7 @@ export function InboxPage({ api, user, initialConversationId, onOpenListing, onU
       setMicrophoneEnabled(true)
       setCameraEnabled(true)
       updateCallState({
-        status: 'outgoing',
+        status: 'contacting',
         conversationId,
         callType,
         peerName: activeChat.participantName,
@@ -526,6 +560,14 @@ export function InboxPage({ api, user, initialConversationId, onOpenListing, onU
         : callError instanceof Error ? callError.message : 'Không thể bắt đầu cuộc gọi.')
       finishCall()
     }
+  }
+
+  function startCallSafely(callType: CallType) {
+    void startCall(callType).catch((callError: unknown) => {
+      console.error('Không thể bắt đầu cuộc gọi.', callError)
+      if (callStateRef.current.status !== 'idle') finishCall()
+      setError(callError instanceof Error ? callError.message : 'Không thể bắt đầu cuộc gọi.')
+    })
   }
 
   async function acceptCall() {
@@ -561,11 +603,14 @@ export function InboxPage({ api, user, initialConversationId, onOpenListing, onU
       const latest = getCallState()
       if (latest.status === 'idle' || latest.conversationId !== current.conversationId) return
       console.error('Không thể chấp nhận cuộc gọi.', callError)
-      sendCallSignal('call-decline', current.conversationId)
+      sendCallSignal('call-decline', current.conversationId, { callType: current.callType })
       disposeCallMedia()
-      updateCallState({ ...current, status: 'failed', error: callError instanceof DOMException && callError.name === 'NotAllowedError'
+      const callErrorMessage = callError instanceof DOMException && callError.name === 'NotAllowedError'
         ? 'Bạn cần cho phép truy cập micro/camera để nhận cuộc gọi.'
-        : callError instanceof Error ? callError.message : 'Không thể nhận cuộc gọi.' })
+        : callError instanceof DOMException && callError.name === 'NotReadableError'
+          ? 'Camera hoặc micro đang được ứng dụng khác sử dụng. Hãy đóng ứng dụng/tab khác đang dùng thiết bị và yêu cầu gọi lại.'
+          : callError instanceof Error ? callError.message : 'Không thể nhận cuộc gọi.'
+      updateCallState({ ...current, status: 'failed', error: callErrorMessage })
     }
   }
 
@@ -650,11 +695,11 @@ export function InboxPage({ api, user, initialConversationId, onOpenListing, onU
   }, [ringingCallType])
 
   useEffect(() => {
-    if (callState.status !== 'outgoing') return
+    if (callState.status !== 'contacting' && callState.status !== 'outgoing') return
     const { conversationId } = callState
     const timeout = window.setTimeout(() => {
       const current = callStateRef.current
-      if (current.status !== 'outgoing' || current.conversationId !== conversationId) return
+      if ((current.status !== 'contacting' && current.status !== 'outgoing') || current.conversationId !== conversationId) return
       sendCallSignal('call-end', conversationId, getCallEndDetails(current, 'no-answer'))
       finishCallRef.current()
       setError('Không có phản hồi. Cuộc gọi đã kết thúc.')
@@ -786,10 +831,10 @@ export function InboxPage({ api, user, initialConversationId, onOpenListing, onU
                 <span className="avatar avatar-tone-green">{activeChat.participantInitials}</span>
                 <span className="chat-person"><strong>{activeChat.participantName}</strong><small>{connectionLabel}</small></span>
                 <div className="chat-header-actions">
-                  <button type="button" aria-label="Gọi thoại" title="Gọi thoại" onClick={() => { void startCall('audio') }} disabled={connection !== 'connected' || callState.status !== 'idle'}>
+                  <button type="button" aria-label="Gọi thoại" title="Gọi thoại" onClick={() => startCallSafely('audio')} disabled={connection !== 'connected' || callState.status !== 'idle'}>
                     <Phone size={17} />
                   </button>
-                  <button type="button" aria-label="Gọi video" title="Gọi video" onClick={() => { void startCall('video') }} disabled={connection !== 'connected' || callState.status !== 'idle'}>
+                  <button type="button" aria-label="Gọi video" title="Gọi video" onClick={() => startCallSafely('video')} disabled={connection !== 'connected' || callState.status !== 'idle'}>
                     <Video size={18} />
                   </button>
                 </div>
@@ -810,7 +855,7 @@ export function InboxPage({ api, user, initialConversationId, onOpenListing, onU
                           key={chatMessage.id}
                           message={chatMessage}
                           isOwnMessage={chatMessage.senderId === String(user.id)}
-                          onCallBack={(callType) => { void startCall(callType) }}
+                          onCallBack={startCallSafely}
                           disabled={connection !== 'connected' || callState.status !== 'idle'}
                         />
                     : <div className={`message-bubble ${chatMessage.senderId === String(user.id) ? 'message-outgoing' : 'message-incoming'}`} key={chatMessage.id}>
@@ -849,7 +894,7 @@ export function InboxPage({ api, user, initialConversationId, onOpenListing, onU
           )}
         </section>
       </div>
-      {callState.status !== 'idle' && (
+      {callState.status !== 'idle' && createPortal(
         <div className="call-overlay">
           <section className={`call-dialog${callState.status === 'incoming' || callState.status === 'outgoing' ? ' call-dialog-ringing' : ''}`} role="dialog" aria-modal="true" aria-label="Cuộc gọi">
             <header className="call-dialog-heading">
@@ -870,7 +915,8 @@ export function InboxPage({ api, user, initialConversationId, onOpenListing, onU
             )}
             <p className={`call-status${callState.status === 'incoming' || callState.status === 'outgoing' ? ' call-status-ringing' : ''}`} role="status">
               {callState.status === 'incoming' ? 'Đang đổ chuông...'
-                : callState.status === 'outgoing' ? 'Đang đổ chuông...'
+                : callState.status === 'contacting' ? 'Đang liên hệ...'
+                  : callState.status === 'outgoing' ? 'Đang rung chuông...'
                   : callState.status === 'connecting' ? 'Đang kết nối...'
                     : callState.status === 'connected' ? 'Đã kết nối'
                       : callState.error}
@@ -898,7 +944,8 @@ export function InboxPage({ api, user, initialConversationId, onOpenListing, onU
               </div>
             )}
           </section>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   )

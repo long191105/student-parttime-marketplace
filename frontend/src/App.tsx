@@ -13,7 +13,7 @@ import { ProfilePage } from './pages/ProfilePage'
 import { SearchPage } from './pages/SearchPage'
 import { SellPage } from './pages/SellPage'
 import type { Listing, ListingData, ListingStatus } from './domain/Listing'
-import { MarketplaceApi, type AuthSession, type AuthUser, type ListingFormDraft } from './services/MarketplaceApi'
+import { MarketplaceApi, MarketplaceApiError, type AuthSession, type AuthUser, type ListingFormDraft } from './services/MarketplaceApi'
 import { MarketplaceService } from './services/MarketplaceService'
 
 const api = new MarketplaceApi()
@@ -93,6 +93,9 @@ export function App() {
             nextListings = mergeListings(publicListings, myListings, pending)
             nextSavedIds = favorites.map((listing) => listing.id)
           } catch (error) {
+            if (!(error instanceof MarketplaceApiError) || error.status !== 401) {
+              throw error
+            }
             api.clearSession()
             nextUser = null
             console.error('Không thể khôi phục phiên tài khoản.', error)
@@ -547,11 +550,13 @@ export function App() {
       {view === 'my-listings' && <MyListingsPage listings={listings} onStatusChange={changeStatus} onOpen={openListing} onSell={startNewListing} onEditDraft={editSavedDraft} sellerId={currentSellerId} onLoadDraft={loadListingDraft} onDeleteDraft={deleteListingDraft} onPublishDraft={publishSavedDraft} />}
       {view === 'favorites' && <FavoritesPage listings={listings} savedIds={savedIds} onOpen={openListing} onToggleSaved={toggleSaved} />}
       {view === 'check-in' && <CheckInPage userId={user?.id ?? null} onBack={() => navigate('home')} />}
-      {view === 'messages' && user && apiState === 'connected' && <InboxPage api={api} user={user} initialConversationId={selectedConversationId} onUnreadCountChange={updateUnreadMessageCount} onOpenListing={(id) => {
-        const listing = listings.find((item) => item.id === id)
-        if (listing) openListing(listing)
-        else setNotice('Không tìm thấy tin đăng liên quan đến cuộc trò chuyện này.')
-      }} />}
+      {user && apiState === 'connected' && <div className={view === 'messages' ? '' : 'inbox-background-listener'} aria-hidden={view !== 'messages'}>
+        <InboxPage api={api} user={user} initialConversationId={selectedConversationId} isVisible={view === 'messages'} onUnreadCountChange={updateUnreadMessageCount} onOpenListing={(id) => {
+          const listing = listings.find((item) => item.id === id)
+          if (listing) openListing(listing)
+          else setNotice('Không tìm thấy tin đăng liên quan đến cuộc trò chuyện này.')
+        }} />
+      </div>}
       {view === 'messages' && apiState !== 'connected' && <div className="empty-state"><h3>Không thể kết nối hộp thư</h3><p>{apiError || 'Đang kết nối backend. Vui lòng thử lại sau.'}</p><button className="button-primary" onClick={retryConnection}>Thử kết nối lại</button></div>}
       {view === 'notifications' && <NotificationsPage onNavigate={navigate} />}
       {view === 'profile' && user && <ProfilePage listings={listings} onOpen={openListing} onToggleSaved={toggleSaved} onAuth={signOut} fullName={currentSellerName} sellerId={currentSellerId} />}

@@ -1,11 +1,13 @@
 package com.example.demo.controller;
 
+import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.server.ResponseStatusException;
 
 import com.example.demo.dto.AuthResponse;
 import com.example.demo.dto.EmailRequest;
@@ -51,6 +53,9 @@ public class AuthController {
 
     @GetMapping("/me")
     public UserSummary currentUser(@AuthenticationPrincipal UserAccount user) {
+        if (user == null) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Phiên đăng nhập không hợp lệ hoặc đã hết hạn.");
+        }
         return authService.currentUser(user);
     }
 }

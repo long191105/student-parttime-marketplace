@@ -698,6 +698,7 @@ img { display: block; max-width: 100%; }
 .favorites-page .workspace-heading h1 svg { color: #d87c61; }
 
 .inbox-page { min-height: 550px; }
+.inbox-background-listener { display: none; }
 .inbox-heading { display: flex; align-items: flex-end; justify-content: space-between; margin: 10px 0 18px; }
 .inbox-heading h1 { font-size: 26px; }
 .inbox-encryption { display: inline-flex; align-items: center; gap: 7px; color: #899185; font-size: 10px; }

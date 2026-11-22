@@ -148,7 +148,7 @@ class ChatServiceTest {
 
         assertEquals("48", response.id());
         assertEquals("Người nhận đang bận. Đã nhỡ cuộc gọi video", response.content());
-        assertEquals("TEXT", response.messageType());
+        assertEquals("MISSED_CALL", response.messageType());
         verify(conversationRepository).save(conversation);
     }
 
@@ -183,13 +183,30 @@ class ChatServiceTest {
         assertEquals("Người nhận hiện không trực tuyến để nhận cuộc gọi video", unavailable.content());
         assertEquals("Cuộc gọi thoại đã bị hủy", cancelled.content());
         assertEquals("Không có phản hồi cho cuộc gọi video", noAnswer.content());
-        assertEquals("TEXT", declined.messageType());
-        assertEquals("TEXT", unavailable.messageType());
+        assertEquals("MISSED_CALL", declined.messageType());
+        assertEquals("MISSED_CALL", unavailable.messageType());
+    }
+
+    @Test
+    void attributesDeclinedCallToTheInitiatorWhenRecipientDeclines() {
+        when(currentUserService.requireUser()).thenReturn(seller);
+        when(conversationRepository.findById(31L)).thenReturn(Optional.of(conversation));
+        when(messageRepository.save(any(ChatMessage.class))).thenAnswer(invocation -> {
+            ChatMessage saved = invocation.getArgument(0);
+            ReflectionTestUtils.setField(saved, "id", 51L);
+            return saved;
+        });
+
+        var response = chatService.recordCallStatusMessage(31L, "video", "declined", 11L);
+
+        assertEquals("11", response.senderId());
+        assertEquals("Nguyen Long", response.senderName());
+        assertEquals("MISSED_CALL", response.messageType());
     }
 
     @Test
     void recordsCompletedCallWithItsDuration() {
-        when(currentUserService.requireUser()).thenReturn(buyer);
+        when(currentUserService.requireUser()).thenReturn(seller);
         when(conversationRepository.findById(31L)).thenReturn(Optional.of(conversation));
         when(messageRepository.save(any(ChatMessage.class))).thenAnswer(invocation -> {
             ChatMessage saved = invocation.getArgument(0);
@@ -197,10 +214,11 @@ class ChatServiceTest {
             return saved;
         });
 
-        var response = chatService.recordCompletedCall(31L, "video", 125);
+        var response = chatService.recordCompletedCall(31L, "video", 125, 11L);
 
         assertEquals("Cuộc gọi video đã kết thúc • 2 phút 5 giây", response.content());
-        assertEquals("TEXT", response.messageType());
+        assertEquals("11", response.senderId());
+        assertEquals("CALL", response.messageType());
         verify(conversationRepository).save(conversation);
     }
 
