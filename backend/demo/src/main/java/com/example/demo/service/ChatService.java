@@ -132,7 +132,16 @@ public class ChatService {
 
     @Transactional
     public ChatMessageResponse recordCallStatusMessage(Long conversationId, String callType, String outcome) {
-        UserAccount sender = currentUserService.requireUser();
+        return recordCallStatusMessage(conversationId, callType, outcome, null);
+    }
+
+    @Transactional
+    public ChatMessageResponse recordCallStatusMessage(
+            Long conversationId,
+            String callType,
+            String outcome,
+            Long callInitiatorId) {
+        UserAccount actor = currentUserService.requireUser();
         if (!"audio".equals(callType) && !"video".equals(callType)) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Loại cuộc gọi không hợp lệ.");
         }
@@ -145,7 +154,8 @@ public class ChatService {
             case "no-answer" -> "Không có phản hồi cho cuộc gọi " + callLabel;
             default -> throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Trạng thái cuộc gọi không hợp lệ.");
         };
-        ChatConversation conversation = requireParticipant(conversationId, sender);
+        ChatConversation conversation = requireParticipant(conversationId, actor);
+        UserAccount sender = resolveCallInitiator(conversation, actor, callInitiatorId);
         ChatMessage message = messageRepository.save(new ChatMessage(
                 conversation,
                 sender,
@@ -161,14 +171,24 @@ public class ChatService {
 
     @Transactional
     public ChatMessageResponse recordCompletedCall(Long conversationId, String callType, long durationSeconds) {
-        UserAccount sender = currentUserService.requireUser();
+        return recordCompletedCall(conversationId, callType, durationSeconds, null);
+    }
+
+    @Transactional
+    public ChatMessageResponse recordCompletedCall(
+            Long conversationId,
+            String callType,
+            long durationSeconds,
+            Long callInitiatorId) {
+        UserAccount actor = currentUserService.requireUser();
         if (!"audio".equals(callType) && !"video".equals(callType)) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Loại cuộc gọi không hợp lệ.");
         }
         if (durationSeconds < 0 || durationSeconds > 86_400) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Thời lượng cuộc gọi không hợp lệ.");
         }
-        ChatConversation conversation = requireParticipant(conversationId, sender);
+        ChatConversation conversation = requireParticipant(conversationId, actor);
+        UserAccount sender = resolveCallInitiator(conversation, actor, callInitiatorId);
         String callLabel = "video".equals(callType) ? "video" : "thoại";
         String content = "Cuộc gọi " + callLabel + " đã kết thúc"
                 + (durationSeconds == 0 ? "" : " • " + formatCallDuration(durationSeconds));
@@ -183,6 +203,22 @@ public class ChatService {
         conversation.touch();
         conversationRepository.save(conversation);
         return ChatMessageResponse.from(message);
+    }
+
+    private UserAccount resolveCallInitiator(
+            ChatConversation conversation,
+            UserAccount actor,
+            Long callInitiatorId) {
+        if (callInitiatorId == null) {
+            return actor;
+        }
+        if (conversation.getBuyer().getId().equals(callInitiatorId)) {
+            return conversation.getBuyer();
+        }
+        if (conversation.getSeller().getId().equals(callInitiatorId)) {
+            return conversation.getSeller();
+        }
+        throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Người gọi không thuộc cuộc trò chuyện.");
     }
 
     @Transactional(readOnly = true)

@@ -45,6 +45,7 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
     private final ChatService chatService;
     private final ObjectMapper objectMapper;
     private final Map<Long, Set<WebSocketSession>> sessionsByUser = new ConcurrentHashMap<>();
+    private final Map<Long, Long> callInitiatorsByConversation = new ConcurrentHashMap<>();
 
     public ChatWebSocketHandler(
             JwtService jwtService,
@@ -157,10 +158,16 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
                     return;
                 }
                 String outcome = "call-busy".equals(type) ? "busy" : "declined";
-                ChatMessageResponse callMessage = chatService.recordCallStatusMessage(conversationId, callType, outcome);
+                Long callInitiatorId = removeCallInitiator(conversationId, senderId);
+                ChatMessageResponse callMessage = chatService.recordCallStatusMessage(
+                        conversationId,
+                        callType,
+                        outcome,
+                        callInitiatorId);
                 broadcast(participants, Map.of("type", "message", "message", callMessage));
                 event.put("callType", callType);
             } else if ("call-end".equals(type)) {
+                Long callInitiatorId = removeCallInitiator(conversationId, senderId);
                 String outcome = request.path("outcome").asString("");
                 if (!outcome.isBlank()) {
                     String callType = request.path("callType").asString("");
@@ -178,9 +185,14 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
                         callMessage = chatService.recordCompletedCall(
                                 conversationId,
                                 callType,
-                                duration.asLong(-1));
+                                duration.asLong(-1),
+                                callInitiatorId);
                     } else if ("cancelled".equals(outcome) || "no-answer".equals(outcome)) {
-                        callMessage = chatService.recordCallStatusMessage(conversationId, callType, outcome);
+                        callMessage = chatService.recordCallStatusMessage(
+                                conversationId,
+                                callType,
+                                outcome,
+                                callInitiatorId);
                     } else {
                         sendCallError(session, conversationId, "Trạng thái cuộc gọi không hợp lệ.");
                         return;
@@ -215,6 +227,11 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
                 boolean recipientOnline = recipients.stream().anyMatch(this::hasOpenSession);
                 sendCallStatus(session, "call-contacting", conversationId, senderId);
                 if (recipientOnline) {
+                    Long existingInitiatorId = callInitiatorsByConversation.putIfAbsent(conversationId, senderId);
+                    if (existingInitiatorId != null && !existingInitiatorId.equals(senderId)) {
+                        sendCallError(session, conversationId, "Cuộc trò chuyện đang có cuộc gọi khác.");
+                        return;
+                    }
                     sendCallStatus(session, "call-ringing", conversationId, senderId);
                     broadcast(recipients, event);
                 }
@@ -327,8 +344,16 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
         Set<WebSocketSession> sessions = sessionsByUser.get(userId);
         if (sessions != null) {
             sessions.remove(session);
-            if (sessions.isEmpty()) sessionsByUser.remove(userId, sessions);
+            if (sessions.isEmpty() && sessionsByUser.remove(userId, sessions)) {
+                callInitiatorsByConversation.entrySet()
+                        .removeIf(entry -> entry.getValue().equals(userId));
+            }
         }
+    }
+
+    private Long removeCallInitiator(long conversationId, long fallbackUserId) {
+        Long callInitiatorId = callInitiatorsByConversation.remove(conversationId);
+        return callInitiatorId == null ? fallbackUserId : callInitiatorId;
     }
 
     private static Double optionalNumber(JsonNode node, String field) {
