@@ -35,7 +35,7 @@ export function InboxPage({ api, user, initialConversationId, onOpenListing, onU
   const [microphoneEnabled, setMicrophoneEnabled] = useState(true)
   const [cameraEnabled, setCameraEnabled] = useState(true)
   const socketRef = useRef<WebSocket | null>(null)
-  const messageEndRef = useRef<HTMLDivElement>(null)
+  const messagesContainerRef = useRef<HTMLDivElement>(null)
   const localVideoRef = useRef<HTMLVideoElement>(null)
   const remoteVideoRef = useRef<HTMLVideoElement>(null)
   const remoteAudioRef = useRef<HTMLAudioElement>(null)
@@ -745,7 +745,10 @@ export function InboxPage({ api, user, initialConversationId, onOpenListing, onU
         : 'Đang kết nối lại...'
 
   useEffect(() => {
-    messageEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+    const messagesContainer = messagesContainerRef.current
+    if (messagesContainer) {
+      messagesContainer.scrollTo({ top: messagesContainer.scrollHeight, behavior: 'smooth' })
+    }
   }, [activeId, messages.length])
 
   return (
@@ -796,7 +799,7 @@ export function InboxPage({ api, user, initialConversationId, onOpenListing, onU
                 <span><small>ĐANG TRAO ĐỔI</small><strong>{activeChat.listingTitle}</strong><b>{formatPrice(activeChat.price, activeChat.giveaway)}</b></span>
                 <span className="chat-product-link">Xem tin <ExternalLink size={12} /></span>
               </button>
-              <div className="chat-messages" aria-live="polite">
+              <div className="chat-messages" ref={messagesContainerRef} aria-live="polite">
                 {isLoadingMessages && <p className="chat-list-status">Đang tải tin nhắn...</p>}
                 {!isLoadingMessages && messages.length === 0 && <p className="chat-empty-thread"><MessageCircle size={20} />Gửi lời chào để bắt đầu trao đổi về tin đăng này.</p>}
                 {messages.map((chatMessage) => (
@@ -814,7 +817,6 @@ export function InboxPage({ api, user, initialConversationId, onOpenListing, onU
                         {chatMessage.content}<small>{formatTime(chatMessage.sentAt)}</small>
                       </div>
                 ))}
-                <div ref={messageEndRef} />
               </div>
               {isPinningLocation && (
                 <div className="chat-location-pin-panel">
