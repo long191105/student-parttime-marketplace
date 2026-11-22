@@ -27,7 +27,7 @@ Nhóm có thể dùng chung database PostgreSQL trên Neon khi chạy ứng dụ
 
 `DB_URL` mặc định dùng SSL (`sslmode=require`). Nếu muốn dùng PostgreSQL local thay vì Neon, đổi `DB_URL`, `DB_USERNAME` và `DB_PASSWORD` trong `.env`. File `.env` đã được Git bỏ qua; chỉ commit `.env.example`, không commit thông tin đăng nhập.
 
-Khi backend khởi động, Hibernate cập nhật schema tự động (`ddl-auto=update`). Vì database được chia sẻ, thay đổi schema có thể ảnh hưởng các thành viên khác; không dùng database này cho dữ liệu production.
+Khi backend khởi động, Hibernate cập nhật schema tự động (`ddl-auto=update`), nhưng không cập nhật các CHECK constraint đã tồn tại. Các thay đổi constraint cần chạy migration tương ứng trong `backend/demo/src/main/resources/db/migration`; Flyway hiện tắt mặc định (`FLYWAY_ENABLED=false`). Vì database được chia sẻ, thay đổi schema có thể ảnh hưởng các thành viên khác; không dùng database này cho dữ liệu production.
 
 ## Cấu hình xác minh email đăng ký
 

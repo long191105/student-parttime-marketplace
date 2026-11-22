@@ -211,13 +211,13 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
             Set<Long> recipients = participants.stream()
                     .filter(participantId -> !participantId.equals(senderId))
                     .collect(java.util.stream.Collectors.toSet());
-            if ("call-invite".equals(type) && recipients.stream().noneMatch(this::hasOpenSession)) {
-                ChatMessageResponse callMessage = chatService.recordCallStatusMessage(
-                        conversationId,
-                        (String) event.get("callType"),
-                        "unavailable");
-                broadcast(participants, Map.of("type", "message", "message", callMessage));
-                sendCallError(session, conversationId, "Người nhận hiện không trực tuyến để nhận cuộc gọi.");
+            if ("call-invite".equals(type)) {
+                boolean recipientOnline = recipients.stream().anyMatch(this::hasOpenSession);
+                sendCallStatus(session, "call-contacting", conversationId, senderId);
+                if (recipientOnline) {
+                    sendCallStatus(session, "call-ringing", conversationId, senderId);
+                    broadcast(recipients, event);
+                }
                 return;
             }
             broadcast(recipients, event);
@@ -305,6 +305,18 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
                     "type", "call-error",
                     "conversationId", Long.toString(conversationId),
                     "message", message))));
+        }
+    }
+
+    private void sendCallStatus(WebSocketSession session, String type, long conversationId, long senderId)
+            throws IOException {
+        if (!session.isOpen()) return;
+        Map<String, Object> event = Map.of(
+                "type", type,
+                "conversationId", Long.toString(conversationId),
+                "senderId", Long.toString(senderId));
+        synchronized (session) {
+            session.sendMessage(new TextMessage(objectMapper.writeValueAsString(event)));
         }
     }
 

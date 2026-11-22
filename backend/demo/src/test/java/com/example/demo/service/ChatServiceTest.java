@@ -148,7 +148,7 @@ class ChatServiceTest {
 
         assertEquals("48", response.id());
         assertEquals("Người nhận đang bận. Đã nhỡ cuộc gọi video", response.content());
-        assertEquals("TEXT", response.messageType());
+        assertEquals("MISSED_CALL", response.messageType());
         verify(conversationRepository).save(conversation);
     }
 
@@ -183,8 +183,8 @@ class ChatServiceTest {
         assertEquals("Người nhận hiện không trực tuyến để nhận cuộc gọi video", unavailable.content());
         assertEquals("Cuộc gọi thoại đã bị hủy", cancelled.content());
         assertEquals("Không có phản hồi cho cuộc gọi video", noAnswer.content());
-        assertEquals("TEXT", declined.messageType());
-        assertEquals("TEXT", unavailable.messageType());
+        assertEquals("MISSED_CALL", declined.messageType());
+        assertEquals("MISSED_CALL", unavailable.messageType());
     }
 
     @Test
@@ -200,7 +200,7 @@ class ChatServiceTest {
         var response = chatService.recordCompletedCall(31L, "video", 125);
 
         assertEquals("Cuộc gọi video đã kết thúc • 2 phút 5 giây", response.content());
-        assertEquals("TEXT", response.messageType());
+        assertEquals("CALL", response.messageType());
         verify(conversationRepository).save(conversation);
     }
 

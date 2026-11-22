@@ -4,6 +4,16 @@ const TOKEN_KEY = 'chohoi.access-token'
 const SESSION_KEY = 'chohoi.session-user'
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8080/api').replace(/\/+$/, '')
 
+export class MarketplaceApiError extends Error {
+  readonly status: number
+
+  constructor(message: string, status: number) {
+    super(message)
+    this.name = 'MarketplaceApiError'
+    this.status = status
+  }
+}
+
 export interface AuthUser {
   id: number
   fullName: string
@@ -51,6 +61,7 @@ export type ChatSocketEvent =
   | { type: 'authenticated' }
   | { type: 'message'; message: ChatMessage }
   | { type: 'call-invite'; conversationId: string; senderId: string; callType: CallType }
+  | { type: 'call-contacting' | 'call-ringing'; conversationId: string; senderId: string }
   | { type: 'call-accept' | 'call-decline' | 'call-end'; conversationId: string; senderId: string }
   | { type: 'call-busy'; conversationId: string; senderId: string; callType: CallType }
   | { type: 'call-offer' | 'call-answer'; conversationId: string; senderId: string; description: RTCSessionDescriptionInit }
@@ -60,6 +71,8 @@ export type ChatSocketEvent =
 
 function isCallSocketEvent(event: ChatSocketEvent): event is Extract<ChatSocketEvent, { type: `call-${string}` }> {
   return event.type === 'call-invite'
+    || event.type === 'call-contacting'
+    || event.type === 'call-ringing'
     || event.type === 'call-accept'
     || event.type === 'call-decline'
     || event.type === 'call-busy'
@@ -330,7 +343,7 @@ export class MarketplaceApi {
       } catch {
         if (response.status === 401) message = 'Phiên đăng nhập không hợp lệ hoặc đã hết hạn.'
       }
-      throw new Error(message)
+      throw new MarketplaceApiError(message, response.status)
     }
 
     if (!expectJson || response.status === 204) return undefined as T

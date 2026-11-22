@@ -150,7 +150,7 @@ public class ChatService {
                 conversation,
                 sender,
                 content,
-                ChatMessageType.TEXT,
+                ChatMessageType.MISSED_CALL,
                 null,
                 null,
                 null));
@@ -176,7 +176,7 @@ public class ChatService {
                 conversation,
                 sender,
                 content,
-                ChatMessageType.TEXT,
+                ChatMessageType.CALL,
                 null,
                 null,
                 null));
