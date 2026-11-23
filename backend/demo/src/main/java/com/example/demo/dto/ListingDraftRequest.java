@@ -31,6 +31,6 @@ public record ListingDraftRequest(
 
     public record DraftPhoto(
             @NotBlank @Size(max = 100) String id,
-            @NotBlank @Size(max = 7_000_000) String src) {
+            @NotBlank @Size(max = 2_048) String src) {
     }
 }
