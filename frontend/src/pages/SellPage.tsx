@@ -23,7 +23,6 @@ interface ProductPhoto {
 }
 
 const maxLocationLength = 160
-const fallbackImage = 'https://images.unsplash.com/photo-1490312278390-ab64016e0aa9?auto=format&fit=crop&w=900&q=85'
 const sellSteps = [
   { id: 1, title: 'Thông tin cơ bản', description: 'Sản phẩm và hình ảnh' },
   { id: 2, title: 'Chi tiết sản phẩm', description: 'Giá bán và tình trạng' },
@@ -97,8 +96,11 @@ export function SellPage({ onCancel, onSubmit, onLoadDraft, onSaveDraft, sellerN
       setPhone(draft.phone ?? '')
       setNegotiable(draft.negotiable ?? true)
       setGiveaway(draft.giveaway ?? false)
-      setPhotos(draft.photos ?? [])
-      setCoverPhotoId(draft.coverPhotoId ?? draft.photos?.[0]?.id ?? null)
+      const savedPhotos = (draft.photos ?? []).filter((photo) => !photo.src.startsWith('data:image/'))
+      setPhotos(savedPhotos)
+      setCoverPhotoId(draft.coverPhotoId
+        ? savedPhotos.find((photo) => photo.id === draft.coverPhotoId)?.id ?? savedPhotos[0]?.id ?? null
+        : savedPhotos[0]?.id ?? null)
       setActiveStep(Math.min(4, Math.max(1, draft.activeStep ?? 1)))
       setDraftRestored(true)
     }).catch((error: unknown) => {
@@ -238,6 +240,12 @@ export function SellPage({ onCancel, onSubmit, onLoadDraft, onSaveDraft, sellerN
     setDraftSaveError('')
     setDraftNotice('')
     try {
+      const uploadablePhotos = photos.filter((photo) => photo.src.startsWith('https://'))
+      if (uploadablePhotos.length !== photos.length) {
+        setDraftSaveError('Chỉ lưu được ảnh đã upload lên Cloudinary. Hãy tải lại ảnh Base64.')
+        setIsSavingDraft(false)
+        return
+      }
       await onSaveDraft({
         title,
         category,
@@ -298,8 +306,14 @@ export function SellPage({ onCancel, onSubmit, onLoadDraft, onSaveDraft, sellerN
     }
     const coverPhoto = photos.find((photo) => photo.id === coverPhotoId) ?? photos[0]
     const listingImages = coverPhoto
-      ? [coverPhoto, ...photos.filter((photo) => photo.id !== coverPhoto.id)].map((photo) => photo.src)
-      : [fallbackImage]
+      ? [coverPhoto, ...photos.filter((photo) => photo.id !== coverPhoto.id)]
+          .map((photo) => photo.src.trim())
+          .filter((src) => src.startsWith('https://'))
+      : []
+    if (listingImages.length === 0) {
+      setErrorMessage('Vui lòng tải ảnh sản phẩm mới lên. Không gửi dữ liệu ảnh cũ dạng Base64.')
+      return
+    }
     const sellerInitials = sellerName.split(/\s+/).filter(Boolean).slice(-2).map((part) => part[0]).join('').toUpperCase()
     try {
       await onSubmit({

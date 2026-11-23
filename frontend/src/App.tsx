@@ -394,8 +394,13 @@ export function App() {
 
     const coverPhoto = draft.photos.find((photo) => photo.id === draft.coverPhotoId) ?? draft.photos[0]
     const images = coverPhoto
-      ? [coverPhoto, ...draft.photos.filter((photo) => photo.id !== coverPhoto.id)].map((photo) => photo.src)
-      : ['https://images.unsplash.com/photo-1490312278390-ab64016e0aa9?auto=format&fit=crop&w=900&q=85']
+      ? [coverPhoto, ...draft.photos.filter((photo) => photo.id !== coverPhoto.id)]
+          .map((photo) => photo.src.trim())
+          .filter((src) => src.startsWith('https://'))
+      : []
+    if (images.length === 0) {
+      throw new Error('Bản nháp không còn ảnh Cloudinary hợp lệ. Vui lòng xóa nháp và tải ảnh mới.')
+    }
     const sellerInitials = user.fullName.split(/\s+/).filter(Boolean).slice(-2).map((part) => part[0]).join('').toUpperCase()
 
     try {
