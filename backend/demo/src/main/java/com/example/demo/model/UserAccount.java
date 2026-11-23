@@ -105,6 +105,10 @@ public class UserAccount implements UserDetails {
         this.status = status;
     }
 
+    public void setPasswordHash(String passwordHash) {
+        this.passwordHash = passwordHash;
+    }
+
     public void setLastActiveAt(Instant lastActiveAt) {
         this.lastActiveAt = lastActiveAt;
     }
