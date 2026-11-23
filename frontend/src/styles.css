@@ -532,9 +532,13 @@ img { display: block; max-width: 100%; }
 .filter-expand { display: flex; align-items: center; gap: 4px; margin: 7px auto 2px; padding: 3px 6px; border: 0; background: none; color: #7b8376; font-size: 10px; cursor: pointer; }
 .filter-expand-up { transform: rotate(180deg); }
 .select-wrap, .sort-picker { position: relative; display: flex; align-items: center; }
-.select-wrap select, .sort-picker select { width: 100%; appearance: none; padding: 9px 26px 9px 9px; border: 1px solid #e9e9e2; border-radius: 3px; background: #fff; color: #657062; font-size: 11px; }
+.select-wrap select, .sort-picker select { width: 100%; appearance: none; padding: 9px 26px 9px 9px; border: 1px solid #e9e9e2; border-radius: 8px; background: #fff; color: #657062; font-size: 11px; transition: border-color 140ms ease, box-shadow 140ms ease, background 140ms ease; }
+.select-wrap select:hover, .sort-picker select:hover { border-color: #cbd5c5; background: #fcfdf9; }
+.select-wrap select:focus, .sort-picker select:focus { border-color: #8fa281; outline: none; box-shadow: 0 0 0 3px rgb(111 145 94 / 12%); }
+.select-wrap select:disabled { border-color: #edf0e9; background: #f5f6f2; color: #a5aaa1; cursor: not-allowed; }
+.select-wrap select option, .sort-picker select option { border-radius: 8px; background: #fff; color: #657062; }
 .select-wrap svg, .sort-picker > svg:last-child { position: absolute; right: 8px; color: #92988d; pointer-events: none; }
-.province-select select { height: 38px; padding-left: 10px; }
+.province-select select { height: 38px; padding-left: 10px; border-radius: 8px; }
 .condition-chips { display: flex; flex-wrap: wrap; gap: 5px; }
 .condition-chips button { min-height: 30px; padding: 0 9px; border: 1px solid #e6e8df; border-radius: 999px; background: #fff; color: #7d8478; font-size: 10px; cursor: pointer; }
 .condition-chips button.condition-chip-active { border-color: #8fcba0; background: #effaf2; color: #168b43; }
@@ -693,7 +697,7 @@ img { display: block; max-width: 100%; }
 .preview-contact-note { margin: 8px 0 0; color: #92988e; font-size: 10px; line-height: 1.5; }
 .sell-dropdown { position: relative; display: grid; min-width: 0; align-content: start; gap: 7px; }
 .sell-dropdown-label { color: #4d584d; font-size: 11px; font-weight: 650; }
-.sell-dropdown-trigger { display: flex; width: 100%; min-height: 41px; align-items: center; justify-content: space-between; gap: 10px; padding: 0 11px; border: 1px solid #dfe4dc; border-radius: 5px; background: #fff; color: #344033; font-size: 12px; text-align: left; }
+.sell-dropdown-trigger { display: flex; width: 100%; min-height: 41px; align-items: center; justify-content: space-between; gap: 10px; padding: 0 11px; border: 1px solid #dfe4dc; border-radius: 9px; background: #fff; color: #344033; font-size: 12px; text-align: left; }
 .sell-dropdown-trigger:hover:not(:disabled) { border-color: #a9b2a5; }
 .sell-dropdown-trigger:focus-visible { border-color: #7b9272; outline: 0; box-shadow: 0 0 0 2px rgb(101 139 83 / 12%); }
 .sell-dropdown-trigger:disabled { background: #f5f6f3; color: #939b91; cursor: not-allowed; }
@@ -701,7 +705,7 @@ img { display: block; max-width: 100%; }
 .sell-dropdown-trigger > svg { flex: 0 0 auto; color: #737d72; transition: transform 120ms ease; }
 .sell-dropdown-trigger[aria-expanded="true"] > svg { transform: rotate(180deg); }
 .sell-dropdown-placeholder { color: #939b91; }
-.sell-dropdown-options { position: absolute; top: calc(100% + 5px); right: 0; left: 0; z-index: 40; display: grid; max-height: min(260px, 45vh); gap: 1px; overflow-y: auto; padding: 4px; border: 1px solid #dfe4dc; border-radius: 7px; background: #fff; box-shadow: 0 8px 20px rgb(35 45 34 / 13%); }
+.sell-dropdown-options { position: absolute; top: calc(100% + 5px); right: 0; left: 0; z-index: 40; display: grid; max-height: min(260px, 45vh); gap: 1px; overflow-y: auto; padding: 5px; border: 1px solid #dfe4dc; border-radius: 10px; background: #fff; box-shadow: 0 10px 24px rgb(35 45 34 / 14%); }
 .sell-dropdown-option { display: flex; width: 100%; min-height: 34px; align-items: center; justify-content: space-between; gap: 8px; padding: 7px 9px; border: 0; border-radius: 4px; background: transparent; color: #4d584d; font-size: 12px; text-align: left; }
 .sell-dropdown-option:hover, .sell-dropdown-option-active { background: #f4f6f2; color: #344c35; }
 .sell-dropdown-option[aria-selected="true"] { background: #edf2e9; color: #344c35; font-weight: 700; }
