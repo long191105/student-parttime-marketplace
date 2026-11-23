@@ -189,14 +189,31 @@ export function InboxPage({ api, user, initialConversationId, isVisible, onOpenL
     setCameraEnabled(true)
   }
 
-  function createPeerConnection(conversationId: string): RTCPeerConnection {
+  function attachRemoteStream(stream: MediaStream) {
+    remoteStreamRef.current = stream
+    const currentCall = callStateRef.current
+    const mediaElement = currentCall.status !== 'idle' && currentCall.callType === 'video'
+      ? remoteVideoRef.current
+      : remoteAudioRef.current
+    if (!mediaElement) return
+    mediaElement.srcObject = stream
+    void mediaElement.play().catch((playError: unknown) => {
+      console.warn('Trình duyệt không tự phát media của cuộc gọi.', playError)
+    })
+  }
+
+  function createPeerConnection(conversationId: string, iceServers: RTCIceServer[]): RTCPeerConnection {
     const peer = new RTCPeerConnection({
-      iceServers: [{ urls: 'stun:stun.l.google.com:19302' }],
+      iceServers,
     })
     const localStream = localStreamRef.current
     localStream?.getTracks().forEach((track) => peer.addTrack(track, localStream))
     peer.ontrack = (event) => {
-      remoteStreamRef.current = event.streams[0] ?? new MediaStream([event.track])
+      const remoteStream = event.streams[0] ?? remoteStreamRef.current ?? new MediaStream()
+      if (!event.streams[0] && !remoteStream.getTracks().some((track) => track.id === event.track.id)) {
+        remoteStream.addTrack(event.track)
+      }
+      attachRemoteStream(remoteStream)
     }
     peer.onicecandidate = (event) => {
       if (event.candidate) {
@@ -284,7 +301,8 @@ export function InboxPage({ api, user, initialConversationId, isVisible, onOpenL
 
     if (event.type === 'call-accept' && (current.status === 'contacting' || current.status === 'outgoing')) {
       updateCallState({ ...current, status: 'connecting' })
-      const peer = createPeerConnection(event.conversationId)
+      const iceServers = await api.getCallIceServers()
+      const peer = createPeerConnection(event.conversationId, iceServers)
       const offer = await peer.createOffer()
       await peer.setLocalDescription(offer)
       if (!peer.localDescription || !sendCallSignal('call-offer', event.conversationId, {
@@ -616,7 +634,8 @@ export function InboxPage({ api, user, initialConversationId, isVisible, onOpenL
       setMicrophoneEnabled(true)
       setCameraEnabled(true)
       callInviteSentRef.current = true
-      createPeerConnection(current.conversationId)
+      const iceServers = await api.getCallIceServers()
+      createPeerConnection(current.conversationId, iceServers)
       updateCallState({ ...current, status: 'connecting' })
       if (!sendCallSignal('call-accept', current.conversationId)) {
         throw new Error('Không thể chấp nhận cuộc gọi do mất kết nối.')
@@ -666,8 +685,29 @@ export function InboxPage({ api, user, initialConversationId, isVisible, onOpenL
 
   useEffect(() => {
     if (localVideoRef.current) localVideoRef.current.srcObject = localStreamRef.current
-    if (remoteVideoRef.current) remoteVideoRef.current.srcObject = remoteStreamRef.current
-    if (remoteAudioRef.current) remoteAudioRef.current.srcObject = remoteStreamRef.current
+    if (remoteStreamRef.current) attachRemoteStream(remoteStreamRef.current)
+  }, [callState])
+
+  useEffect(() => {
+    if (callState.status !== 'connecting' || !peerConnectionRef.current) return
+    const { conversationId } = callState
+    const timeout = window.setTimeout(() => {
+      const current = callStateRef.current
+      const peer = peerConnectionRef.current
+      if (current.status !== 'connecting' || current.conversationId !== conversationId
+        || !peer || peer.connectionState === 'connected') return
+
+      sendCallSignal('call-end', conversationId, getCallEndDetails(current))
+      disposeCallMedia()
+      updateCallState({
+        ...current,
+        status: 'failed',
+        error: 'Không thiết lập được đường truyền media. Mạng có thể cần TURN; hãy thử lại hoặc dùng mạng khác.',
+      })
+      refreshCallHistory(conversationId)
+    }, 25_000)
+
+    return () => window.clearTimeout(timeout)
   }, [callState])
 
   const ringingCallType = callState.status === 'incoming' || callState.status === 'outgoing'

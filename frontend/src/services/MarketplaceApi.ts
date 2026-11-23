@@ -255,6 +255,10 @@ export class MarketplaceApi {
     return this.request<ChatMessage[]>(`/chat/conversations/${encodeURIComponent(conversationId)}/messages`)
   }
 
+  async getCallIceServers(): Promise<RTCIceServer[]> {
+    return this.request<RTCIceServer[]>('/chat/ice-servers')
+  }
+
   connectChat(onEvent: (event: ChatSocketEvent) => void): WebSocket {
     const session = this.readSession()
     if (!session) throw new Error('Vui lòng đăng nhập để kết nối hộp thư.')
