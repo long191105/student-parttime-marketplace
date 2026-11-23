@@ -89,7 +89,7 @@ Mở một cuộc trò chuyện trong Hộp thư rồi chọn biểu tượng đ
 
 Để gọi được giữa các mạng NAT/firewall khác nhau, cần cấu hình máy chủ TURN tương thích coturn trên backend: đặt `TURN_URLS` (ví dụ `turn:turn.example.com:3478?transport=udp,turns:turn.example.com:5349?transport=tcp`) và `TURN_SHARED_SECRET` khớp với `static-auth-secret` của coturn; tùy chọn `TURN_CREDENTIAL_TTL_SECONDS` mặc định là `3600`. Backend tạo thông tin xác thực TURN tạm thời cho người dùng đã đăng nhập nên không cần nhúng shared secret vào frontend. Sau khi cập nhật biến môi trường backend, deploy lại backend. Nếu chưa cấu hình TURN, cuộc gọi chỉ thử STUN và vẫn có thể không kết nối được trên một số mạng.
 
-Với Metered, đặt trên backend: `TURN_URLS=turn:global.relay.metered.ca:80,turn:global.relay.metered.ca:80?transport=tcp,turn:global.relay.metered.ca:443,turns:global.relay.metered.ca:443?transport=tcp`, cùng `TURN_USERNAME` và `TURN_CREDENTIAL`. Không đặt thông tin xác thực trong frontend. Khởi động lại backend sau khi đổi biến môi trường.
+Với Metered, có thể đặt `TURN_URLS=turn:global.relay.metered.ca:80,turn:global.relay.metered.ca:80?transport=tcp,turn:global.relay.metered.ca:443,turns:global.relay.metered.ca:443?transport=tcp` cùng `TURN_USERNAME` và `TURN_CREDENTIAL`. Hoặc đặt `METERED_DOMAIN=cho-hoi.metered.live`, `METERED_TURN_USERNAME` và `METERED_TURN_PASSWORD`; backend sẽ tự dùng relay `global.relay.metered.ca`. `METERED_DOMAIN` chỉ là hostname tài khoản của Metered, không thay thế relay host. Không đặt thông tin xác thực trong frontend.
 
 ## Cấu trúc
 

@@ -83,4 +83,24 @@ class CallIceServerServiceTest {
                 "metered-user",
                 ""));
     }
+
+    @Test
+    void usesGlobalRelayHostWhenMeteredDomainIsConfigured() {
+        CallIceServerService service = new CallIceServerService(
+                "",
+                "",
+                3600,
+                "metered-user",
+                "metered-credential",
+                "cho-hoi.metered.live");
+
+        Map<String, Object> turnServer = service.getIceServers(42L).get(1);
+        assertEquals(List.of(
+                "turn:global.relay.metered.ca:80",
+                "turn:global.relay.metered.ca:80?transport=tcp",
+                "turn:global.relay.metered.ca:443",
+                "turns:global.relay.metered.ca:443?transport=tcp"), turnServer.get("urls"));
+        assertEquals("metered-user", turnServer.get("username"));
+        assertEquals("metered-credential", turnServer.get("credential"));
+    }
 }
