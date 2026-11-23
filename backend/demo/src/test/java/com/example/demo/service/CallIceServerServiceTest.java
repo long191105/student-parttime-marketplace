@@ -56,4 +56,31 @@ class CallIceServerServiceTest {
                 "",
                 3600));
     }
+
+    @Test
+    void returnsMeteredStaticTurnCredentials() {
+        CallIceServerService service = new CallIceServerService(
+                "turn:global.relay.metered.ca:80,turns:global.relay.metered.ca:443?transport=tcp",
+                "",
+                3600,
+                "metered-user",
+                "metered-credential");
+
+        Map<String, Object> turnServer = service.getIceServers(42L).get(1);
+        assertEquals(List.of(
+                "turn:global.relay.metered.ca:80",
+                "turns:global.relay.metered.ca:443?transport=tcp"), turnServer.get("urls"));
+        assertEquals("metered-user", turnServer.get("username"));
+        assertEquals("metered-credential", turnServer.get("credential"));
+    }
+
+    @Test
+    void rejectsIncompleteStaticTurnCredentials() {
+        assertThrows(IllegalArgumentException.class, () -> new CallIceServerService(
+                "turn:global.relay.metered.ca:80",
+                "",
+                3600,
+                "metered-user",
+                ""));
+    }
 }
