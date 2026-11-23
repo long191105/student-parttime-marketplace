@@ -12,6 +12,7 @@ import java.util.Map;
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -23,28 +24,64 @@ public class CallIceServerService {
 
     private final List<String> turnUrls;
     private final String turnSharedSecret;
+    private final String turnUsername;
+    private final String turnCredential;
     private final long credentialTtlSeconds;
 
+    @Autowired
     public CallIceServerService(
             @Value("${app.rtc.turn.urls:}") String configuredTurnUrls,
             @Value("${app.rtc.turn.shared-secret:}") String turnSharedSecret,
-            @Value("${app.rtc.turn.credential-ttl-seconds:3600}") long credentialTtlSeconds) {
-        this.turnUrls = Arrays.stream(configuredTurnUrls.split(","))
+            @Value("${app.rtc.turn.credential-ttl-seconds:3600}") long credentialTtlSeconds,
+            @Value("${app.rtc.turn.username:}") String turnUsername,
+            @Value("${app.rtc.turn.credential:}") String turnCredential,
+            @Value("${app.rtc.turn.domain:}") String meteredDomain) {
+        String effectiveTurnUrls = configuredTurnUrls;
+        if (effectiveTurnUrls.isBlank() && !meteredDomain.isBlank()) {
+            String domain = meteredDomain.trim();
+            effectiveTurnUrls = String.join(",",
+                    "turn:" + domain + ":80",
+                    "turn:" + domain + ":80?transport=tcp",
+                    "turn:" + domain + ":443",
+                    "turns:" + domain + ":443?transport=tcp");
+        }
+        this.turnUrls = Arrays.stream(effectiveTurnUrls.split(","))
                 .map(String::trim)
                 .filter(url -> !url.isEmpty())
                 .toList();
         this.turnSharedSecret = turnSharedSecret;
+        this.turnUsername = turnUsername;
+        this.turnCredential = turnCredential;
         this.credentialTtlSeconds = credentialTtlSeconds;
 
         if (this.turnUrls.stream().anyMatch(url -> !url.startsWith("turn:") && !url.startsWith("turns:"))) {
             throw new IllegalArgumentException("TURN_URLS must contain only turn: or turns: URLs.");
         }
-        if (!this.turnUrls.isEmpty() && turnSharedSecret.isBlank()) {
-            throw new IllegalArgumentException("TURN_SHARED_SECRET is required when TURN_URLS is configured.");
+        if (!this.turnUrls.isEmpty()) {
+            boolean hasStaticCredentials = !turnUsername.isBlank() || !turnCredential.isBlank();
+            if (hasStaticCredentials && (turnUsername.isBlank() || turnCredential.isBlank())) {
+                throw new IllegalArgumentException("TURN_USERNAME and TURN_CREDENTIAL must both be configured.");
+            }
+            if (!hasStaticCredentials && turnSharedSecret.isBlank()) {
+                throw new IllegalArgumentException("Configure TURN_SHARED_SECRET or TURN_USERNAME and TURN_CREDENTIAL when TURN_URLS is set.");
+            }
         }
         if (credentialTtlSeconds < 1) {
             throw new IllegalArgumentException("TURN_CREDENTIAL_TTL_SECONDS must be greater than zero.");
         }
+    }
+
+    public CallIceServerService(String configuredTurnUrls, String turnSharedSecret, long credentialTtlSeconds) {
+        this(configuredTurnUrls, turnSharedSecret, credentialTtlSeconds, "", "", "");
+    }
+
+    public CallIceServerService(
+            String configuredTurnUrls,
+            String turnSharedSecret,
+            long credentialTtlSeconds,
+            String turnUsername,
+            String turnCredential) {
+        this(configuredTurnUrls, turnSharedSecret, credentialTtlSeconds, turnUsername, turnCredential, "");
     }
 
     public List<Map<String, Object>> getIceServers(long userId) {
@@ -52,6 +89,13 @@ public class CallIceServerService {
         iceServers.add(Map.of("urls", STUN_URL));
 
         if (!turnUrls.isEmpty()) {
+            if (!turnUsername.isBlank() && !turnCredential.isBlank()) {
+                iceServers.add(Map.of(
+                        "urls", turnUrls,
+                        "username", turnUsername,
+                        "credential", turnCredential));
+                return iceServers;
+            }
             String username = (Instant.now().getEpochSecond() + credentialTtlSeconds) + ":" + userId;
             iceServers.add(Map.of(
                     "urls", turnUrls,
