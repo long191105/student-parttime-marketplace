@@ -1,5 +1,7 @@
 package com.example.demo.service;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.mail.MailException;
 import org.springframework.mail.SimpleMailMessage;
@@ -11,6 +13,8 @@ import static org.springframework.http.HttpStatus.SERVICE_UNAVAILABLE;
 
 @Service
 public class OtpEmailService {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(OtpEmailService.class);
 
     private final JavaMailSender mailSender;
     private final String username;
@@ -45,10 +49,30 @@ public class OtpEmailService {
         try {
             mailSender.send(message);
         } catch (MailException exception) {
+            Throwable rootCause = exception;
+            while (rootCause.getCause() != null && rootCause.getCause() != rootCause) {
+                rootCause = rootCause.getCause();
+            }
+            String details = rootCause.getMessage() == null ? "" : rootCause.getMessage();
+            details = redact(details, recipient);
+            LOGGER.error("Verification email delivery failed: {}: {}",
+                    rootCause.getClass().getSimpleName(), details);
             throw new ResponseStatusException(
                     SERVICE_UNAVAILABLE,
                     "Không gửi được email xác minh. Hãy kiểm tra cấu hình Gmail SMTP rồi thử lại.",
                     exception);
         }
+    }
+
+    private String redact(String message, String recipient) {
+        String redacted = message
+                .replace("\r", " ")
+                .replace("\n", " ");
+        for (String sensitiveValue : new String[]{username, password, recipient}) {
+            if (sensitiveValue != null && !sensitiveValue.isBlank()) {
+                redacted = redacted.replace(sensitiveValue, "[redacted]");
+            }
+        }
+        return redacted;
     }
 }
