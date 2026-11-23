@@ -145,6 +145,13 @@ export class MarketplaceApi {
   }
 
   async createListing(draft: ListingDraft): Promise<Listing> {
+    const images = draft.images?.length ? draft.images : [draft.image]
+    if (images.some((image) => image.startsWith('data:image/'))) {
+      throw new Error('Ảnh Base64 không được gửi lên máy chủ. Vui lòng tải lại ảnh bằng Cloudinary.')
+    }
+    if (images.some((image) => !image.startsWith('https://'))) {
+      throw new Error('Tất cả ảnh tin đăng phải là URL HTTPS.')
+    }
     const response = await this.request<ListingData>('/listings', {
       method: 'POST',
       body: JSON.stringify({
@@ -154,8 +161,8 @@ export class MarketplaceApi {
         condition: draft.condition,
         location: draft.location,
         contactPhone: draft.contactPhone,
-        image: draft.image,
-        images: draft.images?.length ? draft.images : [draft.image],
+        image: images[0],
+        images,
         description: draft.description,
         negotiable: draft.negotiable,
         giveaway: draft.giveaway ?? false,
