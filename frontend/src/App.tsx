@@ -535,7 +535,7 @@ export function App() {
       {apiState === 'connecting' && <div className="api-status-banner api-status-connecting" role="status"><span>Đang kết nối Chợ Hời API...</span></div>}
       {notice && <div className="toast-message" role="status">{notice}<button onClick={() => setNotice('')} aria-label="Đóng thông báo">×</button></div>}
       {view === 'home' && <ExplorePage listings={activeListings} savedIds={savedIds} onOpen={openListing} onToggleSaved={toggleSaved} onCategory={selectCategory} />}
-      {view === 'search' && <SearchPage listings={activeListings} savedIds={savedIds} query={query} category={category} onQueryChange={setQuery} onCategoryChange={setCategory} onOpen={openListing} onToggleSaved={toggleSaved} />}
+      {view === 'search' && <SearchPage listings={activeListings} savedIds={savedIds} query={query} category={category} location={location} onQueryChange={setQuery} onCategoryChange={setCategory} onLocationChange={setLocation} onOpen={openListing} onToggleSaved={toggleSaved} />}
       {view === 'detail' && selectedListing && <ListingDetailPage key={selectedListing.id} listing={selectedListing} related={relatedListings} saved={savedIds.includes(selectedListing.id)} currentUserId={user ? String(user.id) : null} onBack={() => navigate(previousView === 'detail' ? 'home' : previousView)} onToggleSaved={toggleSaved} onOpen={openListing} onContact={() => void openChat(selectedListing.id)} onSeller={() => navigate('profile')} onRevealPhone={async (id) => {
         if (apiState !== 'connected') throw new Error('Backend chưa kết nối; không thể tải số điện thoại thật.')
         if (!user) {
