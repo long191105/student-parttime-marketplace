@@ -37,6 +37,7 @@ export function InboxPage({ api, user, initialConversationId, isVisible, onOpenL
   const [locationError, setLocationError] = useState('')
   const [error, setError] = useState('')
   const [callState, setCallState] = useState<CallState>({ status: 'idle' })
+  const [callElapsedSeconds, setCallElapsedSeconds] = useState(0)
   const [microphoneEnabled, setMicrophoneEnabled] = useState(true)
   const [cameraEnabled, setCameraEnabled] = useState(true)
   const socketRef = useRef<WebSocket | null>(null)
@@ -135,9 +136,11 @@ export function InboxPage({ api, user, initialConversationId, isVisible, onOpenL
     const resolved = typeof next === 'function' ? next(callStateRef.current) : next
     if (resolved.status === 'connected' && callStateRef.current.status !== 'connected') {
       callConnectedAtRef.current = Date.now()
+      setCallElapsedSeconds(0)
     }
     if (resolved.status === 'idle') {
       callConnectedAtRef.current = null
+      setCallElapsedSeconds(0)
       callInviteSentRef.current = false
     }
     callStateRef.current = resolved
@@ -689,6 +692,19 @@ export function InboxPage({ api, user, initialConversationId, isVisible, onOpenL
   }, [callState])
 
   useEffect(() => {
+    if (callState.status !== 'connected' || callConnectedAtRef.current === null) return
+    const updateElapsed = () => {
+      const connectedAt = callConnectedAtRef.current
+      if (connectedAt !== null) {
+        setCallElapsedSeconds(Math.floor((Date.now() - connectedAt) / 1000))
+      }
+    }
+    updateElapsed()
+    const timer = window.setInterval(updateElapsed, 1000)
+    return () => window.clearInterval(timer)
+  }, [callState.status])
+
+  useEffect(() => {
     if (callState.status !== 'connecting' || !peerConnectionRef.current) return
     const { conversationId } = callState
     const timeout = window.setTimeout(() => {
@@ -971,7 +987,7 @@ export function InboxPage({ api, user, initialConversationId, isVisible, onOpenL
                 : callState.status === 'contacting' ? 'Đang liên hệ...'
                   : callState.status === 'outgoing' ? 'Đang rung chuông...'
                   : callState.status === 'connecting' ? 'Đang kết nối...'
-                    : callState.status === 'connected' ? 'Đã kết nối'
+                    : callState.status === 'connected' ? formatCallDuration(callElapsedSeconds)
                       : callState.error}
             </p>
             {callState.status === 'incoming' ? (
@@ -1010,6 +1026,12 @@ function formatPrice(price: number, giveaway: boolean): string {
 
 function formatTime(value: string): string {
   return new Date(value).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })
+}
+
+function formatCallDuration(totalSeconds: number): string {
+  const minutes = Math.floor(totalSeconds / 60)
+  const seconds = totalSeconds % 60
+  return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`
 }
 
 function isCallHistoryMessage(message: ChatMessage): boolean {
