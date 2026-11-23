@@ -44,7 +44,8 @@ export function SearchPage({ listings, savedIds, query, category, location, onQu
       const wardName = wards.find((ward) => String(ward.code) === wardCode)?.name
       return !wardName || listing.location.includes(wardName)
     })
-    .filter((listing) => condition === 'Tất cả' || listing.conditionLabel === condition)
+    .filter((listing) => condition === 'Tất cả'
+      || (condition === 'Miễn phí' ? listing.giveaway || listing.price === 0 : listing.conditionLabel === condition))
     .filter((listing) => !minPrice || listing.price >= Number(minPrice))
     .filter((listing) => !maxPrice || listing.price <= Number(maxPrice))
     .sort((a, b) => sort === 'price-low' ? a.price - b.price : sort === 'price-high' ? b.price - a.price : 0)
@@ -186,7 +187,7 @@ export function SearchPage({ listings, savedIds, query, category, location, onQu
 
           <span className="filter-section-heading">Tình trạng</span>
           <div className="condition-chips">
-            {['Tất cả', 'Mới', 'Đã sử dụng'].map((option) => (
+            {['Tất cả', 'Mới', 'Đã sử dụng', 'Miễn phí'].map((option) => (
               <button type="button" className={condition === option ? 'condition-chip-active' : ''} key={option} onClick={() => setCondition(option)}>{option}</button>
             ))}
           </div>
