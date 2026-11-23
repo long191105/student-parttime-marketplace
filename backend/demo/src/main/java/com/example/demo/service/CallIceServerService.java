@@ -27,6 +27,7 @@ public class CallIceServerService {
     private final String turnUsername;
     private final String turnCredential;
     private final long credentialTtlSeconds;
+    private static final String METERED_RELAY_DOMAIN = "global.relay.metered.ca";
 
     @Autowired
     public CallIceServerService(
@@ -38,12 +39,11 @@ public class CallIceServerService {
             @Value("${app.rtc.turn.domain:}") String meteredDomain) {
         String effectiveTurnUrls = configuredTurnUrls;
         if (effectiveTurnUrls.isBlank() && !meteredDomain.isBlank()) {
-            String domain = meteredDomain.trim();
             effectiveTurnUrls = String.join(",",
-                    "turn:" + domain + ":80",
-                    "turn:" + domain + ":80?transport=tcp",
-                    "turn:" + domain + ":443",
-                    "turns:" + domain + ":443?transport=tcp");
+                    "turn:" + METERED_RELAY_DOMAIN + ":80",
+                    "turn:" + METERED_RELAY_DOMAIN + ":80?transport=tcp",
+                    "turn:" + METERED_RELAY_DOMAIN + ":443",
+                    "turns:" + METERED_RELAY_DOMAIN + ":443?transport=tcp");
         }
         this.turnUrls = Arrays.stream(effectiveTurnUrls.split(","))
                 .map(String::trim)
