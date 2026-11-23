@@ -1,8 +1,9 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { ArrowDownUp, ChevronDown, RotateCcw, SlidersHorizontal, X } from 'lucide-react'
 import type { Listing } from '../domain/Listing'
 import { categories, locations } from '../data/categories'
 import { ListingCard } from '../components/ListingCard'
+import { listLegacyDistricts, listLegacyWards, type LocationOption } from '../services/LegacyLocationApi'
 
 interface SearchPageProps {
   listings: Listing[]
@@ -24,9 +25,25 @@ export function SearchPage({ listings, savedIds, query, category, location, onQu
   const [sort, setSort] = useState('newest')
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false)
   const [categoryExpanded, setCategoryExpanded] = useState(false)
+  const [districts, setDistricts] = useState<LocationOption[]>([])
+  const [wards, setWards] = useState<LocationOption[]>([])
+  const [districtCode, setDistrictCode] = useState('')
+  const [wardCode, setWardCode] = useState('')
+  const [isLoadingDistricts, setIsLoadingDistricts] = useState(false)
+  const [isLoadingWards, setIsLoadingWards] = useState(false)
 
   const visibleListings = listings
     .filter((listing) => category === 'Tất cả' || listing.category === category)
+    .filter((listing) => {
+      if (!districtCode) return true
+      const districtName = districts.find((district) => String(district.code) === districtCode)?.name
+      return !districtName || listing.location.includes(districtName)
+    })
+    .filter((listing) => {
+      if (!wardCode) return true
+      const wardName = wards.find((ward) => String(ward.code) === wardCode)?.name
+      return !wardName || listing.location.includes(wardName)
+    })
     .filter((listing) => condition === 'Tất cả' || listing.conditionLabel === condition)
     .filter((listing) => !minPrice || listing.price >= Number(minPrice))
     .filter((listing) => !maxPrice || listing.price <= Number(maxPrice))
@@ -42,9 +59,43 @@ export function SearchPage({ listings, savedIds, query, category, location, onQu
 
   const provinceOptions = locations.filter((item) => item !== 'Toàn quốc')
 
+  useEffect(() => {
+    if (location === 'Toàn quốc') return
+
+    const controller = new AbortController()
+    void listLegacyDistricts(location, controller.signal)
+      .then((nextDistricts) => setDistricts(nextDistricts))
+      .catch((error: unknown) => {
+        if (error instanceof DOMException && error.name === 'AbortError') return
+        console.error('Không thể tải danh sách quận/huyện.', error)
+        setDistricts([])
+      })
+      .finally(() => setIsLoadingDistricts(false))
+
+    return () => controller.abort()
+  }, [location])
+
+  useEffect(() => {
+    if (!districtCode) return
+
+    const controller = new AbortController()
+    void listLegacyWards(Number(districtCode), controller.signal)
+      .then((nextWards) => setWards(nextWards))
+      .catch((error: unknown) => {
+        if (error instanceof DOMException && error.name === 'AbortError') return
+        console.error('Không thể tải danh sách phường/xã.', error)
+        setWards([])
+      })
+      .finally(() => setIsLoadingWards(false))
+
+    return () => controller.abort()
+  }, [districtCode])
+
   function clearFilters() {
     onCategoryChange('Tất cả')
     onLocationChange('Toàn quốc')
+    setDistrictCode('')
+    setWardCode('')
     setCondition('Tất cả')
     setMinPrice('')
     setMaxPrice('')
@@ -81,9 +132,54 @@ export function SearchPage({ listings, savedIds, query, category, location, onQu
 
           <span className="filter-section-heading">Tỉnh / thành</span>
           <div className="select-wrap province-select">
-            <select aria-label="Lọc theo tỉnh hoặc thành phố" value={location} onChange={(event) => onLocationChange(event.target.value)}>
+            <select aria-label="Lọc theo tỉnh hoặc thành phố" value={location} onChange={(event) => {
+              const nextLocation = event.target.value
+              setDistrictCode('')
+              setWardCode('')
+              setDistricts([])
+              setWards([])
+              setIsLoadingDistricts(nextLocation !== 'Toàn quốc')
+              onLocationChange(nextLocation)
+            }}>
               <option value="Toàn quốc">Tất cả tỉnh/thành</option>
               {provinceOptions.map((province) => <option key={province} value={province}>{province}</option>)}
+            </select>
+            <ChevronDown size={15} />
+          </div>
+
+          <span className="filter-section-heading">Quận / huyện</span>
+          <div className="select-wrap province-select">
+            <select
+              aria-label="Lọc theo quận hoặc huyện"
+              value={districtCode}
+              disabled={location === 'Toàn quốc' || isLoadingDistricts || districts.length === 0}
+              onChange={(event) => {
+                setDistrictCode(event.target.value)
+                setWardCode('')
+                setWards([])
+                setIsLoadingWards(Boolean(event.target.value))
+              }}
+            >
+              <option value="">
+                {isLoadingDistricts ? 'Đang tải quận/huyện...' : location === 'Toàn quốc' ? 'Chọn tỉnh/thành trước' : 'Tất cả quận/huyện'}
+              </option>
+              {districts.map((district) => <option key={district.code} value={district.code}>{district.name}</option>)}
+            </select>
+            <ChevronDown size={15} />
+          </div>
+
+          <span className="filter-section-heading">Phường / xã</span>
+          <div className="select-wrap province-select">
+            <select
+              aria-label="Lọc theo phường hoặc xã"
+              value={wardCode}
+              disabled={!districtCode || isLoadingWards || wards.length === 0}
+              onChange={(event) => setWardCode(event.target.value)}
+            >
+              <option value="">
+                {isLoadingWards ? 'Đang tải phường/xã...' : !districtCode ? 'Chọn quận/huyện trước' : 'Tất cả phường/xã'}
+              </option>
+              {wards.map((ward) => <option key={ward.code} value={ward.code}>{ward.name}</option>)}
             </select>
             <ChevronDown size={15} />
           </div>
