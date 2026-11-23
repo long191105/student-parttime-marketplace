@@ -37,10 +37,21 @@ public class AdminAccountInitializer implements ApplicationRunner {
         if (adminEmail.isBlank() || adminPassword.length() < 12 || adminPassword.length() > 72) {
             throw new IllegalStateException("Set both ADMIN_EMAIL and ADMIN_PASSWORD (12 to 72 characters) to initialize an admin.");
         }
-        if (userAccountRepository.existsByEmailIgnoreCase(adminEmail.trim())) return;
+        String normalizedEmail = adminEmail.trim().toLowerCase();
+        var existingAdmin = userAccountRepository.findByEmailIgnoreCase(normalizedEmail);
+        if (existingAdmin.isPresent()) {
+            UserAccount user = existingAdmin.get();
+            user.setRole(UserRole.ADMIN);
+            user.setStatus(com.example.demo.model.AccountStatus.ACTIVE);
+            if (!passwordEncoder.matches(adminPassword, user.getPassword())) {
+                user.setPasswordHash(passwordEncoder.encode(adminPassword));
+            }
+            userAccountRepository.save(user);
+            return;
+        }
         userAccountRepository.save(new UserAccount(
                 "Quản trị viên",
-                adminEmail.trim().toLowerCase(),
+                normalizedEmail,
                 passwordEncoder.encode(adminPassword),
                 null,
                 UserRole.ADMIN));
