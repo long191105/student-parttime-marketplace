@@ -3,6 +3,7 @@ import { Eye, FilePenLine, Plus, Send, ShieldAlert, Trash2 } from 'lucide-react'
 import type { Listing, ListingStatus } from '../domain/Listing'
 import type { ListingFormDraft } from '../services/MarketplaceApi'
 import { useAppDialog } from '../components/AppDialogContext'
+import { formatImageUrl } from '../services/ImageUrl'
 
 interface MyListingsPageProps {
   listings: Listing[]
@@ -127,7 +128,7 @@ export function MyListingsPage({ listings, onStatusChange, onOpen, onSell, onEdi
       {activeTab !== 'DRAFTS' && <>
       <div className="my-listings-list">
         {visibleListings.map((listing) => <article className="my-listing-row" key={listing.id}>
-          <button className="my-listing-image" onClick={() => onOpen(listing)}><img src={listing.image} alt={listing.title} /></button>
+          <button className="my-listing-image" onClick={() => onOpen(listing)}><img src={formatImageUrl(listing.image, 400)} alt={listing.title} /></button>
           <div className="my-listing-content"><span className={`status-pill status-${listing.status.toLowerCase()}`}><i />{statusNames[listing.status]}</span><button className="my-listing-title" onClick={() => onOpen(listing)}>{listing.title}</button><strong>{listing.priceLabel}</strong><span className="my-listing-date">{listing.postedAt} <span>·</span> <Eye size={14} /> {listing.views} lượt xem</span>{listing.status === 'REJECTED' && <span className="reject-reason"><ShieldAlert size={14} /> {listing.reviewReason ?? 'Tin đăng chưa đạt tiêu chuẩn, vui lòng chỉnh sửa và gửi lại.'}</span>}</div>
           {(listing.status === 'ACTIVE' || listing.status === 'HIDDEN' || listing.status === 'PENDING') && <div className="my-listing-actions">
             {listing.status === 'ACTIVE' && <>

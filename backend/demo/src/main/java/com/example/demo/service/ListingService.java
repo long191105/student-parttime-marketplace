@@ -30,7 +30,7 @@ import com.example.demo.repository.ListingRepository;
 @Service
 public class ListingService {
 
-    private static final Pattern IMAGE_DATA_URL = Pattern.compile("^data:image/(png|jpeg|webp);base64,[A-Za-z0-9+/=]+$");
+    private static final Pattern HTTPS_IMAGE_URL = Pattern.compile("^https://[^\\s]+$", Pattern.CASE_INSENSITIVE);
 
     private final ListingRepository listingRepository;
     private final CategoryRepository categoryRepository;
@@ -238,9 +238,9 @@ public class ListingService {
 
     private static void validateImage(String image) {
         String value = image.trim();
-        if (value.startsWith("https://")) return;
-        if (IMAGE_DATA_URL.matcher(value).matches()) return;
-        throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Ảnh cần là URL HTTPS hoặc ảnh PNG/JPEG/WebP hợp lệ.");
+        if (HTTPS_IMAGE_URL.matcher(value).matches()) return;
+        throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                "Không gửi ảnh Base64. Hãy upload ảnh lên Cloudinary và gửi URL HTTPS.");
     }
 
     private static void validatePaging(int page, int size) {

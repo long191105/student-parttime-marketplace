@@ -3,6 +3,7 @@ import { ArrowLeft, Flag, Heart, MapPin, MessageCircle, Phone, ShieldCheck } fro
 import type { Listing } from '../domain/Listing'
 import { ListingCard } from '../components/ListingCard'
 import { useAppDialog } from '../components/AppDialogContext'
+import { formatImageUrl } from '../services/ImageUrl'
 
 interface ListingDetailPageProps {
   listing: Listing
@@ -53,8 +54,8 @@ export function ListingDetailPage({ listing, related, saved, currentUserId, onBa
       <div className="detail-layout">
         <section className="detail-main">
           <div className="detail-gallery">
-            <div className="detail-main-image"><img src={gallery[activeImage]} alt={listing.title} /><span className="image-count">{activeImage + 1} / {gallery.length}</span></div>
-            {gallery.length > 1 && <div className="detail-thumbnails">{gallery.map((image, index) => <button key={`${index}-${image}`} type="button" className={index === activeImage ? 'thumbnail-active' : ''} aria-label={`Xem ảnh ${index + 1} của ${listing.title}`} aria-pressed={index === activeImage} onClick={() => setActiveImage(index)}><img src={image} alt="" /></button>)}</div>}
+            <div className="detail-main-image"><img src={formatImageUrl(gallery[activeImage], 800)} alt={listing.title} /><span className="image-count">{activeImage + 1} / {gallery.length}</span></div>
+            {gallery.length > 1 && <div className="detail-thumbnails">{gallery.map((image, index) => <button key={`${index}-${image}`} type="button" className={index === activeImage ? 'thumbnail-active' : ''} aria-label={`Xem ảnh ${index + 1} của ${listing.title}`} aria-pressed={index === activeImage} onClick={() => setActiveImage(index)}><img src={formatImageUrl(image, 400)} alt="" /></button>)}</div>}
           </div>
           <div className="detail-info-card">
             <div className="detail-category-row"><span>{listing.category}</span><span>{listing.conditionLabel}</span><span>Đăng {listing.postedAt}</span></div>

@@ -6,6 +6,8 @@ import { categories, locations } from '../data/categories'
 import { SellDropdown } from '../components/SellDropdown'
 import { listLegacyDistricts, listLegacyWards, type LocationOption } from '../services/LegacyLocationApi'
 import type { ListingFormDraft } from '../services/MarketplaceApi'
+import { uploadImagesToCloudinary } from '../services/CloudinaryUpload'
+import { formatImageUrl } from '../services/ImageUrl'
 
 interface SellPageProps {
   onCancel: () => void
@@ -196,33 +198,14 @@ export function SellPage({ onCancel, onSubmit, onLoadDraft, onSaveDraft, sellerN
     const nextPhotos: ProductPhoto[] = []
     let firstError = files.length > availableSlots ? 'Mỗi tin đăng chỉ được thêm tối đa 10 ảnh.' : ''
     setIsProcessingPhotos(true)
-    for (const file of filesToProcess) {
-      if (!file.type.startsWith('image/')) {
-        firstError ||= `${file.name}: vui lòng chọn tệp hình ảnh.`
-        continue
-      }
-      if (file.size > 5 * 1024 * 1024) {
-        firstError ||= `${file.name}: ảnh có dung lượng tối đa 5 MB.`
-        continue
-      }
-
-      let bitmap: ImageBitmap | undefined
-      try {
-        bitmap = await createImageBitmap(file)
-        const scale = Math.min(1, 1200 / Math.max(bitmap.width, bitmap.height))
-        const canvas = document.createElement('canvas')
-        canvas.width = Math.round(bitmap.width * scale)
-        canvas.height = Math.round(bitmap.height * scale)
-        const context = canvas.getContext('2d')
-        if (!context) throw new Error('Không thể xử lý ảnh trên trình duyệt này.')
-        context.drawImage(bitmap, 0, 0, canvas.width, canvas.height)
-        nextPhotos.push({ id: crypto.randomUUID(), src: canvas.toDataURL('image/jpeg', 0.72) })
-      } catch (error) {
-        console.error(`Không thể tải ảnh "${file.name}".`, error)
-        firstError ||= error instanceof Error ? `${file.name}: ${error.message}` : `Không thể xử lý ảnh "${file.name}".`
-      } finally {
-        bitmap?.close()
-      }
+    try {
+      const uploadedUrls = await uploadImagesToCloudinary(filesToProcess)
+      uploadedUrls.forEach((src) => {
+        nextPhotos.push({ id: crypto.randomUUID(), src })
+      })
+    } catch (error) {
+      console.error('Không thể tải ảnh lên Cloudinary.', error)
+      firstError ||= error instanceof Error ? error.message : 'Không thể tải ảnh lên Cloudinary.'
     }
 
     if (nextPhotos.length > 0) {
@@ -368,10 +351,13 @@ export function SellPage({ onCancel, onSubmit, onLoadDraft, onSaveDraft, sellerN
             <div className="sell-field-block">
               <div className="sell-field-heading"><strong>Hình ảnh sản phẩm</strong><span>Tối đa 10 ảnh, 5 MB mỗi ảnh</span></div>
               <div className="upload-gallery">
-                {photos.length > 0 && <div className="upload-cover-preview"><img src={(photos.find((photo) => photo.id === coverPhotoId) ?? photos[0]).src} alt="Ảnh bìa xem trước" /><span><Check size={13} /> Ảnh bìa</span></div>}
+                {photos.length > 0 && <div className="upload-cover-preview"><img src={formatImageUrl((photos.find((photo) => photo.id === coverPhotoId) ?? photos[0]).src, 800)} alt="Ảnh bìa xem trước" /><span><Check size={13} /> Ảnh bìa</span></div>}
                 <div className="upload-thumbnails">
                   {photos.map((photo, index) => <div className={`upload-thumbnail${photo.id === coverPhotoId ? ' upload-thumbnail-cover' : ''}`} key={photo.id}>
-                    <button className="upload-thumbnail-select" type="button" aria-label={photo.id === coverPhotoId ? `Ảnh bìa, ảnh ${index + 1}` : `Chọn ảnh ${index + 1} làm ảnh bìa`} aria-pressed={photo.id === coverPhotoId} onClick={() => setCoverPhotoId(photo.id)}><img src={photo.src} alt="" />{photo.id === coverPhotoId && <span><Star size={11} fill="currentColor" /> Ảnh bìa</span>}</button>
+                    <button className="upload-thumbnail-select" type="button" aria-label={photo.id === coverPhotoId ? `Ảnh bìa, ảnh ${index + 1}` : `Chọn ảnh ${index + 1} làm ảnh bìa`} aria-pressed={photo.id === coverPhotoId} onClick={() => setCoverPhotoId(photo.id)}>
+                      <img src={formatImageUrl(photo.src, 400)} alt="" />
+                      {photo.id === coverPhotoId && <span><Star size={11} fill="currentColor" /> Ảnh bìa</span>}
+                    </button>
                     <button className="upload-thumbnail-remove" type="button" aria-label={`Xóa ảnh ${index + 1}`} onClick={() => removePhoto(photo.id)}><X size={12} /></button>
                   </div>)}
                   {photos.length < 10 && <label className={`upload-box${photos.length > 0 ? ' upload-box-small' : ''}`}><input type="file" accept="image/*" multiple disabled={isProcessingPhotos} onChange={(event) => void handlePhotoChange(event)} /><ImagePlus size={20} /><strong>{isProcessingPhotos ? 'Đang xử lý...' : photos.length > 0 ? 'Thêm ảnh' : 'Tải ảnh lên'}</strong>{photos.length === 0 && <span>JPG, PNG · tối đa 5 MB</span>}</label>}

@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Heart, MapPin, MessageCircle, Phone, ShieldCheck } from 'lucide-react'
+import { formatImageUrl } from '../services/ImageUrl'
 
 interface PreviewPhoto {
   id: string
@@ -54,7 +55,7 @@ export function ListingDetailPreview({
         <section className="detail-main">
           <div className="detail-gallery">
             <div className="detail-main-image">
-              <img src={gallery[activeImageIndex].src} alt={title || 'Ảnh sản phẩm'} />
+              <img src={formatImageUrl(gallery[activeImageIndex].src, 800)} alt={title || 'Ảnh sản phẩm'} />
               <span className="image-count">{activeImageIndex + 1} / {gallery.length}</span>
             </div>
             {gallery.length > 1 && <div className="detail-thumbnails">
@@ -66,7 +67,7 @@ export function ListingDetailPreview({
                 aria-pressed={index === activeImageIndex}
                 onClick={() => setActiveImage(index)}
               >
-                <img src={photo.src} alt="" />
+                <img src={formatImageUrl(photo.src, 400)} alt="" />
               </button>)}
             </div>}
           </div>

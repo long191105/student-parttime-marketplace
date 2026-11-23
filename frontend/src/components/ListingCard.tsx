@@ -1,5 +1,6 @@
 import { Heart, MapPin, Star } from 'lucide-react'
 import type { Listing } from '../domain/Listing'
+import { formatImageUrl } from '../services/ImageUrl'
 
 interface ListingCardProps {
   listing: Listing
@@ -12,7 +13,7 @@ export function ListingCard({ listing, saved, onOpen, onToggleSaved }: ListingCa
   return (
     <article className="listing-card">
       <button className="listing-image-button" type="button" onClick={() => onOpen(listing)} aria-label={`Xem ${listing.title}`}>
-        <img src={listing.image} alt={listing.title} loading="lazy" />
+        <img src={formatImageUrl(listing.image, 400)} alt={listing.title} loading="lazy" />
         {listing.condition === 'NEW' && <span className="condition-tag">Mới</span>}
       </button>
       <button className={`save-button ${saved ? 'is-saved' : ''}`} type="button" aria-label={saved ? 'Bỏ lưu tin' : 'Lưu tin'} onClick={() => onToggleSaved(listing.id)}><Heart size={18} fill={saved ? 'currentColor' : 'none'} /></button>

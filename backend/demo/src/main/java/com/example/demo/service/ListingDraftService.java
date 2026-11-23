@@ -40,6 +40,15 @@ public class ListingDraftService {
     @Transactional
     public void saveCurrentDraft(ListingDraftRequest request) {
         UserAccount seller = currentUserService.requireUser();
+        for (ListingDraftRequest.DraftPhoto photo : request.photos() == null ? java.util.List.<ListingDraftRequest.DraftPhoto>of() : request.photos()) {
+            String src = photo.src().trim();
+            if (!src.startsWith("https://") && !src.startsWith("http://images.unsplash.com/")
+                    && !src.startsWith("http://plus.unsplash.com/")
+                    && !src.matches("^data:image/(png|jpeg|webp);base64,[A-Za-z0-9+/=]+$")) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                        "Không lưu ảnh Base64 mới trong bản nháp. Hãy upload ảnh lên Cloudinary.");
+            }
+        }
         String content = serialize(request);
         ListingDraft draft = listingDraftRepository.findBySellerId(seller.getId())
                 .orElseGet(() -> new ListingDraft(seller, content, Instant.now()));
