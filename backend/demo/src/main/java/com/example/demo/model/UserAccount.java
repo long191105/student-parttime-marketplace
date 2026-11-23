@@ -49,6 +49,9 @@ public class UserAccount implements UserDetails {
     @Column(name = "created_at", nullable = false)
     private Instant createdAt = Instant.now();
 
+    @Column(name = "last_active_at")
+    private Instant lastActiveAt;
+
     protected UserAccount() {
     }
 
@@ -90,12 +93,20 @@ public class UserAccount implements UserDetails {
         return createdAt;
     }
 
+    public Instant getLastActiveAt() {
+        return lastActiveAt;
+    }
+
     public void setRole(UserRole role) {
         this.role = role;
     }
 
     public void setStatus(AccountStatus status) {
         this.status = status;
+    }
+
+    public void setLastActiveAt(Instant lastActiveAt) {
+        this.lastActiveAt = lastActiveAt;
     }
 
     @Override

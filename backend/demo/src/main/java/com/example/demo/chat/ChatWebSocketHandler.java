@@ -1,10 +1,12 @@
 package com.example.demo.chat;
 
 import java.io.IOException;
+import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -272,8 +274,16 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
             }
             session.getAttributes().put(USER_ID_ATTRIBUTE, user.getId());
             session.getAttributes().put(USER_ATTRIBUTE, user);
-            sessionsByUser.computeIfAbsent(user.getId(), ignored -> ConcurrentHashMap.newKeySet()).add(session);
+            sessionsByUser.compute(user.getId(), (userId, sessions) -> {
+                Set<WebSocketSession> activeSessions = sessions == null
+                        ? ConcurrentHashMap.newKeySet()
+                        : sessions;
+                activeSessions.add(session);
+                return activeSessions;
+            });
             session.sendMessage(new TextMessage(objectMapper.writeValueAsString(Map.of("type", "authenticated"))));
+            sendPresenceSnapshot(session, user.getId());
+            broadcastPresence(user.getId(), true, null);
         } catch (JwtException | IllegalArgumentException | AuthenticationException exception) {
             sendError(session, "Phiên đăng nhập không hợp lệ hoặc đã hết hạn.");
             closeQuietly(session, CloseStatus.POLICY_VIOLATION);
@@ -341,12 +351,58 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
         Long userId = (Long) session.getAttributes().remove(USER_ID_ATTRIBUTE);
         session.getAttributes().remove(USER_ATTRIBUTE);
         if (userId == null) return;
-        Set<WebSocketSession> sessions = sessionsByUser.get(userId);
-        if (sessions != null) {
+        AtomicBoolean wentOffline = new AtomicBoolean(false);
+        sessionsByUser.computeIfPresent(userId, (id, sessions) -> {
             sessions.remove(session);
-            if (sessions.isEmpty() && sessionsByUser.remove(userId, sessions)) {
-                callInitiatorsByConversation.entrySet()
-                        .removeIf(entry -> entry.getValue().equals(userId));
+            if (sessions.stream().noneMatch(WebSocketSession::isOpen)) {
+                wentOffline.set(true);
+                return null;
+            }
+            return sessions;
+        });
+        if (!wentOffline.get()) return;
+
+        Instant lastActiveAt = Instant.now();
+        try {
+            chatService.updateLastActiveAt(userId, lastActiveAt);
+        } catch (RuntimeException exception) {
+            logger.error("Could not save the user's last active time.", exception);
+        }
+        broadcastPresence(userId, false, lastActiveAt);
+        callInitiatorsByConversation.entrySet().removeIf(entry -> entry.getValue().equals(userId));
+    }
+
+    private void sendPresenceSnapshot(WebSocketSession session, Long userId) throws IOException {
+        Set<Long> peerIds = chatService.getConversationPeerIds(userId);
+        Map<Long, Instant> lastActiveAtByUser = chatService.getLastActiveAt(peerIds);
+        for (Long peerId : peerIds) {
+            boolean online = hasOpenSession(peerId);
+            sendPresence(session, peerId, online, online ? null : lastActiveAtByUser.get(peerId));
+        }
+    }
+
+    private void broadcastPresence(Long userId, boolean online, Instant lastActiveAt) {
+        Set<Long> peerIds = chatService.getConversationPeerIds(userId);
+        if (peerIds.isEmpty()) return;
+
+        Map<String, Object> event = new LinkedHashMap<>();
+        event.put("type", "presence");
+        event.put("userId", userId.toString());
+        event.put("online", online);
+        event.put("lastActiveAt", lastActiveAt);
+        broadcast(peerIds, event);
+    }
+
+    private void sendPresence(WebSocketSession session, Long userId, boolean online, Instant lastActiveAt)
+            throws IOException {
+        Map<String, Object> event = new LinkedHashMap<>();
+        event.put("type", "presence");
+        event.put("userId", userId.toString());
+        event.put("online", online);
+        event.put("lastActiveAt", lastActiveAt);
+        synchronized (session) {
+            if (session.isOpen()) {
+                session.sendMessage(new TextMessage(objectMapper.writeValueAsString(event)));
             }
         }
     }

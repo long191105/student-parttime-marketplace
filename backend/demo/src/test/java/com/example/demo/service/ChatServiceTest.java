@@ -26,6 +26,7 @@ import com.example.demo.model.UserRole;
 import com.example.demo.repository.ChatConversationRepository;
 import com.example.demo.repository.ChatMessageRepository;
 import com.example.demo.repository.ListingRepository;
+import com.example.demo.repository.UserAccountRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -48,6 +49,9 @@ class ChatServiceTest {
     private ListingRepository listingRepository;
 
     @Mock
+    private UserAccountRepository userAccountRepository;
+
+    @Mock
     private CurrentUserService currentUserService;
 
     private ChatService chatService;
@@ -58,7 +62,12 @@ class ChatServiceTest {
 
     @BeforeEach
     void setUp() {
-        chatService = new ChatService(conversationRepository, messageRepository, listingRepository, currentUserService);
+        chatService = new ChatService(
+                conversationRepository,
+                messageRepository,
+                listingRepository,
+                userAccountRepository,
+                currentUserService);
         buyer = user(11L, "Nguyen Long");
         seller = user(12L, "Tran Mai");
         listing = new Listing(
@@ -98,8 +107,31 @@ class ChatServiceTest {
 
         assertEquals("31", response.id());
         assertEquals("22", response.listingId());
+        assertEquals("12", response.participantId());
         assertEquals("Tran Mai", response.participantName());
         verify(conversationRepository).save(any(ChatConversation.class));
+    }
+
+    @Test
+    void listsChatPeersAndTheirLastActiveTimes() {
+        Instant lastActiveAt = Instant.parse("2026-11-23T06:00:00Z");
+        seller.setLastActiveAt(lastActiveAt);
+        when(conversationRepository.findByBuyerIdOrSellerIdOrderByUpdatedAtDesc(11L, 11L))
+                .thenReturn(List.of(conversation));
+        when(userAccountRepository.findAllById(Set.of(12L))).thenReturn(List.of(seller));
+
+        assertEquals(Set.of(12L), chatService.getConversationPeerIds(11L));
+        assertEquals(lastActiveAt, chatService.getLastActiveAt(Set.of(12L)).get(12L));
+    }
+
+    @Test
+    void updatesUserLastActiveTime() {
+        Instant lastActiveAt = Instant.parse("2026-11-23T06:00:00Z");
+        when(userAccountRepository.findById(12L)).thenReturn(Optional.of(seller));
+
+        chatService.updateLastActiveAt(12L, lastActiveAt);
+
+        assertEquals(lastActiveAt, seller.getLastActiveAt());
     }
 
     @Test

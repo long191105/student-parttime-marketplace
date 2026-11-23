@@ -35,6 +35,7 @@ export interface ChatConversation {
   listingImage: string
   price: number
   giveaway: boolean
+  participantId: string
   participantName: string
   participantInitials: string
   lastMessage: string
@@ -59,6 +60,7 @@ export type CallType = 'audio' | 'video'
 
 export type ChatSocketEvent =
   | { type: 'authenticated' }
+  | { type: 'presence'; userId: string; online: boolean; lastActiveAt: string | null }
   | { type: 'message'; message: ChatMessage }
   | { type: 'call-invite'; conversationId: string; senderId: string; callType: CallType }
   | { type: 'call-contacting' | 'call-ringing'; conversationId: string; senderId: string }
@@ -270,6 +272,8 @@ export class MarketplaceApi {
       try {
         const payload = JSON.parse(event.data) as ChatSocketEvent
         if (payload.type === 'authenticated' || payload.type === 'error'
+          || (payload.type === 'presence' && payload.userId && typeof payload.online === 'boolean'
+            && (payload.lastActiveAt === null || typeof payload.lastActiveAt === 'string'))
           || (payload.type === 'message' && payload.message?.conversationId && payload.message.id)
           || (isCallSocketEvent(payload) && payload.conversationId
             && (payload.type === 'call-error' ? payload.message : payload.senderId))) {
