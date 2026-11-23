@@ -31,11 +31,11 @@ Khi backend khởi động, Hibernate cập nhật schema tự động (`ddl-aut
 
 ## Cấu hình xác minh email đăng ký
 
-Đăng ký chỉ nhận địa chỉ `@gmail.com`. Backend gửi mã OTP qua Gmail SMTP; tài khoản chỉ được tạo sau khi mã được xác minh. Mỗi mã có hiệu lực 10 phút, tối đa 5 lần nhập sai và chờ 60 giây giữa các lần gửi lại.
+Đăng ký chỉ nhận địa chỉ `@gmail.com`. Backend gửi mã OTP qua Mailjet Email API (HTTPS); tài khoản chỉ được tạo sau khi mã được xác minh. Mỗi mã có hiệu lực 10 phút, tối đa 5 lần nhập sai và chờ 60 giây giữa các lần gửi lại.
 
-1. Bật xác minh 2 bước cho tài khoản Google dùng để gửi email và tạo **App Password**.
-2. Điền `MAIL_USERNAME` (địa chỉ Gmail gửi thư) và `MAIL_PASSWORD` (Google App Password) trong `.env`. Địa chỉ gửi (`From`) tự dùng `MAIL_USERNAME`; Gmail yêu cầu gửi bằng chính tài khoản đã xác thực. Không dùng mật khẩu đăng nhập Gmail thông thường và không commit `.env`.
-3. Khởi động lại backend. Nếu chưa cấu hình SMTP, đăng ký sẽ báo lỗi cấu hình gửi email; các API khác vẫn dùng được.
+1. Tạo Mailjet API key/secret và xác minh địa chỉ người gửi trong Mailjet.
+2. Cấu hình `MAILJET_API_KEY`, `MAILJET_SECRET_KEY`, `MAILJET_FROM_EMAIL` (địa chỉ đã xác minh) và tùy chọn `MAILJET_FROM_NAME` trong `.env` hoặc biến môi trường Render. Không commit các khóa API.
+3. Khởi động lại/redeploy backend. Nếu Mailjet chưa được cấu hình, đăng ký sẽ báo lỗi cấu hình gửi email; các API khác vẫn dùng được.
 
 ## Chạy backend
 
@@ -81,7 +81,7 @@ Frontend trên Vercel không thể gọi backend qua `localhost`; URL đó trỏ
 3. Sau khi deploy, kiểm tra `https://<backend-render-url>/api/health`. Sao chép URL backend dạng `https://<backend-render-url>` (không thêm `/api`).
 4. Trong Vercel, mở **Settings → Environment Variables**, đặt `VITE_API_BASE_URL` thành `https://<backend-render-url>/api` cho môi trường Production, rồi redeploy frontend.
 
-Thay `<backend-render-url>` bằng hostname Render thật. Nếu dùng Gmail OTP, cấu hình thêm `MAIL_USERNAME` và `MAIL_PASSWORD` trong Render. Biến frontend `VITE_API_BASE_URL` được đóng gói lúc build nên chỉ thêm biến là chưa đủ; cần deploy lại.
+Thay `<backend-render-url>` bằng hostname Render thật. Cấu hình `MAILJET_API_KEY`, `MAILJET_SECRET_KEY`, `MAILJET_FROM_EMAIL` và tùy chọn `MAILJET_FROM_NAME` trong **Environment** của backend Render. Biến frontend `VITE_API_BASE_URL` được đóng gói lúc build nên chỉ thêm biến là chưa đủ; cần deploy lại frontend.
 
 ## Gọi thoại và video
 
