@@ -2,8 +2,11 @@ package com.example.demo.service;
 
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.time.Duration;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -17,14 +20,19 @@ import org.springframework.web.server.ResponseStatusException;
 
 import com.example.demo.dto.ChatConversationResponse;
 import com.example.demo.dto.ChatMessageResponse;
+import com.example.demo.dto.ChatReviewRequest;
+import com.example.demo.dto.ChatReviewResponse;
+import com.example.demo.dto.ChatReviewStatusResponse;
 import com.example.demo.model.ChatConversation;
 import com.example.demo.model.ChatMessage;
 import com.example.demo.model.ChatMessageType;
+import com.example.demo.model.ChatReview;
 import com.example.demo.model.Listing;
 import com.example.demo.model.ListingStatus;
 import com.example.demo.model.UserAccount;
 import com.example.demo.repository.ChatConversationRepository;
 import com.example.demo.repository.ChatMessageRepository;
+import com.example.demo.repository.ChatReviewRepository;
 import com.example.demo.repository.ListingRepository;
 import com.example.demo.repository.UserAccountRepository;
 
@@ -33,6 +41,7 @@ public class ChatService {
 
     private final ChatConversationRepository conversationRepository;
     private final ChatMessageRepository messageRepository;
+    private final ChatReviewRepository reviewRepository;
     private final ListingRepository listingRepository;
     private final UserAccountRepository userAccountRepository;
     private final CurrentUserService currentUserService;
@@ -40,11 +49,13 @@ public class ChatService {
     public ChatService(
             ChatConversationRepository conversationRepository,
             ChatMessageRepository messageRepository,
+            ChatReviewRepository reviewRepository,
             ListingRepository listingRepository,
             UserAccountRepository userAccountRepository,
             CurrentUserService currentUserService) {
         this.conversationRepository = conversationRepository;
         this.messageRepository = messageRepository;
+        this.reviewRepository = reviewRepository;
         this.listingRepository = listingRepository;
         this.userAccountRepository = userAccountRepository;
         this.currentUserService = currentUserService;
@@ -130,6 +141,125 @@ public class ChatService {
         conversation.touch();
         conversationRepository.save(conversation);
         return ChatMessageResponse.from(message);
+    }
+
+    @Transactional
+    public ChatConversationResponse confirmSale(Long conversationId) {
+        UserAccount seller = currentUserService.requireUser();
+        ChatConversation conversation = requireParticipant(conversationId, seller);
+        if (!conversation.getSeller().getId().equals(seller.getId())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Chỉ người đăng tin mới có thể xác nhận đã bán.");
+        }
+        Listing listing = listingRepository.findByIdForUpdate(conversation.getListing().getId())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy tin đăng."));
+        if (!listing.getSeller().getId().equals(seller.getId())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Bạn không phải người đăng tin này.");
+        }
+        if (conversation.getSaleConfirmedAt() != null || listing.getStatus() != ListingStatus.ACTIVE) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Tin đăng đã được bán hoặc không còn hiển thị.");
+        }
+        listing.changeStatus(ListingStatus.SOLD, null);
+        conversation.confirmSale();
+        return toResponse(conversation, seller);
+    }
+
+    @Transactional(readOnly = true)
+    public ChatReviewStatusResponse getReviewStatus(Long conversationId) {
+        UserAccount reviewer = currentUserService.requireUser();
+        ChatConversation conversation = requireParticipant(conversationId, reviewer);
+        return toReviewStatus(conversation, reviewer);
+    }
+
+    @Transactional(readOnly = true)
+    public List<ChatReviewResponse> getPublishedReviewsForUser(Long userId) {
+        Instant unlockAt = Instant.now().minus(Duration.ofHours(48));
+        return reviewRepository.findByRevieweeIdOrderByCreatedAtDesc(userId).stream()
+                .filter(review -> !review.getCreatedAt().isAfter(unlockAt)
+                        || reviewRepository.countByConversationId(review.getConversation().getId()) == 2)
+                .map(ChatReviewResponse::from)
+                .toList();
+    }
+
+    @Transactional
+    public ChatReviewStatusResponse submitReview(Long conversationId, ChatReviewRequest request) {
+        UserAccount reviewer = currentUserService.requireUser();
+        ChatConversation conversation = requireParticipant(conversationId, reviewer);
+        if (conversation.getSaleConfirmedAt() == null) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Chỉ có thể đánh giá sau khi người bán xác nhận đã bán trong cuộc trò chuyện này.");
+        }
+        if (reviewRepository.findByConversationIdAndReviewerId(conversationId, reviewer.getId()).isPresent()) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Bạn đã gửi đánh giá cho giao dịch này.");
+        }
+
+        boolean isSeller = conversation.getSeller().getId().equals(reviewer.getId());
+        int rating = request.rating();
+        List<String> tags = request.tags() == null ? List.of() : new ArrayList<>(request.tags());
+        List<String> images = request.images() == null ? List.of() : new ArrayList<>(request.images());
+        String comment = request.comment() == null ? "" : request.comment().trim();
+        validateReview(isSeller, rating, comment, tags, images);
+        UserAccount reviewee = isSeller ? conversation.getBuyer() : conversation.getSeller();
+        reviewRepository.save(new ChatReview(
+                conversation,
+                reviewer,
+                reviewee,
+                rating,
+                comment,
+                tags,
+                images));
+        return toReviewStatus(conversation, reviewer);
+    }
+
+    private ChatReviewStatusResponse toReviewStatus(ChatConversation conversation, UserAccount reviewer) {
+        boolean eligible = conversation.getSaleConfirmedAt() != null;
+        List<ChatReview> reviews = eligible
+                ? reviewRepository.findByConversationIdOrderByCreatedAtAsc(conversation.getId())
+                : List.of();
+        ChatReview ownReview = reviews.stream()
+                .filter(review -> review.getReviewer().getId().equals(reviewer.getId()))
+                .findFirst()
+                .orElse(null);
+        boolean publishAll = reviews.size() == 2;
+        Instant unlockAt = Instant.now().minus(Duration.ofHours(48));
+        List<ChatReviewResponse> publishedReviews = reviews.stream()
+                .filter(review -> publishAll || !review.getCreatedAt().isAfter(unlockAt))
+                .map(ChatReviewResponse::from)
+                .toList();
+        return new ChatReviewStatusResponse(
+                eligible,
+                ownReview != null,
+                ownReview == null ? null : ChatReviewResponse.from(ownReview),
+                publishedReviews);
+    }
+
+    private static void validateReview(boolean isSeller, int rating, String comment, List<String> tags, List<String> images) {
+        if (rating < 1 || rating > 5 || comment.length() > 500 || tags.size() > 3 || images.size() > 3) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Nội dung đánh giá không hợp lệ.");
+        }
+        if (new HashSet<>(tags).size() != tags.size()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Không thể chọn thẻ đánh giá trùng lặp.");
+        }
+        if (tags.stream().anyMatch(tag -> tag == null || tag.isBlank())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Thẻ đánh giá không hợp lệ.");
+        }
+        Set<String> allowedTags;
+        if (isSeller) {
+            if (!images.isEmpty()) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Người bán không thể đính kèm ảnh trong đánh giá người mua.");
+            }
+            allowedTags = rating < 3
+                    ? Set.of("Bom hàng/Bùng kèo", "Trả giá quá đáng")
+                    : Set.of("Mua nhanh gọn", "Lịch sự thiện chí", "Đến đúng hẹn");
+        } else {
+            allowedTags = rating < 3
+                    ? Set.of("Hàng lỗi không báo trước", "Sai mô tả", "Hẹn không tới")
+                    : Set.of("Mô tả đúng thực tế", "Giao hàng/Hẹn đúng giờ", "Nhiệt tình thân thiện", "Giá hợp lý");
+        }
+        if (!allowedTags.containsAll(tags)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Thẻ đánh giá không phù hợp với vai trò hoặc số sao.");
+        }
+        if (images.stream().anyMatch(image -> image == null || !image.matches("(?i)^https://[^\\s]+$"))) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Ảnh đánh giá phải là liên kết HTTPS hợp lệ.");
+        }
     }
 
     @Transactional
@@ -292,7 +422,10 @@ public class ChatService {
                 initials(participant.getFullName()),
                 lastMessage,
                 conversation.getUpdatedAt(),
-                unreadCount);
+                unreadCount,
+                conversation.getSeller().getId().equals(currentUser.getId()),
+                conversation.getSaleConfirmedAt() != null,
+                listing.getStatus() == ListingStatus.SOLD);
     }
 
     private static String initials(String fullName) {

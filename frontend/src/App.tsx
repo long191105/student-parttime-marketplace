@@ -556,7 +556,7 @@ export function App() {
       {view === 'favorites' && <FavoritesPage listings={listings} savedIds={savedIds} onOpen={openListing} onToggleSaved={toggleSaved} />}
       {view === 'check-in' && <CheckInPage userId={user?.id ?? null} onBack={() => navigate('home')} />}
       {user && apiState === 'connected' && <div className={view === 'messages' ? '' : 'inbox-background-listener'} aria-hidden={view !== 'messages'}>
-        <InboxPage api={api} user={user} initialConversationId={selectedConversationId} isVisible={view === 'messages'} onUnreadCountChange={updateUnreadMessageCount} onOpenListing={(id) => {
+        <InboxPage api={api} user={user} initialConversationId={selectedConversationId} isVisible={view === 'messages'} onUnreadCountChange={updateUnreadMessageCount} onListingSold={(id) => setListings((current) => current.map((listing) => listing.id === id ? listing.withStatus('SOLD') : listing))} onOpenListing={(id) => {
           const listing = listings.find((item) => item.id === id)
           if (listing) openListing(listing)
           else setNotice('Không tìm thấy tin đăng liên quan đến cuộc trò chuyện này.')
@@ -564,7 +564,7 @@ export function App() {
       </div>}
       {view === 'messages' && apiState !== 'connected' && <div className="empty-state"><h3>Không thể kết nối hộp thư</h3><p>{apiError || 'Đang kết nối backend. Vui lòng thử lại sau.'}</p><button className="button-primary" onClick={retryConnection}>Thử kết nối lại</button></div>}
       {view === 'notifications' && <NotificationsPage onNavigate={navigate} />}
-      {view === 'profile' && user && <ProfilePage listings={listings} onOpen={openListing} onToggleSaved={toggleSaved} onAuth={signOut} fullName={currentSellerName} sellerId={currentSellerId} />}
+      {view === 'profile' && user && <ProfilePage listings={listings} onOpen={openListing} onToggleSaved={toggleSaved} onAuth={signOut} fullName={currentSellerName} sellerId={currentSellerId} api={api} />}
       {view === 'profile' && !user && <div className="empty-state"><h3>Đăng nhập để xem hồ sơ của bạn</h3><button className="button-primary" onClick={() => navigate('auth')}>Đăng nhập</button></div>}
     </MarketplaceLayout>
   )

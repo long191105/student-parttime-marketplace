@@ -41,6 +41,28 @@ export interface ChatConversation {
   lastMessage: string
   updatedAt: string
   unreadCount: number
+  currentUserIsSeller: boolean
+  saleConfirmed: boolean
+  listingSold: boolean
+}
+
+export interface ChatReview {
+  id: string
+  reviewerId: string
+  reviewerName: string
+  listingTitle: string
+  rating: number
+  comment: string
+  tags: string[]
+  images: string[]
+  createdAt: string
+}
+
+export interface ChatReviewStatus {
+  eligible: boolean
+  ownReviewSubmitted: boolean
+  ownReview: ChatReview | null
+  publishedReviews: ChatReview[]
 }
 
 export interface ChatMessage {
@@ -260,6 +282,28 @@ export class MarketplaceApi {
 
   async getChatMessages(conversationId: string): Promise<ChatMessage[]> {
     return this.request<ChatMessage[]>(`/chat/conversations/${encodeURIComponent(conversationId)}/messages`)
+  }
+
+  async confirmChatSale(conversationId: string): Promise<ChatConversation> {
+    return this.request<ChatConversation>(`/chat/conversations/${encodeURIComponent(conversationId)}/sold`, { method: 'POST' })
+  }
+
+  async getChatReviewStatus(conversationId: string): Promise<ChatReviewStatus> {
+    return this.request<ChatReviewStatus>(`/chat/conversations/${encodeURIComponent(conversationId)}/reviews`)
+  }
+
+  async getPublishedUserReviews(userId: string): Promise<ChatReview[]> {
+    return this.request<ChatReview[]>(`/chat/reviews/users/${encodeURIComponent(userId)}`)
+  }
+
+  async submitChatReview(
+    conversationId: string,
+    review: { rating: number; comment: string; tags: string[]; images: string[] },
+  ): Promise<ChatReviewStatus> {
+    return this.request<ChatReviewStatus>(`/chat/conversations/${encodeURIComponent(conversationId)}/reviews`, {
+      method: 'POST',
+      body: JSON.stringify(review),
+    })
   }
 
   async getCallIceServers(): Promise<RTCIceServer[]> {

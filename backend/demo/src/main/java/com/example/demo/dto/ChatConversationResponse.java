@@ -15,5 +15,8 @@ public record ChatConversationResponse(
         String participantInitials,
         String lastMessage,
         Instant updatedAt,
-        long unreadCount) {
+        long unreadCount,
+        boolean currentUserIsSeller,
+        boolean saleConfirmed,
+        boolean listingSold) {
 }

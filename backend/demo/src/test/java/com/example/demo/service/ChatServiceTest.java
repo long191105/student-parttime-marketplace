@@ -15,9 +15,11 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicReference;
 
 import com.example.demo.model.ChatConversation;
 import com.example.demo.model.ChatMessage;
+import com.example.demo.model.ChatReview;
 import com.example.demo.model.Listing;
 import com.example.demo.model.ListingCondition;
 import com.example.demo.model.ListingStatus;
@@ -25,8 +27,10 @@ import com.example.demo.model.UserAccount;
 import com.example.demo.model.UserRole;
 import com.example.demo.repository.ChatConversationRepository;
 import com.example.demo.repository.ChatMessageRepository;
+import com.example.demo.repository.ChatReviewRepository;
 import com.example.demo.repository.ListingRepository;
 import com.example.demo.repository.UserAccountRepository;
+import com.example.demo.dto.ChatReviewRequest;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -44,6 +48,9 @@ class ChatServiceTest {
 
     @Mock
     private ChatMessageRepository messageRepository;
+
+    @Mock
+    private ChatReviewRepository reviewRepository;
 
     @Mock
     private ListingRepository listingRepository;
@@ -65,6 +72,7 @@ class ChatServiceTest {
         chatService = new ChatService(
                 conversationRepository,
                 messageRepository,
+                reviewRepository,
                 listingRepository,
                 userAccountRepository,
                 currentUserService);
@@ -387,6 +395,57 @@ class ChatServiceTest {
         assertEquals(HttpStatus.BAD_REQUEST, exception.getStatusCode());
         assertTrue(exception.getReason().contains("2.000"));
         verify(conversationRepository, never()).findById(31L);
+    }
+
+    @Test
+    void onlySellerCanConfirmSaleForTheCurrentConversation() {
+        when(currentUserService.requireUser()).thenReturn(seller);
+        when(conversationRepository.findById(31L)).thenReturn(Optional.of(conversation));
+        when(listingRepository.findByIdForUpdate(22L)).thenReturn(Optional.of(listing));
+        when(messageRepository.findFirstByConversationIdOrderBySentAtDesc(31L)).thenReturn(Optional.empty());
+        when(messageRepository.countUnreadByConversationAndUser(31L, 12L)).thenReturn(0L);
+
+        var response = chatService.confirmSale(31L);
+
+        assertEquals(ListingStatus.SOLD, listing.getStatus());
+        assertTrue(conversation.getSaleConfirmedAt() != null);
+        assertTrue(response.saleConfirmed());
+        assertTrue(response.currentUserIsSeller());
+
+        when(currentUserService.requireUser()).thenReturn(buyer);
+        assertThrows(ResponseStatusException.class, () -> chatService.confirmSale(31L));
+        verify(listingRepository, org.mockito.Mockito.times(1)).findByIdForUpdate(22L);
+    }
+
+    @Test
+    void buyerCanReviewOnlyAfterSaleAndReviewStaysHiddenUntilSecondReview() {
+        when(currentUserService.requireUser()).thenReturn(buyer);
+        when(conversationRepository.findById(31L)).thenReturn(Optional.of(conversation));
+
+        ResponseStatusException beforeSale = assertThrows(
+                ResponseStatusException.class,
+                () -> chatService.submitReview(31L, new ChatReviewRequest(5, "Tốt", List.of("Mô tả đúng thực tế"), List.of())));
+        assertEquals(HttpStatus.CONFLICT, beforeSale.getStatusCode());
+
+        conversation.confirmSale();
+        AtomicReference<ChatReview> savedReview = new AtomicReference<>();
+        when(reviewRepository.findByConversationIdAndReviewerId(31L, 11L)).thenReturn(Optional.empty());
+        when(reviewRepository.save(any(ChatReview.class))).thenAnswer(invocation -> {
+            ChatReview review = invocation.getArgument(0);
+            ReflectionTestUtils.setField(review, "id", 61L);
+            savedReview.set(review);
+            return review;
+        });
+        when(reviewRepository.findByConversationIdOrderByCreatedAtAsc(31L)).thenAnswer(invocation ->
+                savedReview.get() == null ? List.of() : List.of(savedReview.get()));
+
+        var status = chatService.submitReview(
+                31L,
+                new ChatReviewRequest(5, "Tốt", List.of("Mô tả đúng thực tế"), List.of("https://example.com/item.jpg")));
+
+        assertTrue(status.ownReviewSubmitted());
+        assertEquals("61", status.ownReview().id());
+        assertTrue(status.publishedReviews().isEmpty());
     }
 
     private static UserAccount user(Long id, String name) {

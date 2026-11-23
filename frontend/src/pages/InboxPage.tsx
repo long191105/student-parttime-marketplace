@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { ArrowLeft, ExternalLink, Map, MapPin, MessageCircle, Mic, MicOff, Phone, PhoneOff, Search, Send, Video, VideoOff, X } from 'lucide-react'
-import type { AuthUser, CallType, ChatConversation, ChatMessage, ChatSocketEvent, MarketplaceApi } from '../services/MarketplaceApi'
+import { ArrowLeft, ExternalLink, ImagePlus, Map, MapPin, MessageCircle, Mic, MicOff, Phone, PhoneOff, Search, Send, Star, Video, VideoOff, X } from 'lucide-react'
+import type { AuthUser, CallType, ChatConversation, ChatMessage, ChatReviewStatus, ChatSocketEvent, MarketplaceApi } from '../services/MarketplaceApi'
+import { uploadImagesToCloudinary } from '../services/CloudinaryUpload'
+import { useAppDialog } from '../components/AppDialogContext'
 
 interface InboxPageProps {
   api: MarketplaceApi
@@ -9,6 +11,7 @@ interface InboxPageProps {
   initialConversationId: string | null
   isVisible: boolean
   onOpenListing: (listingId: string) => void
+  onListingSold: (listingId: string) => void
   onUnreadCountChange: (count: number) => void
 }
 
@@ -20,7 +23,7 @@ type CallState =
 type ActiveCallState = Exclude<CallState, { status: 'idle' }>
 type CallSignalEvent = Extract<ChatSocketEvent, { type: `call-${string}` }>
 
-export function InboxPage({ api, user, initialConversationId, isVisible, onOpenListing, onUnreadCountChange }: InboxPageProps) {
+export function InboxPage({ api, user, initialConversationId, isVisible, onOpenListing, onListingSold, onUnreadCountChange }: InboxPageProps) {
   const [conversations, setConversations] = useState<ChatConversation[]>([])
   const [activeId, setActiveId] = useState(initialConversationId ?? '')
   const [messagesByConversation, setMessagesByConversation] = useState<Record<string, ChatMessage[]>>({})
@@ -40,6 +43,17 @@ export function InboxPage({ api, user, initialConversationId, isVisible, onOpenL
   const [callElapsedSeconds, setCallElapsedSeconds] = useState(0)
   const [microphoneEnabled, setMicrophoneEnabled] = useState(true)
   const [cameraEnabled, setCameraEnabled] = useState(true)
+  const [reviewStatus, setReviewStatus] = useState<ChatReviewStatus | null>(null)
+  const [reviewStatusConversationId, setReviewStatusConversationId] = useState('')
+  const [reviewRating, setReviewRating] = useState(5)
+  const [reviewTags, setReviewTags] = useState<string[]>([])
+  const [reviewComment, setReviewComment] = useState('')
+  const [reviewImages, setReviewImages] = useState<string[]>([])
+  const [reviewError, setReviewError] = useState('')
+  const [isSubmittingReview, setIsSubmittingReview] = useState(false)
+  const [isUploadingReviewImages, setIsUploadingReviewImages] = useState(false)
+  const [isConfirmingSale, setIsConfirmingSale] = useState(false)
+  const { showConfirm } = useAppDialog()
   const socketRef = useRef<WebSocket | null>(null)
   const messagesContainerRef = useRef<HTMLDivElement>(null)
   const localVideoRef = useRef<HTMLVideoElement>(null)
@@ -531,6 +545,105 @@ export function InboxPage({ api, user, initialConversationId, isVisible, onOpenL
   const isLoadingMessages = Boolean(activeId && !loadedConversations[activeId])
   const visibleChats = conversations.filter((item) =>
     `${item.participantName} ${item.listingTitle}`.toLocaleLowerCase('vi').includes(search.toLocaleLowerCase('vi')))
+  const activeReviewStatus = reviewStatusConversationId === activeId ? reviewStatus : null
+
+  useEffect(() => {
+    let active = true
+    if (!isVisible || !activeChat?.saleConfirmed) return
+
+    const conversationId = activeChat.id
+    async function refreshReviewStatus() {
+      try {
+        const status = await api.getChatReviewStatus(conversationId)
+        if (active) {
+          setReviewStatus(status)
+          setReviewStatusConversationId(conversationId)
+        }
+      } catch (loadError) {
+        if (active) setReviewError(loadError instanceof Error ? loadError.message : 'Không thể tải trạng thái đánh giá.')
+      }
+    }
+    void refreshReviewStatus()
+    const timer = window.setInterval(() => { void refreshReviewStatus() }, 15_000)
+    return () => {
+      active = false
+      window.clearInterval(timer)
+    }
+  }, [activeChat?.id, activeChat?.saleConfirmed, api, isVisible])
+
+  async function confirmSaleInConversation() {
+    if (!activeChat || !activeChat.currentUserIsSeller || activeChat.listingSold) return
+    if (!await showConfirm(
+      `Xác nhận đã bán "${activeChat.listingTitle}" cho ${activeChat.participantName}? Chỉ người mua trong cuộc trò chuyện này mới có thể đánh giá giao dịch.`,
+      'Xác nhận giao dịch',
+      'Đã bán cho người mua này',
+    )) return
+    setIsConfirmingSale(true)
+    setReviewError('')
+    try {
+      const updatedConversation = await api.confirmChatSale(activeChat.id)
+      setConversations((current) => current.map((item) => item.id === updatedConversation.id ? updatedConversation : item))
+      onListingSold(updatedConversation.listingId)
+    } catch (saleError) {
+      setReviewError(saleError instanceof Error ? saleError.message : 'Không thể xác nhận giao dịch.')
+      setIsConfirmingSale(false)
+      return
+    }
+    try {
+      const status = await api.getChatReviewStatus(activeChat.id)
+      setReviewStatus(status)
+      setReviewStatusConversationId(activeChat.id)
+    } catch (statusError) {
+      setReviewError(statusError instanceof Error
+        ? `Đã xác nhận bán thành công, nhưng không thể tải trạng thái đánh giá: ${statusError.message}`
+        : 'Đã xác nhận bán thành công, nhưng không thể tải trạng thái đánh giá.')
+    } finally {
+      setIsConfirmingSale(false)
+    }
+  }
+
+  async function submitReview(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    if (!activeChat || !activeReviewStatus?.eligible || activeReviewStatus.ownReviewSubmitted) return
+    setIsSubmittingReview(true)
+    setReviewError('')
+    try {
+      const status = await api.submitChatReview(activeChat.id, {
+        rating: reviewRating,
+        comment: reviewComment.trim(),
+        tags: reviewTags,
+        images: reviewImages,
+      })
+      setReviewStatus(status)
+      setReviewStatusConversationId(activeChat.id)
+    } catch (submitError) {
+      setReviewError(submitError instanceof Error ? submitError.message : 'Không thể gửi đánh giá.')
+    } finally {
+      setIsSubmittingReview(false)
+    }
+  }
+
+  async function addReviewImages(files: FileList | null, input: HTMLInputElement) {
+    if (!files?.length) return
+    const selectedFiles = Array.from(files)
+    input.value = ''
+    const availableSlots = 3 - reviewImages.length
+    if (selectedFiles.length > availableSlots) {
+      setReviewError(`Bạn chỉ có thể đính kèm tối đa 3 ảnh (${availableSlots} ảnh còn lại).`)
+      return
+    }
+    setIsUploadingReviewImages(true)
+    setReviewError('')
+    try {
+      const uploaded = await uploadImagesToCloudinary(selectedFiles)
+      setReviewImages((current) => [...current, ...uploaded].slice(0, 3))
+    } catch (uploadError) {
+      console.error('Không thể tải ảnh đánh giá lên Cloudinary.', uploadError)
+      setReviewError(uploadError instanceof Error ? uploadError.message : 'Không thể tải ảnh đánh giá lên.')
+    } finally {
+      setIsUploadingReviewImages(false)
+    }
+  }
 
   function sendMessage(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -856,6 +969,11 @@ export function InboxPage({ api, user, initialConversationId, isVisible, onOpenL
   }
 
   function selectConversation(conversationId: string) {
+    setReviewRating(5)
+    setReviewTags([])
+    setReviewComment('')
+    setReviewImages([])
+    setReviewError('')
     setActiveId(conversationId)
   }
 
@@ -913,6 +1031,86 @@ export function InboxPage({ api, user, initialConversationId, isVisible, onOpenL
                 <span><small>ĐANG TRAO ĐỔI</small><strong>{activeChat.listingTitle}</strong><b>{formatPrice(activeChat.price, activeChat.giveaway)}</b></span>
                 <span className="chat-product-link">Xem tin <ExternalLink size={12} /></span>
               </button>
+              {activeChat.currentUserIsSeller && !activeChat.saleConfirmed && !activeChat.listingSold && (
+                <div className="chat-sale-confirm">
+                  <div><strong>Đã giao dịch với người mua này?</strong><small>Xác nhận ngay trong cuộc trò chuyện để hai bên có thể đánh giá đúng giao dịch.</small></div>
+                  <button type="button" className="button-primary" onClick={() => void confirmSaleInConversation()} disabled={isConfirmingSale}>
+                    {isConfirmingSale ? 'Đang xác nhận...' : 'Đã bán cho người mua này'}
+                  </button>
+                </div>
+              )}
+              {activeChat.listingSold && !activeChat.saleConfirmed && (
+                <p className="chat-sale-notice">Tin này đã được bán trong một giao dịch khác. Đánh giá chỉ mở trong cuộc trò chuyện được xác nhận đã bán.</p>
+              )}
+              {activeChat.saleConfirmed && (
+                <section className="chat-review-panel" aria-label="Đánh giá giao dịch">
+                  <div className="chat-review-heading">
+                    <div><span className="section-eyebrow">GIAO DỊCH ĐÃ XÁC NHẬN</span><h3>Đánh giá {activeChat.currentUserIsSeller ? 'người mua' : 'người bán'}</h3></div>
+                    <span className="chat-sale-badge">Đã bán</span>
+                  </div>
+                  {reviewError && <p className="chat-review-error" role="alert">{reviewError}</p>}
+                  {!activeReviewStatus && <p className="chat-review-hint">Đang tải trạng thái đánh giá...</p>}
+                  {activeReviewStatus?.ownReviewSubmitted && (
+                    <p className="chat-review-hint" role="status">
+                      {activeReviewStatus.publishedReviews.some((review) => review.reviewerId === String(user.id))
+                        ? 'Đánh giá của bạn đã được công khai.'
+                        : 'Đánh giá của bạn đã được gửi và đang được ẩn. Đánh giá sẽ hiện khi cả hai bên hoàn tất hoặc sau 48 giờ.'}
+                    </p>
+                  )}
+                  {activeReviewStatus?.eligible && !activeReviewStatus.ownReviewSubmitted && (
+                    <form className="chat-review-form" onSubmit={(event) => void submitReview(event)}>
+                      <fieldset className="chat-review-stars" aria-label="Chọn số sao">
+                        <legend>Chấm điểm giao dịch</legend>
+                        {[1, 2, 3, 4, 5].map((rating) => (
+                          <button key={rating} type="button" aria-label={`${rating} sao`} aria-pressed={reviewRating === rating} onClick={() => { setReviewRating(rating); setReviewTags((current) => current.filter((tag) => reviewTagOptions(activeChat.currentUserIsSeller, rating).includes(tag))) }}>
+                            <Star size={24} fill={rating <= reviewRating ? 'currentColor' : 'none'} />
+                          </button>
+                        ))}
+                        <strong>{reviewRating}/5</strong>
+                      </fieldset>
+                      <div className="chat-review-tags" aria-label="Thẻ đánh giá">
+                        {reviewTagOptions(activeChat.currentUserIsSeller, reviewRating).map((tag) => (
+                          <button key={tag} type="button" className={reviewTags.includes(tag) ? 'chat-review-tag-selected' : ''} aria-pressed={reviewTags.includes(tag)} onClick={() => setReviewTags((current) => current.includes(tag) ? current.filter((item) => item !== tag) : current.length < 3 ? [...current, tag] : current)}>
+                            {tag}
+                          </button>
+                        ))}
+                      </div>
+                      <label className="chat-review-comment">
+                        <span>Bình luận ngắn (không bắt buộc)</span>
+                        <textarea maxLength={500} rows={3} value={reviewComment} onChange={(event) => setReviewComment(event.target.value)} placeholder="Chia sẻ trải nghiệm giao dịch của bạn..." />
+                      </label>
+                      {!activeChat.currentUserIsSeller && (
+                        <div className="chat-review-photos">
+                          <label className="chat-review-upload">
+                            <input type="file" accept="image/jpeg,image/png,image/webp" multiple disabled={isUploadingReviewImages || reviewImages.length >= 3} onChange={(event) => void addReviewImages(event.currentTarget.files, event.currentTarget)} />
+                            <ImagePlus size={17} /> {isUploadingReviewImages ? 'Đang tải ảnh...' : `Thêm ảnh thực tế (${reviewImages.length}/3)`}
+                          </label>
+                          <div className="chat-review-image-list">
+                            {reviewImages.map((image, index) => <span key={image}><img src={image} alt={`Ảnh món đồ ${index + 1}`} /><button type="button" aria-label={`Xóa ảnh ${index + 1}`} onClick={() => setReviewImages((current) => current.filter((item) => item !== image))}><X size={13} /></button></span>)}
+                          </div>
+                        </div>
+                      )}
+                      <button className="button-primary chat-review-submit" type="submit" disabled={isSubmittingReview || isUploadingReviewImages}>
+                        {isSubmittingReview ? 'Đang gửi đánh giá...' : 'Gửi đánh giá'}
+                      </button>
+                    </form>
+                  )}
+                  {activeReviewStatus && activeReviewStatus.publishedReviews.length > 0 && (
+                    <div className="chat-published-reviews">
+                      <h4>Đánh giá đã công khai</h4>
+                      {activeReviewStatus.publishedReviews.map((review) => (
+                        <article className="chat-published-review" key={review.id}>
+                          <div><strong>{review.reviewerName}</strong><span className="chat-published-stars" aria-label={`${review.rating} trên 5 sao`}>{'★'.repeat(review.rating)}{'☆'.repeat(5 - review.rating)}</span></div>
+                          <small className="chat-published-listing">Giao dịch: {review.listingTitle}</small>
+                          {review.tags.length > 0 && <p className="chat-published-tags">{review.tags.map((tag) => <span key={tag}>{tag}</span>)}</p>}
+                          {review.comment && <p>{review.comment}</p>}
+                          {review.images.length > 0 && <div className="chat-published-images">{review.images.map((image) => <img key={image} src={image} alt="Ảnh thực tế đính kèm đánh giá" />)}</div>}
+                        </article>
+                      ))}
+                    </div>
+                  )}
+                </section>
+              )}
               <div className="chat-messages" ref={messagesContainerRef} aria-live="polite">
                 {isLoadingMessages && <p className="chat-list-status">Đang tải tin nhắn...</p>}
                 {!isLoadingMessages && messages.length === 0 && <p className="chat-empty-thread"><MessageCircle size={20} />Gửi lời chào để bắt đầu trao đổi về tin đăng này.</p>}
@@ -1022,6 +1220,17 @@ export function InboxPage({ api, user, initialConversationId, isVisible, onOpenL
 
 function formatPrice(price: number, giveaway: boolean): string {
   return giveaway ? 'Miễn phí' : `${price.toLocaleString('vi-VN')} đ`
+}
+
+function reviewTagOptions(isSeller: boolean, rating: number): string[] {
+  if (rating < 3) {
+    return isSeller
+      ? ['Bom hàng/Bùng kèo', 'Trả giá quá đáng']
+      : ['Hàng lỗi không báo trước', 'Sai mô tả', 'Hẹn không tới']
+  }
+  return isSeller
+    ? ['Mua nhanh gọn', 'Lịch sự thiện chí', 'Đến đúng hẹn']
+    : ['Mô tả đúng thực tế', 'Giao hàng/Hẹn đúng giờ', 'Nhiệt tình thân thiện', 'Giá hợp lý']
 }
 
 function formatTime(value: string): string {

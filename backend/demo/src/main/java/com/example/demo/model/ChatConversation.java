@@ -43,6 +43,9 @@ public class ChatConversation {
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt = Instant.now();
 
+    @Column(name = "sale_confirmed_at")
+    private Instant saleConfirmedAt;
+
     protected ChatConversation() {
     }
 
@@ -70,6 +73,15 @@ public class ChatConversation {
 
     public Instant getUpdatedAt() {
         return updatedAt;
+    }
+
+    public Instant getSaleConfirmedAt() {
+        return saleConfirmedAt;
+    }
+
+    public void confirmSale() {
+        saleConfirmedAt = Instant.now();
+        touch();
     }
 
     public void touch() {

@@ -385,6 +385,23 @@ img { display: block; max-width: 100%; }
 .site-header-home-compact .main-nav button { color: #6b7169; }
 .site-header-home-compact .main-nav button:hover, .site-header-home-compact .main-nav button.nav-active { color: var(--green); }
 .site-header-home-compact .main-nav button.nav-active::after { background: #71925e; }
+.site-header-home-compact { background: #ffca20; }
+.site-header-home-compact .brand-icon { border: 1px solid rgb(255 255 255 / 62%); background: rgb(255 249 228 / 84%); color: #17345f; }
+.site-header-home-compact .brand small, .site-header-home-compact .chohoi-wordmark-market,
+.site-header-home-compact .header-icon, .site-header-home-compact .header-icon span,
+.site-header-home-compact .profile-menu, .site-header-home-compact .profile-menu > svg { color: #17345f; }
+.site-header-home-compact .avatar-header { border-color: rgb(23 52 95 / 32%); background: rgb(255 248 225 / 80%); color: #17345f; }
+.site-header-home-compact .header-search { border-color: #fff; border-radius: 24px; background: #fff; color: #292929; box-shadow: 0 8px 24px rgb(23 52 95 / 12%); }
+.site-header-home-compact .header-search > svg, .site-header-home-compact .header-search input { color: #292929; }
+.site-header-home-compact .header-search input::placeholder { color: #8d8d8d; }
+.site-header-home-compact .header-bottom { border: 0; background: transparent; }
+.site-header-home-compact .main-nav { gap: 3px; padding: 4px; border: 1px solid rgb(255 255 255 / 72%); border-radius: 999px; background: rgb(255 255 255 / 82%); box-shadow: 0 5px 16px rgb(23 52 95 / 15%); backdrop-filter: blur(10px); }
+.site-header-home-compact .main-nav button { height: 32px; padding: 0 13px; border: 0; border-radius: 999px; color: #17345f; font-size: 12px; font-weight: 750; }
+.site-header-home-compact .main-nav button:hover { background: rgb(23 52 95 / 8%); color: #17345f; }
+.site-header-home-compact .main-nav button.nav-active { background: #17345f; color: #fff; }
+.site-header-home-compact .main-nav button.nav-active::after { display: none; }
+.site-header-home-compact .sell-button { border-radius: 999px; background: #17345f; }
+.site-header-home-compact .sell-button:hover { background: #244b80; }
 .hero-section { position: relative; display: grid; min-height: 344px; grid-template-columns: 1.02fr .98fr; overflow: hidden; border: 1px solid #6b713e; border-radius: 8px; background: radial-gradient(ellipse at 68% 115%, rgb(226 169 68 / 29%), transparent 43%), radial-gradient(ellipse at 4% 5%, rgb(125 147 74 / 25%), transparent 36%), linear-gradient(116deg, #183d2e 0%, #234831 46%, #423e20 100%); box-shadow: 0 15px 34px rgb(34 53 34 / 15%); }
 .hero-section::before { position: absolute; top: -164px; right: 3%; z-index: 0; width: 76%; height: 330px; border: 1px solid rgb(245 201 104 / 45%); border-radius: 50%; box-shadow: 0 0 0 13px rgb(245 201 104 / 6%), 0 0 0 29px rgb(245 201 104 / 6%), 0 0 0 47px rgb(245 201 104 / 4%); content: ''; pointer-events: none; transform: rotate(-8deg); }
 .hero-section::after { position: absolute; right: -9%; bottom: -240px; z-index: 0; width: 87%; height: 350px; border: 13px solid rgb(226 177 62 / 92%); border-right-color: transparent; border-bottom-color: transparent; border-radius: 50%; content: ''; filter: drop-shadow(0 -5px 15px rgb(244 192 66 / 18%)); pointer-events: none; transform: rotate(-8deg); }
@@ -459,7 +476,9 @@ img { display: block; max-width: 100%; }
 .section-title-row h2, .profile-listings h2, .reviews-section h2 { margin: 0; color: #303b31; font-family: var(--display); font-size: 23px; font-weight: 750; letter-spacing: -.5px; }
 .section-description { margin: 6px 0 0; color: #8b9188; font-size: 12px; }
 .section-link { display: inline-flex; align-items: center; gap: 7px; padding: 4px 0; border: 0; background: none; color: #557548; font-size: 12px; font-weight: 700; white-space: nowrap; }
+.explore-page .section-title-row { position: sticky; top: 130px; z-index: 5; padding: 10px 0; background: var(--paper); }
 .category-section { padding: 20px; border: 1px solid #2b2d29; border-radius: 8px; background: linear-gradient(145deg, #171916, #10110f); box-shadow: 0 12px 28px rgb(20 24 19 / 13%); }
+.explore-page .category-section .section-title-row { background: #171916; }
 .category-section .section-eyebrow { color: #d5bd79; }
 .category-section .section-title-row h2 { color: #f5f2e7; }
 .category-section .section-link { color: #eed27b; }
@@ -855,6 +874,48 @@ img { display: block; max-width: 100%; }
 .chat-product-card strong { color: #4a5447; font-size: 11px; }
 .chat-product-card b { color: #c2734f; font-size: 11px; }
 .chat-product-link { display: inline-flex; align-items: center; gap: 4px; margin-left: auto; color: #6c865d; font-size: 10px; white-space: nowrap; }
+.chat-sale-confirm { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 8px 14px 0; padding: 10px 12px; border: 1px solid #e8e1c4; border-radius: 4px; background: #fffaf0; }
+.chat-sale-confirm > div { display: grid; gap: 4px; }
+.chat-sale-confirm strong { color: #535944; font-size: 11px; }
+.chat-sale-confirm small, .chat-sale-notice { color: #828578; font-size: 10px; line-height: 1.5; }
+.chat-sale-confirm .button-primary { min-height: 33px; flex: 0 0 auto; padding: 0 10px; font-size: 10px; }
+.chat-sale-notice { margin: 8px 14px 0; padding: 9px 11px; border-radius: 4px; background: #f5f4ed; }
+.chat-review-panel { max-height: 360px; overflow-y: auto; margin: 8px 14px 0; padding: 11px 12px; border: 1px solid #e7ebdf; border-radius: 4px; background: #fbfcf8; }
+.chat-review-heading { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.chat-review-heading .section-eyebrow { margin-bottom: 3px; font-size: 8px; }
+.chat-review-heading h3 { margin: 0; color: #485343; font-family: var(--display); font-size: 14px; }
+.chat-sale-badge { padding: 4px 7px; border-radius: 999px; background: #e8f0df; color: #58744d; font-size: 9px; font-weight: 750; }
+.chat-review-hint, .chat-review-error { margin: 8px 0 0; color: #788273; font-size: 10px; line-height: 1.5; }
+.chat-review-error { color: #a54b37; }
+.chat-review-form { display: grid; gap: 9px; margin-top: 9px; }
+.chat-review-stars { display: flex; align-items: center; gap: 3px; margin: 0; padding: 0; border: 0; }
+.chat-review-stars legend { float: left; width: auto; margin-right: 8px; color: #697363; font-size: 10px; }
+.chat-review-stars button { display: grid; width: 25px; height: 25px; place-items: center; padding: 0; border: 0; background: transparent; color: #d7a93e; }
+.chat-review-stars strong { margin-left: 4px; color: #777a6e; font-size: 10px; }
+.chat-review-tags { display: flex; flex-wrap: wrap; gap: 5px; }
+.chat-review-tags button, .chat-published-tags span { padding: 5px 8px; border: 1px solid #e1e7d9; border-radius: 999px; background: #fff; color: #66745f; font-size: 9px; }
+.chat-review-tags button.chat-review-tag-selected { border-color: #9caf8a; background: #edf4e7; color: #4f7043; }
+.chat-review-comment { display: grid; gap: 5px; color: #697363; font-size: 10px; }
+.chat-review-comment textarea { width: 100%; resize: vertical; padding: 8px; border: 1px solid #e5e8df; border-radius: 4px; background: #fff; color: #485343; font-size: 10px; }
+.chat-review-photos { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.chat-review-upload { display: inline-flex; min-height: 30px; align-items: center; gap: 5px; padding: 0 9px; border: 1px dashed #cbd6c2; border-radius: 4px; color: #5e7752; cursor: pointer; font-size: 9px; }
+.chat-review-upload input { display: none; }
+.chat-review-upload:has(input:disabled) { cursor: not-allowed; opacity: .6; }
+.chat-review-image-list, .chat-published-images { display: flex; flex-wrap: wrap; gap: 6px; }
+.chat-review-image-list > span { position: relative; }
+.chat-review-image-list img, .chat-published-images img { width: 48px; height: 48px; border-radius: 4px; object-fit: cover; }
+.chat-review-image-list button { position: absolute; top: -4px; right: -4px; display: grid; width: 18px; height: 18px; place-items: center; padding: 0; border: 1px solid #fff; border-radius: 50%; background: #7d4d40; color: #fff; }
+.chat-review-submit { min-height: 32px; justify-self: start; padding: 0 12px; font-size: 10px; }
+.chat-published-reviews { display: grid; gap: 7px; margin-top: 10px; }
+.chat-published-reviews h4 { margin: 0; color: #586650; font-size: 10px; }
+.chat-published-review { display: grid; gap: 5px; padding: 8px; border-radius: 4px; background: #f1f4ec; }
+.chat-published-review > div:first-child { display: flex; justify-content: space-between; gap: 8px; }
+.chat-published-review strong { color: #4d5948; font-size: 10px; }
+.chat-published-stars { color: #d4a538; font-size: 12px; letter-spacing: 1px; }
+.chat-published-listing { color: #8a9283; font-size: 9px; }
+.chat-published-review > p { margin: 0; color: #66705f; font-size: 10px; line-height: 1.5; }
+.chat-published-tags { display: flex; flex-wrap: wrap; gap: 4px; }
+.chat-published-tags span { padding: 3px 6px; font-size: 8px; }
 .chat-messages { display: flex; max-height: 380px; flex: 1; flex-direction: column; align-items: flex-start; gap: 12px; overflow-y: auto; padding: 17px 20px; }
 .message-date { align-self: center; margin: 2px 0 8px; color: #a0a59b; font-size: 10px; }
 .message-bubble { position: relative; max-width: min(75%, 360px); padding: 10px 12px 17px; border-radius: 3px 10px 10px 10px; color: #53604f; font-size: 11px; line-height: 1.6; overflow-wrap: anywhere; white-space: pre-wrap; }
@@ -972,6 +1033,10 @@ img { display: block; max-width: 100%; }
 .review-stars { color: #c3a04d; letter-spacing: 1px; }
 .review-item p { margin: 5px 0; color: #727a6e; font-size: 11px; }
 .review-item small { color: #a0a69a; font-size: 10px; }
+.profile-review-empty, .profile-review-error { margin: 0; padding: 10px 0; color: #7d8677; font-size: 11px; }
+.profile-review-error { color: #a54b37; }
+.profile-review-images { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 7px; }
+.profile-review-images img { width: 68px; height: 68px; border-radius: 4px; object-fit: cover; }
 
 .notifications-read-all { display: inline-flex; align-items: center; gap: 6px; padding: 6px 0; border: 0; background: transparent; color: #68815c; font-size: 11px; }
 .notifications-list { overflow: hidden; border: 1px solid var(--line); border-radius: 5px; background: #fff; }
@@ -1364,6 +1429,9 @@ img { display: block; max-width: 100%; }
   .site-header-home-compact .main-nav button { min-height: 39px; height: 39px; border-bottom: 1px solid #f0f0ea; color: #6b7169; text-align: left; }
   .site-header-home-compact .main-nav button.nav-active::after { right: auto; width: 23px; background: #71925e; }
   .site-header-home-compact .main-nav .mobile-nav-only { display: block; }
+  .site-header-home-compact .mobile-menu-toggle { color: #17345f; }
+  .site-header-home-compact .header-search { border-radius: 12px; }
+  .explore-page .section-title-row { top: 65px; }
   .site-footer { margin-top: 15px; }
   .footer-inner { grid-template-columns: 1fr 1fr; gap: 20px 15px; padding-top: 22px; padding-bottom: 22px; }
   .footer-note { display: none; }
@@ -1557,6 +1625,11 @@ img { display: block; max-width: 100%; }
   .chat-header-actions button { width: 28px; height: 28px; }
   .chat-back { display: grid; place-items: center; }
   .chat-product-card { margin: 9px; }
+  .chat-sale-confirm { align-items: flex-start; flex-direction: column; margin: 7px 9px 0; }
+  .chat-sale-confirm .button-primary { min-height: 36px; }
+  .chat-review-panel, .chat-sale-notice { margin-right: 9px; margin-left: 9px; }
+  .chat-review-stars { flex-wrap: wrap; }
+  .chat-review-stars legend { width: 100%; margin-bottom: 4px; }
   .chat-messages { min-height: 260px; padding: 12px; }
   .chat-compose { margin: 0 8px 9px; }
   .chat-location-pin-panel { margin: 0 8px 8px; }
