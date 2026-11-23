@@ -66,6 +66,23 @@ npm run dev
 
 Mở URL Vite hiển thị (mặc định `http://localhost:5173`). Frontend gọi API ở `http://localhost:8080/api`.
 
+## Triển khai backend lên Render
+
+Frontend trên Vercel không thể gọi backend qua `localhost`; URL đó trỏ về máy của từng người truy cập. Backend Spring Boot cần được triển khai riêng và phải hỗ trợ WebSocket.
+
+1. Trên Render, tạo **Web Service** từ repository này, chọn runtime **Docker** và đặt **Root Directory** là `backend/demo` (Render sẽ dùng `backend/demo/Dockerfile`).
+2. Thêm các biến môi trường sau trong Render. Lấy thông tin database từ PostgreSQL/Neon; không dùng giá trị mẫu hoặc commit secrets:
+   - `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`
+   - `JWT_SECRET` (secret ngẫu nhiên, đủ mạnh)
+   - `CORS_ALLOWED_ORIGINS=https://chohoi.vercel.app`
+   - `JPA_DDL_AUTO=update`
+   - `FLYWAY_ENABLED=false`
+   - Đặt `ADMIN_PASSWORD` thành mật khẩu mạnh trước khi khởi tạo tài khoản admin.
+3. Sau khi deploy, kiểm tra `https://<backend-render-url>/api/health`. Sao chép URL backend dạng `https://<backend-render-url>` (không thêm `/api`).
+4. Trong Vercel, mở **Settings → Environment Variables**, đặt `VITE_API_BASE_URL` thành `https://<backend-render-url>/api` cho môi trường Production, rồi redeploy frontend.
+
+Thay `<backend-render-url>` bằng hostname Render thật. Nếu dùng Gmail OTP, cấu hình thêm `MAIL_USERNAME` và `MAIL_PASSWORD` trong Render. Biến frontend `VITE_API_BASE_URL` được đóng gói lúc build nên chỉ thêm biến là chưa đủ; cần deploy lại.
+
 ## Gọi thoại và video
 
 Mở một cuộc trò chuyện trong Hộp thư rồi chọn biểu tượng điện thoại hoặc camera. Cả hai người cần đăng nhập, đang mở Hộp thư và cho phép trình duyệt truy cập micro/camera; khi chạy ngoài `localhost`, frontend cần được phục vụ qua HTTPS. Người nhận đang trực tuyến sẽ thấy và nghe thông báo cuộc gọi đến; hộp gọi hiển thị trạng thái đổ chuông, đang kết nối và các nút nhận/từ chối. Tín hiệu cuộc gọi đi qua WebSocket đã xác thực, còn âm thanh/hình ảnh truyền trực tiếp giữa hai trình duyệt bằng WebRTC. Hộp thư lưu lịch sử cuộc gọi đã kết nối (kèm thời lượng) và thông báo khi cuộc gọi bị hủy, nhỡ, từ chối, người nhận bận hoặc ngoại tuyến; các thẻ có nút gọi lại. Cuộc gọi không được ghi âm/lưu trữ. Một số mạng/NAT có thể cần máy chủ TURN; dự án hiện chưa cấu hình TURN.

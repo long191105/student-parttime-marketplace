@@ -10,6 +10,7 @@ public record ChatConversationResponse(
         String listingImage,
         BigDecimal price,
         boolean giveaway,
+        String participantId,
         String participantName,
         String participantInitials,
         String lastMessage,

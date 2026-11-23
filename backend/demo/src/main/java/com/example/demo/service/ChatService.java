@@ -1,11 +1,14 @@
 package com.example.demo.service;
 
-import java.time.Instant;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.time.Instant;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -23,6 +26,7 @@ import com.example.demo.model.UserAccount;
 import com.example.demo.repository.ChatConversationRepository;
 import com.example.demo.repository.ChatMessageRepository;
 import com.example.demo.repository.ListingRepository;
+import com.example.demo.repository.UserAccountRepository;
 
 @Service
 public class ChatService {
@@ -30,16 +34,19 @@ public class ChatService {
     private final ChatConversationRepository conversationRepository;
     private final ChatMessageRepository messageRepository;
     private final ListingRepository listingRepository;
+    private final UserAccountRepository userAccountRepository;
     private final CurrentUserService currentUserService;
 
     public ChatService(
             ChatConversationRepository conversationRepository,
             ChatMessageRepository messageRepository,
             ListingRepository listingRepository,
+            UserAccountRepository userAccountRepository,
             CurrentUserService currentUserService) {
         this.conversationRepository = conversationRepository;
         this.messageRepository = messageRepository;
         this.listingRepository = listingRepository;
+        this.userAccountRepository = userAccountRepository;
         this.currentUserService = currentUserService;
     }
 
@@ -227,6 +234,31 @@ public class ChatService {
         return Set.of(conversation.getBuyer().getId(), conversation.getSeller().getId());
     }
 
+    @Transactional(readOnly = true)
+    public Set<Long> getConversationPeerIds(Long userId) {
+        return conversationRepository.findByBuyerIdOrSellerIdOrderByUpdatedAtDesc(userId, userId)
+                .stream()
+                .map(conversation -> conversation.getBuyer().getId().equals(userId)
+                        ? conversation.getSeller().getId()
+                        : conversation.getBuyer().getId())
+                .collect(Collectors.toSet());
+    }
+
+    @Transactional(readOnly = true)
+    public Map<Long, Instant> getLastActiveAt(Set<Long> userIds) {
+        Map<Long, Instant> lastActiveAt = new HashMap<>();
+        userAccountRepository.findAllById(userIds)
+                .forEach(user -> lastActiveAt.put(user.getId(), user.getLastActiveAt()));
+        return lastActiveAt;
+    }
+
+    @Transactional
+    public void updateLastActiveAt(Long userId, Instant lastActiveAt) {
+        UserAccount user = userAccountRepository.findById(userId)
+                .orElseThrow(() -> new IllegalStateException("Cannot update activity for a missing user."));
+        user.setLastActiveAt(lastActiveAt);
+    }
+
     private ChatConversation requireParticipant(Long conversationId, UserAccount user) {
         ChatConversation conversation = conversationRepository.findById(conversationId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy cuộc trò chuyện."));
@@ -255,6 +287,7 @@ public class ChatService {
                 listing.getImageUrl(),
                 listing.getPrice(),
                 listing.isGiveaway(),
+                participant.getId().toString(),
                 participant.getFullName(),
                 initials(participant.getFullName()),
                 lastMessage,

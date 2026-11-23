@@ -13,6 +13,7 @@ interface InboxPageProps {
 }
 
 type ConnectionState = 'connecting' | 'connected' | 'disconnected' | 'error'
+type UserPresence = { online: boolean; lastActiveAt: string | null }
 type CallState =
   | { status: 'idle' }
   | { status: 'incoming' | 'contacting' | 'outgoing' | 'connecting' | 'connected' | 'failed'; conversationId: string; callType: CallType; peerName: string; isCaller: boolean; error?: string }
@@ -28,6 +29,8 @@ export function InboxPage({ api, user, initialConversationId, isVisible, onOpenL
   const [pinnedLocation, setPinnedLocation] = useState('')
   const [search, setSearch] = useState('')
   const [connection, setConnection] = useState<ConnectionState>('connecting')
+  const [presenceByUser, setPresenceByUser] = useState<Record<string, UserPresence>>({})
+  const [presenceClock, setPresenceClock] = useState(Date.now())
   const [isLoadingConversations, setIsLoadingConversations] = useState(true)
   const [isSharingLocation, setIsSharingLocation] = useState(false)
   const [isPinningLocation, setIsPinningLocation] = useState(false)
@@ -351,6 +354,11 @@ export function InboxPage({ api, user, initialConversationId, isVisible, onOpenL
     return () => window.clearTimeout(timer)
   }, [refreshConversations])
 
+  useEffect(() => {
+    const timer = window.setInterval(() => setPresenceClock(Date.now()), 60_000)
+    return () => window.clearInterval(timer)
+  }, [])
+
   const wasVisibleRef = useRef(isVisible)
   useEffect(() => {
     if (isVisible && !wasVisibleRef.current) {
@@ -384,6 +392,14 @@ export function InboxPage({ api, user, initialConversationId, isVisible, onOpenL
               setConnection('error')
               socket?.close(1008, 'Authentication failed')
             }
+            return
+          }
+
+          if (event.type === 'presence') {
+            setPresenceByUser((current) => ({
+              ...current,
+              [event.userId]: { online: event.online, lastActiveAt: event.lastActiveAt },
+            }))
             return
           }
 
@@ -484,6 +500,12 @@ export function InboxPage({ api, user, initialConversationId, isVisible, onOpenL
   }, [activeId, api, refreshConversations, shouldLoadMessages])
 
   const activeChat = conversations.find((item) => item.id === activeId)
+  const activePresence = activeChat ? presenceByUser[activeChat.participantId] : undefined
+  const presenceLabel = activePresence
+    ? activePresence.online
+      ? 'Đang hoạt động'
+      : formatLastActive(activePresence.lastActiveAt, presenceClock)
+    : 'Đang cập nhật trạng thái...'
   const messages = messagesByConversation[activeId] ?? []
   const isLoadingMessages = Boolean(activeId && !loadedConversations[activeId])
   const visibleChats = conversations.filter((item) =>
@@ -781,14 +803,6 @@ export function InboxPage({ api, user, initialConversationId, isVisible, onOpenL
     setActiveId(conversationId)
   }
 
-  const connectionLabel = connection === 'connected'
-    ? 'Đang kết nối realtime'
-    : connection === 'connecting'
-      ? 'Đang kết nối...'
-      : connection === 'error'
-        ? 'Không thể kết nối'
-        : 'Đang kết nối lại...'
-
   useEffect(() => {
     const messagesContainer = messagesContainerRef.current
     if (messagesContainer) {
@@ -800,7 +814,6 @@ export function InboxPage({ api, user, initialConversationId, isVisible, onOpenL
     <div className="inbox-page">
       <div className="inbox-heading">
         <div><span className="section-eyebrow">KẾT NỐI TỬ TẾ</span><h1>Hộp thư</h1></div>
-        <span className={`inbox-encryption inbox-connection-${connection}`}><i />{connectionLabel}</span>
       </div>
       {error && <p className="chat-error inbox-error" role="alert">{error}</p>}
       <div className={`inbox-panel${activeChat ? ' inbox-chat-active' : ''}`}>
@@ -829,7 +842,7 @@ export function InboxPage({ api, user, initialConversationId, isVisible, onOpenL
               <header className="chat-header">
                 <button className="chat-back" aria-label="Đóng cuộc trò chuyện" onClick={() => setActiveId('')}><ArrowLeft size={18} /></button>
                 <span className="avatar avatar-tone-green">{activeChat.participantInitials}</span>
-                <span className="chat-person"><strong>{activeChat.participantName}</strong><small>{connectionLabel}</small></span>
+                <span className="chat-person"><strong>{activeChat.participantName}</strong><small className={activePresence?.online ? 'chat-presence-online' : 'chat-presence-offline'}>{presenceLabel}</small></span>
                 <div className="chat-header-actions">
                   <button type="button" aria-label="Gọi thoại" title="Gọi thoại" onClick={() => startCallSafely('audio')} disabled={connection !== 'connected' || callState.status !== 'idle'}>
                     <Phone size={17} />
@@ -979,6 +992,21 @@ function formatRelativeTime(value: string): string {
   if (ageInMinutes < 60) return `${ageInMinutes} phút`
   if (ageInMinutes < 1440) return `${Math.floor(ageInMinutes / 60)} giờ`
   return new Date(value).toLocaleDateString('vi-VN')
+}
+
+function formatLastActive(value: string | null, now: number): string {
+  if (!value) return 'Ngoại tuyến'
+  const lastActiveAt = new Date(value).getTime()
+  if (Number.isNaN(lastActiveAt)) return 'Không rõ lần hoạt động gần nhất'
+
+  const ageInMinutes = Math.floor(Math.max(0, now - lastActiveAt) / 60_000)
+  if (ageInMinutes < 1) return 'Đã hoạt động vừa xong'
+  if (ageInMinutes < 60) return `Đã hoạt động ${ageInMinutes} phút trước`
+  const ageInHours = Math.floor(ageInMinutes / 60)
+  if (ageInHours < 24) return `Đã hoạt động ${ageInHours} giờ trước`
+  const ageInDays = Math.floor(ageInHours / 24)
+  if (ageInDays < 30) return `Đã hoạt động ${ageInDays} ngày trước`
+  return `Đã hoạt động ngày ${new Date(lastActiveAt).toLocaleDateString('vi-VN')}`
 }
 
 function LocationMessage({ message, isOwnMessage }: { message: ChatMessage; isOwnMessage: boolean }) {
