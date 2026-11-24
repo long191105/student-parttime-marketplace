@@ -2,6 +2,7 @@ package com.example.demo.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.never;
@@ -20,6 +21,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.web.server.ResponseStatusException;
 
 import com.example.demo.dto.AuthResponse;
@@ -75,6 +77,41 @@ class AuthServiceTest {
     }
 
     @Test
+    void registrationRejectsAnEmailThatAlreadyHasAnAccount() {
+        when(userAccountRepository.existsByEmailIgnoreCase("person@gmail.com")).thenReturn(true);
+
+        ResponseStatusException exception = assertThrows(
+                ResponseStatusException.class,
+                () -> authService.register(new RegisterRequest("Test User", "person@gmail.com", "password123", null)));
+
+        assertEquals(HttpStatus.CONFLICT, exception.getStatusCode());
+        verifyNoInteractions(pendingRegistrationRepository, passwordEncoder, otpEmailService);
+    }
+
+    @Test
+    void registrationCannotResendOtpDuringCooldown() {
+        Instant now = Instant.now();
+        PendingRegistration pending = new PendingRegistration(
+                "person@gmail.com",
+                "Test User",
+                "hashed-password",
+                null,
+                "hashed-otp",
+                now.plusSeconds(600),
+                now);
+        when(userAccountRepository.existsByEmailIgnoreCase("person@gmail.com")).thenReturn(false);
+        when(pendingRegistrationRepository.findByEmailIgnoreCase("person@gmail.com")).thenReturn(Optional.of(pending));
+
+        ResponseStatusException exception = assertThrows(
+                ResponseStatusException.class,
+                () -> authService.register(new RegisterRequest("Test User", "person@gmail.com", "password123", null)));
+
+        assertEquals(HttpStatus.TOO_MANY_REQUESTS, exception.getStatusCode());
+        verify(pendingRegistrationRepository, never()).save(any(PendingRegistration.class));
+        verifyNoInteractions(passwordEncoder, otpEmailService);
+    }
+
+    @Test
     void registrationStoresPendingAccountAndEmailsOtpWithoutCreatingUser() {
         when(userAccountRepository.existsByEmailIgnoreCase("person@gmail.com")).thenReturn(false);
         when(pendingRegistrationRepository.findByEmailIgnoreCase("person@gmail.com")).thenReturn(Optional.empty());
@@ -121,6 +158,81 @@ class AuthServiceTest {
         assertEquals("jwt", response.accessToken());
         assertEquals("person@gmail.com", response.user().email());
         verify(pendingRegistrationRepository).delete(pending);
+    }
+
+    @Test
+    void expiredOtpCannotCreateAnAccount() {
+        Instant now = Instant.now();
+        PendingRegistration pending = new PendingRegistration(
+                "person@gmail.com",
+                "Test User",
+                "hashed-password",
+                null,
+                "hashed-otp",
+                now.minusSeconds(1),
+                now.minusSeconds(601));
+        when(pendingRegistrationRepository.findByEmailIgnoreCase("person@gmail.com")).thenReturn(Optional.of(pending));
+
+        ResponseStatusException exception = assertThrows(
+                ResponseStatusException.class,
+                () -> authService.verifyRegistration(new VerifyRegistrationRequest("person@gmail.com", "123456")));
+
+        assertEquals(HttpStatus.BAD_REQUEST, exception.getStatusCode());
+        verify(passwordEncoder, never()).matches(anyString(), anyString());
+        verify(pendingRegistrationRepository, never()).save(pending);
+        verify(userAccountRepository, never()).save(any(UserAccount.class));
+    }
+
+    @Test
+    void otpVerificationIsBlockedAfterMaximumFailedAttempts() {
+        Instant now = Instant.now();
+        PendingRegistration pending = new PendingRegistration(
+                "person@gmail.com",
+                "Test User",
+                "hashed-password",
+                null,
+                "hashed-otp",
+                now.plusSeconds(600),
+                now.minusSeconds(60));
+        ReflectionTestUtils.setField(pending, "failedAttempts", 5);
+        when(pendingRegistrationRepository.findByEmailIgnoreCase("person@gmail.com")).thenReturn(Optional.of(pending));
+
+        ResponseStatusException exception = assertThrows(
+                ResponseStatusException.class,
+                () -> authService.verifyRegistration(new VerifyRegistrationRequest("person@gmail.com", "123456")));
+
+        assertEquals(HttpStatus.TOO_MANY_REQUESTS, exception.getStatusCode());
+        verify(passwordEncoder, never()).matches(anyString(), anyString());
+        verify(pendingRegistrationRepository, never()).save(pending);
+        verify(userAccountRepository, never()).save(any(UserAccount.class));
+    }
+
+    @Test
+    void resendAfterCooldownRenewsOtpAndResetsFailedAttempts() {
+        Instant lastSentAt = Instant.now().minusSeconds(61);
+        PendingRegistration pending = new PendingRegistration(
+                "person@gmail.com",
+                "Test User",
+                "hashed-password",
+                null,
+                "old-hashed-otp",
+                Instant.now().minusSeconds(1),
+                lastSentAt);
+        ReflectionTestUtils.setField(pending, "failedAttempts", 2);
+        when(pendingRegistrationRepository.findByEmailIgnoreCase("person@gmail.com")).thenReturn(Optional.of(pending));
+        when(passwordEncoder.encode(anyString())).thenAnswer(invocation -> "hashed:" + invocation.getArgument(0));
+        when(pendingRegistrationRepository.save(pending)).thenReturn(pending);
+
+        authService.resendRegistrationCode("Person@gmail.com");
+
+        ArgumentCaptor<String> otpCaptor = ArgumentCaptor.forClass(String.class);
+        verify(otpEmailService).sendVerificationCode(org.mockito.ArgumentMatchers.eq("person@gmail.com"), otpCaptor.capture());
+        assertEquals(6, otpCaptor.getValue().length());
+        assertEquals("hashed:" + otpCaptor.getValue(), pending.getOtpHash());
+        assertEquals(0, pending.getFailedAttempts());
+        assertTrue(pending.getExpiresAt().isAfter(Instant.now()));
+        assertTrue(pending.getLastSentAt().isAfter(lastSentAt));
+        verify(pendingRegistrationRepository).save(pending);
     }
 
     @Test

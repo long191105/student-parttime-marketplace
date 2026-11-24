@@ -17,6 +17,9 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.http.HttpStatus;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.web.server.ResponseStatusException;
@@ -232,5 +235,115 @@ class ListingServiceTest {
                 () -> listingService.create(request));
 
         assertEquals(HttpStatus.BAD_REQUEST, exception.getStatusCode());
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+            "-1, 10",
+            "-1, 0",
+            "-1, 101",
+            "0, 0",
+            "0, 101",
+            "1, 0",
+            "1, 101",
+            "5, 101",
+            "2147483647, 101",
+            "-2147483648, 10",
+            "-1, 1",
+            "0, -1"
+    })
+    void searchRejectsInvalidPagingParameters(int page, int size) {
+        ResponseStatusException exception = assertThrows(
+                ResponseStatusException.class,
+                () -> listingService.search(null, null, null, null, null, null, null, page, size));
+
+        assertEquals(HttpStatus.BAD_REQUEST, exception.getStatusCode());
+        verifyNoInteractions(listingRepository);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "newer",
+            "damaged",
+            "unknown",
+            "USED ",
+            "new-condition",
+            "factory-new",
+            "secondhand",
+            "mới 100%"
+    })
+    void searchRejectsUnsupportedConditionFilters(String condition) {
+        ResponseStatusException exception = assertThrows(
+                ResponseStatusException.class,
+                () -> listingService.search(null, null, null, condition, null, null, null, 0, 20));
+
+        assertEquals(HttpStatus.BAD_REQUEST, exception.getStatusCode());
+        verifyNoInteractions(listingRepository);
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+            "1.01, 1.00",
+            "100, 99.99",
+            "999999, 0",
+            "0.01, 0"
+    })
+    void searchRejectsMinimumPriceAboveMaximum(String minimum, String maximum) {
+        ResponseStatusException exception = assertThrows(
+                ResponseStatusException.class,
+                () -> listingService.search(
+                        null,
+                        null,
+                        null,
+                        null,
+                        new BigDecimal(minimum),
+                        new BigDecimal(maximum),
+                        null,
+                        0,
+                        20));
+
+        assertEquals(HttpStatus.BAD_REQUEST, exception.getStatusCode());
+        verifyNoInteractions(listingRepository);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "http://example.com/photo.jpg",
+            "data:image/png;base64,abc",
+            "ftp://example.com/photo.jpg",
+            "/uploads/photo.jpg",
+            "javascript:alert(1)",
+            "https://example.com/photo with space.jpg",
+            "https://",
+            "",
+            "https://example.com/photo\nimage.jpg",
+            "blob:https://example.com/photo.jpg"
+    })
+    void createRejectsImageValuesThatAreNotHttpsUrls(String image) {
+        when(currentUserService.requireUser()).thenReturn(seller);
+        when(categoryRepository.existsByNameIgnoreCase("Điện tử")).thenReturn(true);
+
+        ResponseStatusException exception = assertThrows(
+                ResponseStatusException.class,
+                () -> listingService.create(listingRequestWithImage(image)));
+
+        assertEquals(HttpStatus.BAD_REQUEST, exception.getStatusCode());
+        verify(listingRepository, org.mockito.Mockito.never()).save(any(Listing.class));
+    }
+
+    private static CreateListingRequest listingRequestWithImage(String image) {
+        return new CreateListingRequest(
+                "Máy ảnh film Canon AE-1",
+                "Điện tử",
+                BigDecimal.valueOf(3_900_000),
+                ListingCondition.USED,
+                "Quận 3, TP. Hồ Chí Minh",
+                "0912345678",
+                image,
+                List.of(image),
+                "Máy ảnh còn hoạt động tốt, có bao da và dây đeo.",
+                true,
+                false,
+                List.of("Canon", "35mm"));
     }
 }
