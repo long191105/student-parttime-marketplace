@@ -188,7 +188,6 @@ public class ListingService {
     @Transactional
     public ListingResponse updateStatus(Long id, ListingStatus requestedStatus) {
         if (requestedStatus != ListingStatus.ACTIVE
-                && requestedStatus != ListingStatus.SOLD
                 && requestedStatus != ListingStatus.HIDDEN) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Trạng thái này không thể được chọn.");
         }

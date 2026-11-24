@@ -87,14 +87,15 @@ class ListingServiceTest {
     }
 
     @Test
-    void memberCanMarkActiveListingAsSold() {
-        when(currentUserService.requireUser()).thenReturn(seller);
+    void memberMustConfirmSaleInTheBuyerConversation() {
         pendingListing.changeStatus(ListingStatus.ACTIVE, null);
-        when(listingRepository.findByIdAndSellerId(41L, 7L)).thenReturn(java.util.Optional.of(pendingListing));
 
-        listingService.updateStatus(41L, ListingStatus.SOLD);
+        ResponseStatusException exception = assertThrows(
+                ResponseStatusException.class,
+                () -> listingService.updateStatus(41L, ListingStatus.SOLD));
 
-        assertEquals(ListingStatus.SOLD, pendingListing.getStatus());
+        assertEquals(HttpStatus.BAD_REQUEST, exception.getStatusCode());
+        assertEquals(ListingStatus.ACTIVE, pendingListing.getStatus());
     }
 
     @Test
