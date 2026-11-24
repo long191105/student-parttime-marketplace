@@ -99,7 +99,67 @@ Với Metered, có thể đặt `TURN_URLS=turn:global.relay.metered.ca:80,turn:
 
 API hiện hỗ trợ đăng ký/đăng nhập JWT, duyệt và tìm kiếm tin, tạo tin chờ kiểm duyệt, quản lý trạng thái tin, yêu thích, danh mục, nhắn tin và tín hiệu gọi realtime, cùng duyệt tin dành cho quản trị viên. Số điện thoại liên hệ được lưu theo từng tin và chỉ lấy qua API cần đăng nhập; hiện chưa có xác minh OTP. Báo cáo vi phạm chưa được nối backend.
 
-## Kiểm tra
+## 4. Kiểm thử & đánh giá
+
+### Biểu đồ phạm vi kịch bản kiểm thử
+
+Biểu đồ dưới đây thống kê **35 kịch bản kiểm thử hồi quy đề xuất** theo nhóm chức năng; đây là số lượng kịch bản, không phải tỷ lệ kiểm thử đã đạt.
+
+```mermaid
+pie showData
+    title Phân bổ 35 kịch bản kiểm thử
+    "Xác thực và tài khoản" : 6
+    "Tin đăng và giao dịch" : 8
+    "Tin nhắn và cuộc gọi" : 11
+    "Quản trị và phân quyền" : 5
+    "Giao diện và triển khai" : 5
+```
+
+### Danh sách kịch bản kiểm thử hồi quy
+
+Các kịch bản **TC** bên dưới dùng cho kiểm thử chấp nhận thủ công. Cần chuẩn bị tài khoản người mua, người bán và quản trị; dữ liệu mẫu nên dùng tin đăng riêng, không dùng dữ liệu production. Kết quả mong đợi là tiêu chí để đối chiếu khi chạy thử, không khẳng định các kịch bản này đã được tự động hóa.
+
+| Mã | Nhóm | Kịch bản và kết quả mong đợi |
+|---|---|---|
+| AUTH-01 | Xác thực | Đăng ký bằng Gmail hợp lệ; hệ thống gửi OTP và chỉ tạo tài khoản sau khi xác minh. |
+| AUTH-02 | Xác thực | Đăng ký bằng email không phải Gmail; hệ thống từ chối và không tạo tài khoản chờ. |
+| AUTH-03 | Xác thực | Nhập OTP đúng còn hạn; xác minh thành công và nhận phiên đăng nhập. |
+| AUTH-04 | Xác thực | Nhập OTP sai; báo lỗi, tăng số lần nhập sai và không tạo tài khoản. |
+| AUTH-05 | Xác thực | Nhập OTP hết hạn; từ chối xác minh và yêu cầu gửi mã mới. |
+| AUTH-06 | Xác thực | Gửi lại OTP liên tiếp trong thời gian chờ hoặc nhập sai quá số lần cho phép; thao tác bị giới hạn theo chính sách. |
+| LIST-01 | Tin đăng | Mở trang khám phá khi chưa đăng nhập; tin đang hoạt động hiển thị, tin chờ duyệt/đã ẩn/đã bán không xuất hiện trong danh sách công khai. |
+| LIST-02 | Tin đăng | Tìm tin theo từ khóa, danh mục và địa điểm; kết quả phù hợp bộ lọc đã chọn. |
+| LIST-03 | Tin đăng | Tạo tin với đủ thông tin hợp lệ và nhiều ảnh; tin được lưu chờ duyệt, ảnh bìa và thứ tự ảnh được giữ nguyên. |
+| LIST-04 | Tin đăng | Tạo tin thiếu trường bắt buộc, giá âm hoặc quá số ảnh cho phép; hệ thống báo lỗi và không tạo tin. |
+| LIST-05 | Tin đăng | Tạo tin tặng miễn phí với giá 0; tin được lưu với trạng thái tặng, không bị tính giá hoặc thương lượng. |
+| LIST-06 | Tin đăng | Lưu bản nháp, tải lại trang rồi mở lại biểu mẫu; dữ liệu nháp của đúng tài khoản được khôi phục. |
+| LIST-07 | Tin đăng | Người bán thử tự duyệt tin của mình hoặc chuyển tin sang trạng thái không hợp lệ; hệ thống từ chối và giữ nguyên trạng thái. |
+| LIST-08 | Tin đăng | Thêm/bỏ yêu thích và xem số điện thoại tin; trạng thái yêu thích được cập nhật, số điện thoại chỉ trả về cho người dùng đã đăng nhập và tin đang hoạt động. |
+| CHAT-01 | Nhắn tin | Người mua mở trò chuyện từ tin đang hoạt động; cuộc trò chuyện được tạo và lần mở sau dùng lại cuộc trò chuyện đó. |
+| CHAT-02 | Nhắn tin | Gửi tin nhắn có khoảng trắng đầu/cuối; nội dung được chuẩn hóa và xuất hiện trong lịch sử hội thoại. |
+| CHAT-03 | Nhắn tin | Gửi nội dung rỗng hoặc vượt giới hạn; hệ thống báo lỗi và không lưu tin nhắn. |
+| CHAT-04 | Nhắn tin | Tài khoản không tham gia hội thoại thử đọc/gửi tin; hệ thống từ chối và không làm lộ nội dung. |
+| CHAT-05 | Nhắn tin | Người nhận mở hội thoại có tin chưa đọc; tin được đánh dấu đã đọc và bộ đếm chưa đọc được cập nhật. |
+| CHAT-06 | Nhắn tin | Gửi vị trí có tọa độ ngoài phạm vi hoặc liên kết bản đồ không được hỗ trợ; hệ thống từ chối dữ liệu không hợp lệ. |
+| CALL-01 | Cuộc gọi | Hai người đang trực tuyến thực hiện cuộc gọi thoại và video, chấp nhận cuộc gọi và kết thúc; trạng thái cùng thời lượng được ghi vào hội thoại. |
+| CALL-02 | Cuộc gọi | Người nhận từ chối, đang bận hoặc ngoại tuyến; người gọi nhận đúng trạng thái và lịch sử hiển thị thông báo tương ứng. |
+| CALL-03 | Cuộc gọi | Người gọi hủy khi đang đổ chuông hoặc người nhận không phản hồi; lịch sử ghi nhận cuộc gọi đã hủy/nhỡ. |
+| CALL-04 | Cuộc gọi | Thử gọi khi trình duyệt chưa cấp quyền micro/camera hoặc đang ở mạng hạn chế; giao diện báo lỗi/kết nối phù hợp, không hiển thị cuộc gọi thành công giả. |
+| CALL-05 | Cuộc gọi | Kiểm tra cấu hình STUN/TURN khi có và không có TURN; thông tin xác thực TURN không xuất hiện trong mã frontend hoặc phản hồi không dành cho người dùng. |
+| ADMIN-01 | Phân quyền | Người chưa đăng nhập hoặc tài khoản MEMBER mở trang/API quản trị; hệ thống từ chối truy cập. |
+| ADMIN-02 | Quản trị | ADMIN mở danh sách tin chờ duyệt; chỉ tài khoản có quyền phù hợp được xem và thao tác. |
+| ADMIN-03 | Quản trị | ADMIN duyệt một tin; tin chuyển sang trạng thái hoạt động và có thể xuất hiện ở trang công khai. |
+| ADMIN-04 | Quản trị | ADMIN từ chối tin; tin không xuất hiện công khai và người bán thấy trạng thái đã cập nhật. |
+| ADMIN-05 | Phân quyền | MEMBER thử gọi API thay đổi trạng thái tin/quyền quản trị; hệ thống từ chối và dữ liệu không bị thay đổi. |
+| SYS-01 | Giao diện/triển khai | Gọi `/api/health` sau khi backend và database khởi động; nhận phản hồi khỏe mạnh, không lộ thông tin bí mật. |
+| SYS-02 | Giao diện/triển khai | Chạy frontend ở kích thước màn hình điện thoại và máy tính; nội dung, biểu mẫu và nút thao tác không bị tràn hoặc che khuất. |
+| SYS-03 | Giao diện/triển khai | Thử tải trang, ảnh lỗi hoặc API không sẵn sàng; giao diện thể hiện trạng thái rỗng/lỗi và cho phép thử lại khi phù hợp. |
+| SYS-04 | Giao diện/triển khai | Kiểm tra frontend production gọi backend qua `VITE_API_BASE_URL` và CORS chỉ cho phép origin đã cấu hình; không phụ thuộc `localhost`. |
+| SYS-05 | Giao diện/triển khai | Chạy bộ kiểm thử backend, build và lint frontend; cả ba lệnh kết thúc thành công trước khi phát hành. |
+
+### Kiểm thử tự động hiện có
+
+Backend hiện có các bài kiểm thử đơn vị/controller cho JWT, đăng ký và OTP, email Brevo, tin đăng/bản nháp, quyền xem số điện thoại, hội thoại/tin nhắn/đánh giá và cấu hình STUN/TURN. Chạy các lệnh sau từ thư mục gốc:
 
 ```powershell
 cd backend/demo
@@ -108,6 +168,8 @@ cd ../../frontend
 npm run build
 npm run lint
 ```
+
+Các kịch bản trên trình duyệt, tích hợp WebSocket/WebRTC, database dùng chung và triển khai cần được kiểm tra thêm trên môi trường phù hợp; kết quả của chúng không được suy ra chỉ từ việc unit test/build thành công.
 ## Lấy Code mới 
 Cách lấy code mới về 
 git switch main

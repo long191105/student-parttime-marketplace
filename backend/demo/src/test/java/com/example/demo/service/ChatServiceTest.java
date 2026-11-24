@@ -36,6 +36,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.http.HttpStatus;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.web.server.ResponseStatusException;
@@ -446,6 +448,89 @@ class ChatServiceTest {
         assertTrue(status.ownReviewSubmitted());
         assertEquals("61", status.ownReview().id());
         assertTrue(status.publishedReviews().isEmpty());
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "http://www.google.com/maps",
+            "https://evilgoogle.com/maps",
+            "https://google.com.evil.example/maps",
+            "https://user@google.com/maps",
+            "https://google.com:443/maps",
+            "https://maps.google.com.evil.example/",
+            "https://goo.gl/abc",
+            "https://maps.app.goo.gl/",
+            "https://www.google.com/places",
+            "https://example.com/maps",
+            "javascript:alert(1)"
+    })
+    void rejectsUntrustedLocationMapUrls(String mapUrl) {
+        when(currentUserService.requireUser()).thenReturn(buyer);
+
+        ResponseStatusException exception = assertThrows(
+                ResponseStatusException.class,
+                () -> chatService.sendLocationMessage(31L, "Vị trí ghim", null, null, mapUrl));
+
+        assertEquals(HttpStatus.BAD_REQUEST, exception.getStatusCode());
+        verify(conversationRepository, never()).findById(31L);
+        verify(messageRepository, never()).save(any(ChatMessage.class));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = { "rejected", "complete", "no_answer", "BUSY", "unknown", "" })
+    void rejectsUnsupportedCallOutcomes(String outcome) {
+        when(currentUserService.requireUser()).thenReturn(buyer);
+
+        ResponseStatusException exception = assertThrows(
+                ResponseStatusException.class,
+                () -> chatService.recordCallStatusMessage(31L, "audio", outcome));
+
+        assertEquals(HttpStatus.BAD_REQUEST, exception.getStatusCode());
+        verify(conversationRepository, never()).findById(31L);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = { "screen", "voice", "telephone", "AUDIO", "Video", "" })
+    void rejectsUnsupportedCompletedCallTypes(String callType) {
+        when(currentUserService.requireUser()).thenReturn(buyer);
+
+        ResponseStatusException exception = assertThrows(
+                ResponseStatusException.class,
+                () -> chatService.recordCompletedCall(31L, callType, 60));
+
+        assertEquals(HttpStatus.BAD_REQUEST, exception.getStatusCode());
+        verify(conversationRepository, never()).findById(31L);
+    }
+
+    @ParameterizedTest
+    @ValueSource(longs = { -1, -60, 86_401, 90_000, 172_800, Long.MAX_VALUE })
+    void rejectsCompletedCallsOutsideDurationLimits(long durationSeconds) {
+        when(currentUserService.requireUser()).thenReturn(buyer);
+
+        ResponseStatusException exception = assertThrows(
+                ResponseStatusException.class,
+                () -> chatService.recordCompletedCall(31L, "audio", durationSeconds));
+
+        assertEquals(HttpStatus.BAD_REQUEST, exception.getStatusCode());
+        verify(conversationRepository, never()).findById(31L);
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = { -1, 0, 6, 100 })
+    void rejectsReviewRatingsOutsideOneToFive(int rating) {
+        when(currentUserService.requireUser()).thenReturn(buyer);
+        when(conversationRepository.findById(31L)).thenReturn(Optional.of(conversation));
+        when(reviewRepository.findByConversationIdAndReviewerId(31L, 11L)).thenReturn(Optional.empty());
+        conversation.confirmSale();
+
+        ResponseStatusException exception = assertThrows(
+                ResponseStatusException.class,
+                () -> chatService.submitReview(
+                        31L,
+                        new ChatReviewRequest(rating, "Đánh giá", List.of(), List.of())));
+
+        assertEquals(HttpStatus.BAD_REQUEST, exception.getStatusCode());
+        verify(reviewRepository, never()).save(any(ChatReview.class));
     }
 
     private static UserAccount user(Long id, String name) {
