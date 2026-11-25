@@ -47,13 +47,21 @@ class ListingServiceTest {
     @Mock
     private ListingDraftService listingDraftService;
 
+    @Mock
+    private UserNotificationService notificationService;
+
     private ListingService listingService;
     private UserAccount seller;
     private Listing pendingListing;
 
     @BeforeEach
     void setUp() {
-        listingService = new ListingService(listingRepository, categoryRepository, currentUserService, listingDraftService);
+        listingService = new ListingService(
+                listingRepository,
+                categoryRepository,
+                currentUserService,
+                listingDraftService,
+                notificationService);
         seller = new UserAccount("Nguyen Long", "long@example.com", "hashed", null, UserRole.MEMBER);
         ReflectionTestUtils.setField(seller, "id", 7L);
         pendingListing = new Listing(
@@ -116,6 +124,26 @@ class ListingServiceTest {
 
         assertThrows(ResponseStatusException.class, () -> listingService.getSellerPhone(41L));
         verifyNoInteractions(listingRepository);
+    }
+
+    @Test
+    void moderationNotifiesSellerAboutApprovedListing() {
+        pendingListing.changeStatus(ListingStatus.PENDING, null);
+
+        listingService.moderate(41L, ListingStatus.ACTIVE, null);
+
+        verify(notificationService).notifyListingStatus(seller, pendingListing, ListingStatus.ACTIVE, null);
+    }
+
+    @Test
+    void moderationNotifiesSellerAboutRejectedListing() {
+        listingService.moderate(41L, ListingStatus.REJECTED, "Thiếu hình ảnh rõ nét.");
+
+        verify(notificationService).notifyListingStatus(
+                seller,
+                pendingListing,
+                ListingStatus.REJECTED,
+                "Thiếu hình ảnh rõ nét.");
     }
 
     @Test

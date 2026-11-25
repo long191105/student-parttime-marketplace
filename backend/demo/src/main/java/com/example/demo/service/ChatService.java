@@ -45,6 +45,7 @@ public class ChatService {
     private final ListingRepository listingRepository;
     private final UserAccountRepository userAccountRepository;
     private final CurrentUserService currentUserService;
+    private final UserNotificationService notificationService;
 
     public ChatService(
             ChatConversationRepository conversationRepository,
@@ -52,13 +53,15 @@ public class ChatService {
             ChatReviewRepository reviewRepository,
             ListingRepository listingRepository,
             UserAccountRepository userAccountRepository,
-            CurrentUserService currentUserService) {
+            CurrentUserService currentUserService,
+            UserNotificationService notificationService) {
         this.conversationRepository = conversationRepository;
         this.messageRepository = messageRepository;
         this.reviewRepository = reviewRepository;
         this.listingRepository = listingRepository;
         this.userAccountRepository = userAccountRepository;
         this.currentUserService = currentUserService;
+        this.notificationService = notificationService;
     }
 
     @Transactional(readOnly = true)
@@ -112,6 +115,7 @@ public class ChatService {
                 null));
         conversation.touch();
         conversationRepository.save(conversation);
+        notificationService.notifyNewMessage(otherParticipant(conversation, sender), conversation, sender, normalizedContent);
         return ChatMessageResponse.from(message);
     }
 
@@ -140,7 +144,14 @@ public class ChatService {
                 normalizedMapUrl));
         conversation.touch();
         conversationRepository.save(conversation);
+        notificationService.notifyNewMessage(otherParticipant(conversation, sender), conversation, sender, normalizedContent);
         return ChatMessageResponse.from(message);
+    }
+
+    private static UserAccount otherParticipant(ChatConversation conversation, UserAccount sender) {
+        return conversation.getBuyer().getId().equals(sender.getId())
+                ? conversation.getSeller()
+                : conversation.getBuyer();
     }
 
     @Transactional

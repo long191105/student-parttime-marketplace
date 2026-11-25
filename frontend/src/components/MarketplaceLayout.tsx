@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
-import { Bell, Bookmark, ChevronDown, Heart, LogOut, MapPin, Menu, MessageCircle, Package, Plus, Search, ShoppingBag, UserRound, X } from 'lucide-react'
+import { Bell, Bookmark, Check, ChevronDown, Heart, LogOut, MapPin, Menu, MessageCircle, Package, Plus, Search, ShieldCheck, ShoppingBag, UserRound, X } from 'lucide-react'
 import { locations } from '../data/categories'
-import type { AuthUser } from '../services/MarketplaceApi'
+import type { AuthUser, UserNotification } from '../services/MarketplaceApi'
 import { ChoHoiWordmark } from './ChoHoiWordmark'
 import { FloatingPromotions } from './FloatingPromotions'
 
@@ -20,22 +20,29 @@ interface MarketplaceLayoutProps {
   onSignOut: () => void
   favoritesCount: number
   unreadCount: number
+  notificationUnreadCount: number
+  notifications: UserNotification[]
+  onOpenNotification: (notification: UserNotification) => void
+  onMarkAllNotificationsRead: () => void
   user: AuthUser | null
   authNotice: string
   onDismissAuthNotice: () => void
 }
 
 export function MarketplaceLayout({
-  children, view, query, location, onQueryChange, onLocationChange, onNavigate, onAdminNavigate, onSearch, onSignOut, favoritesCount, unreadCount, user, authNotice, onDismissAuthNotice,
+  children, view, query, location, onQueryChange, onLocationChange, onNavigate, onAdminNavigate, onSearch, onSignOut, favoritesCount, unreadCount, notificationUnreadCount, notifications, onOpenNotification, onMarkAllNotificationsRead, user, authNotice, onDismissAuthNotice,
 }: MarketplaceLayoutProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [accountMenuOpen, setAccountMenuOpen] = useState(false)
   const [locationMenuOpen, setLocationMenuOpen] = useState(false)
+  const [notificationsOpen, setNotificationsOpen] = useState(false)
   const [homeHeaderCompact, setHomeHeaderCompact] = useState(false)
   const accountMenuRef = useRef<HTMLDivElement>(null)
   const accountTriggerRef = useRef<HTMLButtonElement>(null)
   const locationPickerRef = useRef<HTMLDivElement>(null)
   const locationTriggerRef = useRef<HTMLButtonElement>(null)
+  const notificationMenuRef = useRef<HTMLDivElement>(null)
+  const headerNotificationCount = notificationUnreadCount
 
   useEffect(() => {
     if (view !== 'home') return
@@ -105,10 +112,32 @@ export function MarketplaceLayout({
     }
   }, [locationMenuOpen])
 
+  useEffect(() => {
+    if (!notificationsOpen) return
+
+    function handlePointerDown(event: PointerEvent) {
+      if (event.target instanceof Node && !notificationMenuRef.current?.contains(event.target)) {
+        setNotificationsOpen(false)
+      }
+    }
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === 'Escape') setNotificationsOpen(false)
+    }
+
+    document.addEventListener('pointerdown', handlePointerDown)
+    document.addEventListener('keydown', handleKeyDown)
+    return () => {
+      document.removeEventListener('pointerdown', handlePointerDown)
+      document.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [notificationsOpen])
+
   function navigate(nextView: AppView) {
     onNavigate(nextView)
     setMobileMenuOpen(false)
     setAccountMenuOpen(false)
+    setNotificationsOpen(false)
   }
 
   function signOut() {
@@ -174,7 +203,57 @@ export function MarketplaceLayout({
           <div className="header-actions">
             <button className="header-icon" type="button" aria-label="Tin yêu thích" onClick={() => navigate('favorites')}><Heart size={20} /><span>Yêu thích</span>{favoritesCount > 0 && <b>{favoritesCount}</b>}</button>
             <button className="header-icon" type="button" aria-label="Hộp thư" onClick={() => navigate('messages')}><MessageCircle size={20} /><span>Tin nhắn</span>{unreadCount > 0 && <b>{unreadCount}</b>}</button>
-            <button className="header-icon notification-icon" type="button" aria-label="Thông báo" onClick={() => navigate('notifications')}><Bell size={20} />{user && unreadCount > 0 && <i />}</button>
+            <div className="notification-menu-wrap" ref={notificationMenuRef}>
+              <button
+                className="header-icon notification-icon"
+                type="button"
+                aria-label={headerNotificationCount > 0 ? `Thông báo, ${headerNotificationCount} chưa đọc` : 'Thông báo'}
+                aria-expanded={notificationsOpen}
+                aria-haspopup="dialog"
+                onClick={() => {
+                  if (!user) {
+                    navigate('notifications')
+                    return
+                  }
+                  setAccountMenuOpen(false)
+                  setNotificationsOpen((open) => !open)
+                }}
+              >
+                <Bell size={20} />
+                {user && headerNotificationCount > 0 && <b>{Math.min(headerNotificationCount, 99)}{headerNotificationCount > 99 ? '+' : ''}</b>}
+              </button>
+              {notificationsOpen && <section className="notification-dropdown" role="dialog" aria-label="Thông báo mới">
+                <div className="notification-dropdown-heading">
+                  <strong>Thông báo</strong>
+                  {notificationUnreadCount > 0 && <button type="button" onClick={onMarkAllNotificationsRead}><Check size={13} /> Đọc tất cả</button>}
+                </div>
+                {notifications.length > 0
+                  ? <div className="header-notification-list">{notifications.slice(0, 5).map((notification) => {
+                    const isMessage = notification.type === 'NEW_MESSAGE'
+                    const Icon = isMessage ? MessageCircle : ShieldCheck
+                    const tone = isMessage ? 'notification-orange' : notification.type === 'LISTING_APPROVED' ? 'notification-green' : 'notification-yellow'
+                    return <button
+                      type="button"
+                      className={`notification-item header-notification-item${notification.read ? '' : ' notification-unread'}`}
+                      key={notification.id}
+                      onClick={() => {
+                        setNotificationsOpen(false)
+                        onOpenNotification(notification)
+                      }}
+                    >
+                      <span className={`notification-icon-tile ${tone}`}><Icon size={16} /></span>
+                      <span className="notification-copy">
+                        <strong>{notification.title}</strong>
+                        <span>{notification.detail}</span>
+                        <small>{new Date(notification.createdAt).toLocaleString('vi-VN')}</small>
+                      </span>
+                      {!notification.read && <i className="notification-unread-dot" />}
+                    </button>
+                  })}</div>
+                  : <div className="header-notification-empty">Chưa có thông báo nào.</div>}
+                <button className="notification-view-all" type="button" onClick={() => navigate('notifications')}>Xem tất cả thông báo</button>
+              </section>}
+            </div>
             <div className="account-menu-wrap" ref={accountMenuRef}>
               <button
                 className="profile-menu"
@@ -183,7 +262,10 @@ export function MarketplaceLayout({
                 aria-label={user ? `Tài khoản ${user.fullName}` : 'Đăng nhập'}
                 aria-haspopup="menu"
                 aria-expanded={accountMenuOpen}
-                onClick={() => setAccountMenuOpen((open) => !open)}
+                onClick={() => {
+                  setNotificationsOpen(false)
+                  setAccountMenuOpen((open) => !open)
+                }}
               >
                 <span className="avatar avatar-header">{user ? user.fullName.split(/\s+/).slice(-2).map((part) => part[0]).join('').toLocaleUpperCase('vi') : <UserRound size={15} />}</span>
                 <span className="profile-menu-name">{user ? user.fullName : 'Đăng nhập'}</span>
@@ -237,6 +319,7 @@ export function MarketplaceLayout({
               <button type="button" className={view === 'search' || view === 'detail' ? 'nav-active' : ''} aria-current={view === 'search' || view === 'detail' ? 'page' : undefined} onClick={() => navigate('search')}>Khám phá</button>
               <button type="button" className={view === 'my-listings' ? 'nav-active' : ''} aria-current={view === 'my-listings' ? 'page' : undefined} onClick={() => navigate('my-listings')}>Tin của tôi</button>
               <button type="button" className={view === 'messages' ? 'nav-active' : ''} aria-current={view === 'messages' ? 'page' : undefined} onClick={() => navigate('messages')}>Hộp thư</button>
+              <button className="mobile-nav-only" onClick={() => navigate('notifications')}>Thông báo{notificationUnreadCount > 0 ? ` (${notificationUnreadCount})` : ''}</button>
               {user?.role === 'ADMIN' && <button onClick={() => { onAdminNavigate(); setMobileMenuOpen(false) }}>Quản trị</button>}
               <button className="mobile-nav-only" onClick={() => navigate('profile')}>Tài khoản</button>
               <button className="mobile-nav-only" onClick={() => navigate('auth')}>Đăng xuất</button>

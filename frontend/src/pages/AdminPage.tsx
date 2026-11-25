@@ -342,7 +342,7 @@ export function AdminPage({ listings, onStatusChange, onOpen, onExit, onLoadStat
                 { label: 'Tổng tin hiển thị', value: dateBounds ? stats?.activeListings.toLocaleString('vi-VN') ?? '—' : '—', change: dateRangeLabel, icon: BarChart3, tone: 'green', tab: 'listings' as const },
                 { label: 'Chờ duyệt', value: dateBounds ? stats?.pendingListings.toLocaleString('vi-VN') ?? '—' : '—', change: dateRangeLabel, icon: ShieldCheck, tone: 'orange', tab: 'review' as const },
                 { label: 'Người dùng', value: dateBounds ? stats?.users.toLocaleString('vi-VN') ?? '—' : '—', change: dateRangeLabel, icon: Users, tone: 'blue', tab: 'users' as const },
-                { label: 'Báo cáo mới', value: dateBounds ? stats?.openReports.toLocaleString('vi-VN') ?? '—' : '—', change: dateRangeLabel, icon: CircleAlert, tone: 'red', tab: 'reports' as const },
+                { label: 'Báo cáo mới', value: dateBounds ? stats?.openReports?.toLocaleString('vi-VN') ?? '—' : '—', change: dateRangeLabel, icon: CircleAlert, tone: 'red', tab: 'reports' as const },
               ].map(({ label, value, change, icon: Icon, tone, tab }) => <button type="button" className="admin-stat-card" key={label} onClick={() => setActiveTab(tab)}><span className={`admin-stat-icon admin-stat-${tone}`}><Icon size={19} /></span><span>{label}</span><strong>{value}</strong><small>{change}</small></button>)}
             </div>
             <div className="admin-stats-updated" aria-live="polite"><span className="admin-status-dot" /> Đồng hồ trực tiếp: {formatTime(now)}{statsUpdatedAt && <> · Số liệu cập nhật lúc {formatTime(statsUpdatedAt)}</>}</div>
@@ -354,7 +354,7 @@ export function AdminPage({ listings, onStatusChange, onOpen, onExit, onLoadStat
               <section className="admin-panel admin-quick-panel">
                 <div className="admin-panel-heading"><div><h2>Việc cần làm</h2><p>Các mục đang chờ bạn xử lý.</p></div></div>
                 <button onClick={() => setActiveTab('review')}><span className="quick-task-icon"><ShieldCheck size={18} /></span><span><strong>Duyệt tin đăng mới</strong><small>{pendingListings.length} tin chờ kiểm duyệt</small></span><ChevronRight size={16} /></button>
-                <button onClick={() => setActiveTab('reports')}><span className="quick-task-icon quick-task-report"><CircleAlert size={18} /></span><span><strong>Xem báo cáo vi phạm</strong><small>{stats?.openReports.toLocaleString('vi-VN') ?? '—'} báo cáo cần xem xét</small></span><ChevronRight size={16} /></button>
+                <button onClick={() => setActiveTab('reports')}><span className="quick-task-icon quick-task-report"><CircleAlert size={18} /></span><span><strong>Xem báo cáo vi phạm</strong><small>{stats?.openReports?.toLocaleString('vi-VN') ?? '—'} báo cáo cần xem xét</small></span><ChevronRight size={16} /></button>
                 <button onClick={() => setActiveTab('users')}><span className="quick-task-icon quick-task-users"><Users size={18} /></span><span><strong>Quản lý người dùng</strong><small>Theo dõi tài khoản thành viên</small></span><ChevronRight size={16} /></button>
               </section>
             </div>

@@ -67,6 +67,23 @@ export interface AdminCategory {
   slug: string
 }
 
+export type UserNotificationType = 'LISTING_APPROVED' | 'LISTING_REJECTED' | 'NEW_MESSAGE'
+
+export interface UserNotification {
+  id: number
+  type: UserNotificationType
+  title: string
+  detail: string
+  targetId: string
+  createdAt: string
+  read: boolean
+}
+
+export interface NotificationFeed {
+  notifications: UserNotification[]
+  unreadCount: number
+}
+
 export interface ChatConversation {
   id: string
   listingId: string
@@ -346,6 +363,18 @@ export class MarketplaceApi {
   async listFavorites(): Promise<Listing[]> {
     const response = await this.request<ListingData[]>('/favorites')
     return response.map((listing) => new Listing(listing))
+  }
+
+  async listNotifications(): Promise<NotificationFeed> {
+    return this.request<NotificationFeed>('/notifications')
+  }
+
+  async markNotificationRead(id: number): Promise<void> {
+    await this.request<void>(`/notifications/${id}/read`, { method: 'PATCH' }, false)
+  }
+
+  async markAllNotificationsRead(): Promise<void> {
+    await this.request<void>('/notifications/read-all', { method: 'PATCH' }, false)
   }
 
   async toggleFavorite(id: string, save: boolean): Promise<void> {

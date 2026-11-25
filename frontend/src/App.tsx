@@ -13,7 +13,7 @@ import { ProfilePage } from './pages/ProfilePage'
 import { SearchPage } from './pages/SearchPage'
 import { SellPage } from './pages/SellPage'
 import type { Listing, ListingData, ListingStatus } from './domain/Listing'
-import { MarketplaceApi, MarketplaceApiError, type AdminCategory, type AdminReport, type AdminReportAction, type AdminStats, type AdminUserStatus, type AuthSession, type AuthUser, type ListingFormDraft } from './services/MarketplaceApi'
+import { MarketplaceApi, MarketplaceApiError, type AdminCategory, type AdminReport, type AdminReportAction, type AdminStats, type AdminUserStatus, type AuthSession, type AuthUser, type ListingFormDraft, type UserNotification } from './services/MarketplaceApi'
 import { MarketplaceService } from './services/MarketplaceService'
 
 const api = new MarketplaceApi()
@@ -49,6 +49,11 @@ export function App() {
   const [selectedListingSnapshot, setSelectedListingSnapshot] = useState<Listing | null>(null)
   const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null)
   const [unreadMessageCount, setUnreadMessageCount] = useState(0)
+  const [notifications, setNotifications] = useState<UserNotification[]>([])
+  const [notificationUnreadCount, setNotificationUnreadCount] = useState(0)
+  const [notificationsLoaded, setNotificationsLoaded] = useState(false)
+  const [notificationsError, setNotificationsError] = useState('')
+  const [notificationRetry, setNotificationRetry] = useState(0)
   const [query, setQuery] = useState('')
   const [location, setLocation] = useState('Toàn quốc')
   const [category, setCategory] = useState('Tất cả')
@@ -186,6 +191,40 @@ export function App() {
   }, [apiState, user])
 
   useEffect(() => {
+    if (apiState !== 'connected' || !user) return
+
+    let active = true
+    let knownNotificationIds: Set<number> | null = null
+    async function refreshNotifications() {
+      try {
+        const feed = await api.listNotifications()
+        if (!active) return
+        if (knownNotificationIds) {
+          const newestNotification = feed.notifications.find((item) => !knownNotificationIds?.has(item.id))
+          if (newestNotification) setNotice(`${newestNotification.title}: ${newestNotification.detail}`)
+        }
+        knownNotificationIds = new Set(feed.notifications.map((item) => item.id))
+        setNotifications(feed.notifications)
+        setNotificationUnreadCount(feed.unreadCount)
+        setNotificationsError('')
+      } catch (error) {
+        if (!active) return
+        console.error('Không thể làm mới thông báo.', error)
+        setNotificationsError(error instanceof Error ? error.message : 'Không thể tải thông báo.')
+      } finally {
+        if (active) setNotificationsLoaded(true)
+      }
+    }
+
+    void refreshNotifications()
+    const interval = window.setInterval(() => void refreshNotifications(), 10_000)
+    return () => {
+      active = false
+      window.clearInterval(interval)
+    }
+  }, [apiState, notificationRetry, user])
+
+  useEffect(() => {
     if (apiState !== 'connected' || !isAdminRoute || user?.role !== 'ADMIN') return
 
     let active = true
@@ -267,6 +306,40 @@ export function App() {
     setSelectedId(listing.id)
     setSelectedListingSnapshot(listing)
     navigate('detail')
+  }
+
+  async function markNotificationRead(id: number) {
+    const notification = notifications.find((item) => item.id === id)
+    if (!notification || notification.read) return
+    try {
+      await api.markNotificationRead(id)
+      setNotifications((current) => current.map((item) => item.id === id ? { ...item, read: true } : item))
+      setNotificationUnreadCount((current) => Math.max(0, current - 1))
+    } catch (error) {
+      console.error('Không thể đánh dấu thông báo đã đọc.', error)
+      setNotice(error instanceof Error ? error.message : 'Không thể cập nhật thông báo.')
+    }
+  }
+
+  async function markAllNotificationsRead() {
+    try {
+      await api.markAllNotificationsRead()
+      setNotifications((current) => current.map((item) => ({ ...item, read: true })))
+      setNotificationUnreadCount(0)
+    } catch (error) {
+      console.error('Không thể đánh dấu tất cả thông báo đã đọc.', error)
+      setNotice(error instanceof Error ? error.message : 'Không thể cập nhật thông báo.')
+    }
+  }
+
+  async function openNotification(notification: UserNotification) {
+    await markNotificationRead(notification.id)
+    if (notification.type === 'NEW_MESSAGE') {
+      setSelectedConversationId(notification.targetId)
+      navigate('messages')
+      return
+    }
+    navigate('my-listings')
   }
 
   async function openChat(listingId: string) {
@@ -499,6 +572,10 @@ export function App() {
     setSavedIds([])
     setFavoriteListings([])
     setUnreadMessageCount(0)
+    setNotifications([])
+    setNotificationUnreadCount(0)
+    setNotificationsLoaded(false)
+    setNotificationsError('')
     navigate('home')
     setAuthNotice('Bạn đã đăng xuất.')
   }
@@ -562,6 +639,10 @@ export function App() {
       onSignOut={signOut}
       favoritesCount={activeFavoriteListings.length}
       unreadCount={unreadMessageCount}
+      notificationUnreadCount={notificationUnreadCount}
+      notifications={notifications}
+      onOpenNotification={(notification) => void openNotification(notification)}
+      onMarkAllNotificationsRead={() => void markAllNotificationsRead()}
       user={user}
       authNotice={authNotice}
       onDismissAuthNotice={() => setAuthNotice('')}
@@ -593,7 +674,22 @@ export function App() {
         }} />
       </div>}
       {view === 'messages' && apiState !== 'connected' && <div className="empty-state"><h3>Không thể kết nối hộp thư</h3><p>{apiError || 'Đang kết nối backend. Vui lòng thử lại sau.'}</p><button className="button-primary" onClick={retryConnection}>Thử kết nối lại</button></div>}
-      {view === 'notifications' && <NotificationsPage onNavigate={navigate} />}
+      {view === 'notifications' && <NotificationsPage
+        notifications={notifications}
+        unreadCount={notificationUnreadCount}
+        loading={Boolean(user) && apiState !== 'offline' && !notificationsLoaded}
+        error={notificationsError || (apiState === 'offline' ? apiError : '')}
+        onOpen={(notification) => void openNotification(notification)}
+        onMarkAllRead={() => void markAllNotificationsRead()}
+        onRetry={() => {
+          if (apiState === 'offline') {
+            void retryConnection()
+            return
+          }
+          setNotificationsLoaded(false)
+          setNotificationRetry((current) => current + 1)
+        }}
+      />}
       {view === 'profile' && user && <ProfilePage listings={listings} onOpen={openListing} onToggleSaved={toggleSaved} onAuth={signOut} fullName={currentSellerName} sellerId={currentSellerId} api={api} />}
       {view === 'profile' && !user && <div className="empty-state"><h3>Đăng nhập để xem hồ sơ của bạn</h3><button className="button-primary" onClick={() => navigate('auth')}>Đăng nhập</button></div>}
     </MarketplaceLayout>

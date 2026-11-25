@@ -37,16 +37,19 @@ public class ListingService {
     private final CategoryRepository categoryRepository;
     private final CurrentUserService currentUserService;
     private final ListingDraftService listingDraftService;
+    private final UserNotificationService notificationService;
 
     public ListingService(
             ListingRepository listingRepository,
             CategoryRepository categoryRepository,
             CurrentUserService currentUserService,
-            ListingDraftService listingDraftService) {
+            ListingDraftService listingDraftService,
+            UserNotificationService notificationService) {
         this.listingRepository = listingRepository;
         this.categoryRepository = categoryRepository;
         this.currentUserService = currentUserService;
         this.listingDraftService = listingDraftService;
+        this.notificationService = notificationService;
     }
 
     @Transactional(readOnly = true)
@@ -234,6 +237,7 @@ public class ListingService {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Tin đăng này đã được xử lý.");
         }
         listing.changeStatus(status, reason);
+        notificationService.notifyListingStatus(listing.getSeller(), listing, status, reason);
         return ListingResponse.from(listing);
     }
 
