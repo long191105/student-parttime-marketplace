@@ -63,6 +63,9 @@ class ChatServiceTest {
     @Mock
     private CurrentUserService currentUserService;
 
+    @Mock
+    private UserNotificationService notificationService;
+
     private ChatService chatService;
     private UserAccount buyer;
     private UserAccount seller;
@@ -77,7 +80,8 @@ class ChatServiceTest {
                 reviewRepository,
                 listingRepository,
                 userAccountRepository,
-                currentUserService);
+                currentUserService,
+                notificationService);
         buyer = user(11L, "Nguyen Long");
         seller = user(12L, "Tran Mai");
         listing = new Listing(
@@ -174,6 +178,7 @@ class ChatServiceTest {
         assertEquals("Chào bạn!", response.content());
         assertEquals("11", response.senderId());
         verify(conversationRepository).save(conversation);
+        verify(notificationService).notifyNewMessage(seller, conversation, buyer, "Chào bạn!");
     }
 
     @Test

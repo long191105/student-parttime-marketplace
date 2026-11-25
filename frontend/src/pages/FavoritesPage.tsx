@@ -3,15 +3,12 @@ import type { Listing } from '../domain/Listing'
 import { ListingCard } from '../components/ListingCard'
 
 interface FavoritesPageProps {
-  listings: Listing[]
-  savedIds: string[]
+  savedListings: Listing[]
   onOpen: (listing: Listing) => void
   onToggleSaved: (id: string) => void
 }
 
-export function FavoritesPage({ listings, savedIds, onOpen, onToggleSaved }: FavoritesPageProps) {
-  const savedListings = listings.filter((listing) => savedIds.includes(listing.id) && listing.status === 'ACTIVE')
-
+export function FavoritesPage({ savedListings, onOpen, onToggleSaved }: FavoritesPageProps) {
   return (
     <div className="favorites-page">
       <div className="workspace-heading"><div><span className="section-eyebrow">MÓN BẠN ĐANG ĐỂ Ý</span><h1>Tin đã lưu <Heart size={25} /></h1><p>Giữ lại những món hời để dễ dàng tìm thấy sau này.</p></div><span className="favorite-count"><Bookmark size={16} /> {savedListings.length} tin</span></div>

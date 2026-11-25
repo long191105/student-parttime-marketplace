@@ -13,7 +13,7 @@ import { ProfilePage } from './pages/ProfilePage'
 import { SearchPage } from './pages/SearchPage'
 import { SellPage } from './pages/SellPage'
 import type { Listing, ListingData, ListingStatus } from './domain/Listing'
-import { MarketplaceApi, MarketplaceApiError, type AuthSession, type AuthUser, type ListingFormDraft } from './services/MarketplaceApi'
+import { MarketplaceApi, MarketplaceApiError, type AdminCategory, type AdminReport, type AdminReportAction, type AdminStats, type AdminUserStatus, type AuthSession, type AuthUser, type ListingFormDraft, type UserNotification } from './services/MarketplaceApi'
 import { MarketplaceService } from './services/MarketplaceService'
 
 const api = new MarketplaceApi()
@@ -24,8 +24,20 @@ export function App() {
   const loadListingDraft = useCallback(() => api.getListingDraft(), [])
   const saveListingDraft = useCallback((draft: ListingFormDraft) => api.saveListingDraft(draft), [])
   const deleteListingDraft = useCallback(() => api.deleteListingDraft(), [])
+  const loadAdminStats = useCallback((from: string, to: string): Promise<AdminStats> => api.getAdminStats(from, to), [])
+  const loadAdminUsers = useCallback(() => api.listAdminUsers(), [])
+  const updateAdminUserStatus = useCallback((id: number, status: AdminUserStatus) => api.updateAdminUserStatus(id, status), [])
+  const loadAdminReports = useCallback(() => api.listAdminReports(), [])
+  const processAdminReport = useCallback((id: number, action: AdminReportAction): Promise<AdminReport> => api.processAdminReport(id, action), [])
+  const loadAdminCategories = useCallback(() => api.listAdminCategories(), [])
+  const createAdminCategory = useCallback((name: string): Promise<AdminCategory> => api.createAdminCategory(name), [])
+  const submitListingReport = useCallback((listingId: string, reason: string) => api.submitListingReport(listingId, reason), [])
   const [listings, setListings] = useState<Listing[]>(() => service.getListings())
   const [savedIds, setSavedIds] = useState<string[]>(() => service.getFavorites())
+  const [favoriteListings, setFavoriteListings] = useState<Listing[]>(() => {
+    const saved = new Set(service.getFavorites())
+    return service.getListings().filter((listing) => saved.has(listing.id))
+  })
   const [user, setUser] = useState<AuthUser | null>(() => api.readSession()?.user ?? null)
   const [apiState, setApiState] = useState<'connecting' | 'connected' | 'offline'>('connecting')
   const [apiError, setApiError] = useState('')
@@ -34,8 +46,14 @@ export function App() {
   const [isAdminRoute, setIsAdminRoute] = useState(() => window.location.pathname.replace(/\/+$/, '') === '/admin')
   const [previousView, setPreviousView] = useState<AppView>('home')
   const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [selectedListingSnapshot, setSelectedListingSnapshot] = useState<Listing | null>(null)
   const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null)
   const [unreadMessageCount, setUnreadMessageCount] = useState(0)
+  const [notifications, setNotifications] = useState<UserNotification[]>([])
+  const [notificationUnreadCount, setNotificationUnreadCount] = useState(0)
+  const [notificationsLoaded, setNotificationsLoaded] = useState(false)
+  const [notificationsError, setNotificationsError] = useState('')
+  const [notificationRetry, setNotificationRetry] = useState(0)
   const [query, setQuery] = useState('')
   const [location, setLocation] = useState('Toàn quốc')
   const [category, setCategory] = useState('Tất cả')
@@ -44,6 +62,9 @@ export function App() {
   const updateUnreadMessageCount = useCallback((count: number) => setUnreadMessageCount(count), [])
 
   const selectedListing = listings.find((listing) => listing.id === selectedId)
+    ?? favoriteListings.find((listing) => listing.id === selectedId)
+    ?? (selectedListingSnapshot?.id === selectedId ? selectedListingSnapshot : undefined)
+  const activeFavoriteListings = favoriteListings.filter((listing) => listing.status === 'ACTIVE')
   const activeListings = listings.filter((listing) => {
     if (listing.status !== 'ACTIVE') return false
     if (category !== 'Tất cả' && listing.category !== category) return false
@@ -80,17 +101,20 @@ export function App() {
         let nextListings = publicListings
         let nextUser: AuthUser | null = null
         let nextSavedIds: string[] = []
+        let nextFavoriteListings: Listing[] = []
         const savedSession = api.readSession()
 
         if (savedSession) {
           try {
             nextUser = await api.getCurrentUser()
-            const [myListings, favorites, pending] = await Promise.all([
+            const [myListings, favorites, active, pending] = await Promise.all([
               api.listMyListings(),
               api.listFavorites(),
+              nextUser.role === 'ADMIN' ? api.listAdminListings('ACTIVE') : Promise.resolve([]),
               nextUser.role === 'ADMIN' ? api.listPendingListings() : Promise.resolve([]),
             ])
-            nextListings = mergeListings(publicListings, myListings, pending)
+            nextListings = mergeListings(publicListings, myListings, active, pending)
+            nextFavoriteListings = favorites
             nextSavedIds = favorites.map((listing) => listing.id)
           } catch (error) {
             if (!(error instanceof MarketplaceApiError) || error.status !== 401) {
@@ -106,6 +130,7 @@ export function App() {
         if (!active) return
         setListings(nextListings)
         setSavedIds(nextSavedIds)
+        setFavoriteListings(nextFavoriteListings)
         setUser(nextUser)
         setApiState('connected')
         setApiError('')
@@ -166,19 +191,53 @@ export function App() {
   }, [apiState, user])
 
   useEffect(() => {
+    if (apiState !== 'connected' || !user) return
+
+    let active = true
+    let knownNotificationIds: Set<number> | null = null
+    async function refreshNotifications() {
+      try {
+        const feed = await api.listNotifications()
+        if (!active) return
+        if (knownNotificationIds) {
+          const newestNotification = feed.notifications.find((item) => !knownNotificationIds?.has(item.id))
+          if (newestNotification) setNotice(`${newestNotification.title}: ${newestNotification.detail}`)
+        }
+        knownNotificationIds = new Set(feed.notifications.map((item) => item.id))
+        setNotifications(feed.notifications)
+        setNotificationUnreadCount(feed.unreadCount)
+        setNotificationsError('')
+      } catch (error) {
+        if (!active) return
+        console.error('Không thể làm mới thông báo.', error)
+        setNotificationsError(error instanceof Error ? error.message : 'Không thể tải thông báo.')
+      } finally {
+        if (active) setNotificationsLoaded(true)
+      }
+    }
+
+    void refreshNotifications()
+    const interval = window.setInterval(() => void refreshNotifications(), 10_000)
+    return () => {
+      active = false
+      window.clearInterval(interval)
+    }
+  }, [apiState, notificationRetry, user])
+
+  useEffect(() => {
     if (apiState !== 'connected' || !isAdminRoute || user?.role !== 'ADMIN') return
 
     let active = true
     async function refreshAdminListings() {
       try {
-        const [publicListings, pendingListings] = await Promise.all([
-          api.listListings(),
+        const [activeListings, pendingListings] = await Promise.all([
+          api.listAdminListings('ACTIVE'),
           api.listPendingListings(),
         ])
         if (!active) return
         setListings((current) => mergeListings(
           current.filter((listing) => listing.status !== 'ACTIVE' && listing.status !== 'PENDING'),
-          publicListings,
+          activeListings,
           pendingListings,
         ))
       } catch (error) {
@@ -237,6 +296,7 @@ export function App() {
     setIsAdminRoute(false)
     setPreviousView('home')
     setSelectedId(listing.id)
+    setSelectedListingSnapshot(listing)
     setView('detail')
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
@@ -244,7 +304,42 @@ export function App() {
   function openListing(listing: Listing) {
     setPreviousView(view === 'detail' ? previousView : view)
     setSelectedId(listing.id)
+    setSelectedListingSnapshot(listing)
     navigate('detail')
+  }
+
+  async function markNotificationRead(id: number) {
+    const notification = notifications.find((item) => item.id === id)
+    if (!notification || notification.read) return
+    try {
+      await api.markNotificationRead(id)
+      setNotifications((current) => current.map((item) => item.id === id ? { ...item, read: true } : item))
+      setNotificationUnreadCount((current) => Math.max(0, current - 1))
+    } catch (error) {
+      console.error('Không thể đánh dấu thông báo đã đọc.', error)
+      setNotice(error instanceof Error ? error.message : 'Không thể cập nhật thông báo.')
+    }
+  }
+
+  async function markAllNotificationsRead() {
+    try {
+      await api.markAllNotificationsRead()
+      setNotifications((current) => current.map((item) => ({ ...item, read: true })))
+      setNotificationUnreadCount(0)
+    } catch (error) {
+      console.error('Không thể đánh dấu tất cả thông báo đã đọc.', error)
+      setNotice(error instanceof Error ? error.message : 'Không thể cập nhật thông báo.')
+    }
+  }
+
+  async function openNotification(notification: UserNotification) {
+    await markNotificationRead(notification.id)
+    if (notification.type === 'NEW_MESSAGE') {
+      setSelectedConversationId(notification.targetId)
+      navigate('messages')
+      return
+    }
+    navigate('my-listings')
   }
 
   async function openChat(listingId: string) {
@@ -271,17 +366,21 @@ export function App() {
     const publicListings = await api.listListings()
     let nextListings = publicListings
     let nextSavedIds: string[] = []
+    let nextFavoriteListings: Listing[] = []
     if (userOverride) {
-      const [myListings, favorites, pending] = await Promise.all([
+      const [myListings, favorites, active, pending] = await Promise.all([
         api.listMyListings(),
         api.listFavorites(),
+        userOverride.role === 'ADMIN' ? api.listAdminListings('ACTIVE') : Promise.resolve([]),
         userOverride.role === 'ADMIN' ? api.listPendingListings() : Promise.resolve([]),
       ])
-      nextListings = mergeListings(publicListings, myListings, pending)
+      nextListings = mergeListings(publicListings, myListings, active, pending)
+      nextFavoriteListings = favorites
       nextSavedIds = favorites.map((listing) => listing.id)
     }
     setListings(nextListings)
     setSavedIds(nextSavedIds)
+    setFavoriteListings(nextFavoriteListings)
     setApiState('connected')
     setApiError('')
   }
@@ -298,6 +397,7 @@ export function App() {
         await api.toggleFavorite(id, save)
         const favorites = await api.listFavorites()
         setSavedIds(favorites.map((listing) => listing.id))
+        setFavoriteListings(favorites)
         setNotice(save ? 'Đã lưu tin vào tài khoản của bạn.' : 'Đã bỏ lưu tin.')
       } catch (error) {
         console.error('Không thể cập nhật tin yêu thích.', error)
@@ -307,7 +407,9 @@ export function App() {
     }
 
     try {
-      setSavedIds(service.toggleFavorite(id))
+      const nextSavedIds = service.toggleFavorite(id)
+      setSavedIds(nextSavedIds)
+      setFavoriteListings(service.getListings().filter((listing) => nextSavedIds.includes(listing.id)))
       setNotice(savedIds.includes(id) ? 'Đã bỏ lưu tin trong dữ liệu demo.' : 'Đã lưu tin trong dữ liệu demo.')
     } catch (error) {
       console.error('Không thể thay đổi danh sách tin đã lưu.', error)
@@ -468,7 +570,12 @@ export function App() {
     api.clearSession()
     setUser(null)
     setSavedIds([])
+    setFavoriteListings([])
     setUnreadMessageCount(0)
+    setNotifications([])
+    setNotificationUnreadCount(0)
+    setNotificationsLoaded(false)
+    setNotificationsError('')
     navigate('home')
     setAuthNotice('Bạn đã đăng xuất.')
   }
@@ -512,7 +619,7 @@ export function App() {
     if (user.role !== 'ADMIN') {
       return <div className="admin-route-message"><h1>Bạn không có quyền truy cập</h1><p>Trang quản trị chỉ dành cho tài khoản quản trị viên.</p><button className="button-primary" onClick={leaveAdminRoute}>Về trang chủ</button></div>
     }
-    return <AdminPage listings={listings} onStatusChange={changeStatus} onOpen={openListingFromAdmin} onExit={leaveAdminRoute} />
+    return <AdminPage listings={listings} onStatusChange={changeStatus} onOpen={openListingFromAdmin} onExit={leaveAdminRoute} onLoadStats={loadAdminStats} onLoadUsers={loadAdminUsers} onUserStatusChange={updateAdminUserStatus} onLoadReports={loadAdminReports} onReportAction={processAdminReport} onLoadCategories={loadAdminCategories} onCreateCategory={createAdminCategory} />
   }
 
   if (view === 'auth') {
@@ -530,8 +637,12 @@ export function App() {
       onAdminNavigate={openAdminRoute}
       onSearch={submitSearch}
       onSignOut={signOut}
-      favoritesCount={savedIds.length}
+      favoritesCount={activeFavoriteListings.length}
       unreadCount={unreadMessageCount}
+      notificationUnreadCount={notificationUnreadCount}
+      notifications={notifications}
+      onOpenNotification={(notification) => void openNotification(notification)}
+      onMarkAllNotificationsRead={() => void markAllNotificationsRead()}
       user={user}
       authNotice={authNotice}
       onDismissAuthNotice={() => setAuthNotice('')}
@@ -541,7 +652,7 @@ export function App() {
       {notice && <div className="toast-message" role="status">{notice}<button onClick={() => setNotice('')} aria-label="Đóng thông báo">×</button></div>}
       {view === 'home' && <ExplorePage listings={activeListings} savedIds={savedIds} onOpen={openListing} onToggleSaved={toggleSaved} onCategory={selectCategory} />}
       {view === 'search' && <SearchPage listings={activeListings} savedIds={savedIds} query={query} category={category} location={location} onQueryChange={setQuery} onCategoryChange={setCategory} onLocationChange={setLocation} onOpen={openListing} onToggleSaved={toggleSaved} />}
-      {view === 'detail' && selectedListing && <ListingDetailPage key={selectedListing.id} listing={selectedListing} related={relatedListings} saved={savedIds.includes(selectedListing.id)} currentUserId={user ? String(user.id) : null} onBack={() => navigate(previousView === 'detail' ? 'home' : previousView)} onToggleSaved={toggleSaved} onOpen={openListing} onContact={() => void openChat(selectedListing.id)} onSeller={() => navigate('profile')} onRevealPhone={async (id) => {
+      {view === 'detail' && selectedListing && <ListingDetailPage key={selectedListing.id} listing={selectedListing} related={relatedListings} saved={savedIds.includes(selectedListing.id)} currentUserId={user ? String(user.id) : null} onBack={() => navigate(previousView === 'detail' ? 'home' : previousView)} onToggleSaved={toggleSaved} onOpen={openListing} onContact={() => void openChat(selectedListing.id)} onSeller={() => navigate('profile')} onReport={submitListingReport} onRevealPhone={async (id) => {
         if (apiState !== 'connected') throw new Error('Backend chưa kết nối; không thể tải số điện thoại thật.')
         if (!user) {
           setNotice('Đăng nhập để xem số điện thoại người bán.')
@@ -553,7 +664,7 @@ export function App() {
       {view === 'detail' && !selectedListing && <div className="empty-state"><h3>Không tìm thấy tin đăng</h3><button className="button-primary" onClick={() => navigate('home')}>Về trang chủ</button></div>}
       {view === 'sell' && <SellPage onCancel={() => navigate(sellReturnView)} onSubmit={createListing} onLoadDraft={loadListingDraft} onSaveDraft={saveListingDraft} sellerName={user?.fullName ?? 'Người bán'} />}
       {view === 'my-listings' && <MyListingsPage listings={listings} onStatusChange={changeStatus} onOpen={openListing} onSell={startNewListing} onEditDraft={editSavedDraft} sellerId={currentSellerId} onLoadDraft={loadListingDraft} onDeleteDraft={deleteListingDraft} onPublishDraft={publishSavedDraft} />}
-      {view === 'favorites' && <FavoritesPage listings={listings} savedIds={savedIds} onOpen={openListing} onToggleSaved={toggleSaved} />}
+      {view === 'favorites' && <FavoritesPage savedListings={activeFavoriteListings} onOpen={openListing} onToggleSaved={toggleSaved} />}
       {view === 'check-in' && <CheckInPage userId={user?.id ?? null} onBack={() => navigate('home')} />}
       {user && apiState === 'connected' && <div className={view === 'messages' ? '' : 'inbox-background-listener'} aria-hidden={view !== 'messages'}>
         <InboxPage api={api} user={user} initialConversationId={selectedConversationId} isVisible={view === 'messages'} onUnreadCountChange={updateUnreadMessageCount} onListingSold={(id) => setListings((current) => current.map((listing) => listing.id === id ? listing.withStatus('SOLD') : listing))} onOpenListing={(id) => {
@@ -563,7 +674,22 @@ export function App() {
         }} />
       </div>}
       {view === 'messages' && apiState !== 'connected' && <div className="empty-state"><h3>Không thể kết nối hộp thư</h3><p>{apiError || 'Đang kết nối backend. Vui lòng thử lại sau.'}</p><button className="button-primary" onClick={retryConnection}>Thử kết nối lại</button></div>}
-      {view === 'notifications' && <NotificationsPage onNavigate={navigate} />}
+      {view === 'notifications' && <NotificationsPage
+        notifications={notifications}
+        unreadCount={notificationUnreadCount}
+        loading={Boolean(user) && apiState !== 'offline' && !notificationsLoaded}
+        error={notificationsError || (apiState === 'offline' ? apiError : '')}
+        onOpen={(notification) => void openNotification(notification)}
+        onMarkAllRead={() => void markAllNotificationsRead()}
+        onRetry={() => {
+          if (apiState === 'offline') {
+            void retryConnection()
+            return
+          }
+          setNotificationsLoaded(false)
+          setNotificationRetry((current) => current + 1)
+        }}
+      />}
       {view === 'profile' && user && <ProfilePage listings={listings} onOpen={openListing} onToggleSaved={toggleSaved} onAuth={signOut} fullName={currentSellerName} sellerId={currentSellerId} api={api} />}
       {view === 'profile' && !user && <div className="empty-state"><h3>Đăng nhập để xem hồ sơ của bạn</h3><button className="button-primary" onClick={() => navigate('auth')}>Đăng nhập</button></div>}
     </MarketplaceLayout>

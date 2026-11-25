@@ -30,6 +30,7 @@ import com.example.demo.repository.ListingRepository;
 import com.example.demo.service.CurrentUserService;
 import com.example.demo.service.ListingDraftService;
 import com.example.demo.service.ListingService;
+import com.example.demo.service.UserNotificationService;
 
 class ListingPhoneApiTest {
 
@@ -67,7 +68,8 @@ class ListingPhoneApiTest {
                 listingRepository,
                 mock(CategoryRepository.class),
                 currentUserService,
-                mock(ListingDraftService.class));
+                mock(ListingDraftService.class),
+                mock(UserNotificationService.class));
         ListingController listingController = new ListingController(
                 listingService,
                 mock(ListingDraftService.class));

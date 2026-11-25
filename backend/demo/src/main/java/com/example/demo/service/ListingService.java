@@ -1,6 +1,7 @@
 package com.example.demo.service;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -36,16 +37,19 @@ public class ListingService {
     private final CategoryRepository categoryRepository;
     private final CurrentUserService currentUserService;
     private final ListingDraftService listingDraftService;
+    private final UserNotificationService notificationService;
 
     public ListingService(
             ListingRepository listingRepository,
             CategoryRepository categoryRepository,
             CurrentUserService currentUserService,
-            ListingDraftService listingDraftService) {
+            ListingDraftService listingDraftService,
+            UserNotificationService notificationService) {
         this.listingRepository = listingRepository;
         this.categoryRepository = categoryRepository;
         this.currentUserService = currentUserService;
         this.listingDraftService = listingDraftService;
+        this.notificationService = notificationService;
     }
 
     @Transactional(readOnly = true)
@@ -63,6 +67,7 @@ public class ListingService {
         if (minPrice != null && maxPrice != null && minPrice.compareTo(maxPrice) > 0) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Giá tối thiểu không thể lớn hơn giá tối đa.");
         }
+
         ListingCondition parsedCondition = parseCondition(condition);
         Pageable pageable = PageRequest.of(page, size, sortOrder(sort));
         String normalizedKeyword = blankToNull(keyword);
@@ -105,6 +110,16 @@ public class ListingService {
             return criteriaBuilder.and(predicates.toArray(Predicate[]::new));
         };
         return listingRepository.findAll(specification, pageable).map(ListingResponse::from);
+    }
+
+    @Transactional(readOnly = true)
+    public long countByStatusAndCreatedAtBetween(ListingStatus status, Instant from, Instant to) {
+        return listingRepository.countByStatusAndCreatedAtGreaterThanEqualAndCreatedAtLessThan(status, from, to);
+    }
+
+    @Transactional(readOnly = true)
+    public long countListingsBySeller(Long sellerId) {
+        return listingRepository.countBySellerId(sellerId);
     }
 
     @Transactional
@@ -222,6 +237,7 @@ public class ListingService {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Tin đăng này đã được xử lý.");
         }
         listing.changeStatus(status, reason);
+        notificationService.notifyListingStatus(listing.getSeller(), listing, status, reason);
         return ListingResponse.from(listing);
     }
 

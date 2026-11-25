@@ -97,7 +97,7 @@ Với Metered, có thể đặt `TURN_URLS=turn:global.relay.metered.ca:80,turn:
 - Database migration: `backend/demo/src/main/resources/db/migration`.
 - Frontend: `frontend/src/{domain,data,services,components,pages}`.
 
-API hiện hỗ trợ đăng ký/đăng nhập JWT, duyệt và tìm kiếm tin, tạo tin chờ kiểm duyệt, quản lý trạng thái tin, yêu thích, danh mục, nhắn tin và tín hiệu gọi realtime, cùng duyệt tin dành cho quản trị viên. Số điện thoại liên hệ được lưu theo từng tin và chỉ lấy qua API cần đăng nhập; hiện chưa có xác minh OTP. Báo cáo vi phạm chưa được nối backend.
+API hiện hỗ trợ đăng ký/đăng nhập JWT, duyệt và tìm kiếm tin, tạo tin chờ kiểm duyệt, quản lý trạng thái tin, yêu thích, danh mục, nhắn tin và tín hiệu gọi realtime, thông báo tin nhắn/trạng thái kiểm duyệt, báo cáo vi phạm, cùng các công cụ quản trị tin đăng, tài khoản và báo cáo. Người dùng đã đăng nhập có thể gửi báo cáo cho tin đang hiển thị; quản trị viên xem và xử lý báo cáo trong cơ sở dữ liệu. Thông báo được lưu và cập nhật trong trung tâm thông báo. Số điện thoại liên hệ được lưu theo từng tin và chỉ lấy qua API cần đăng nhập; hiện chưa có xác minh OTP.
 
 ## 4. Kiểm thử & đánh giá
 

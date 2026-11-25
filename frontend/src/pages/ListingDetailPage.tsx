@@ -15,15 +15,18 @@ interface ListingDetailPageProps {
   onOpen: (listing: Listing) => void
   onContact: () => void
   onSeller: () => void
+  onReport: (listingId: string, reason: string) => Promise<void>
   onRevealPhone: (id: string) => Promise<string>
 }
 
-export function ListingDetailPage({ listing, related, saved, currentUserId, onBack, onToggleSaved, onOpen, onContact, onSeller, onRevealPhone }: ListingDetailPageProps) {
-  const { showPrompt } = useAppDialog()
+export function ListingDetailPage({ listing, related, saved, currentUserId, onBack, onToggleSaved, onOpen, onContact, onSeller, onReport, onRevealPhone }: ListingDetailPageProps) {
+  const { showPrompt, showAlert } = useAppDialog()
   const [phone, setPhone] = useState('')
   const [phoneError, setPhoneError] = useState('')
   const [isLoadingPhone, setIsLoadingPhone] = useState(false)
   const [reported, setReported] = useState(false)
+  const [reportError, setReportError] = useState('')
+  const [isSubmittingReport, setIsSubmittingReport] = useState(false)
   const [activeImage, setActiveImage] = useState(0)
   const gallery = listing.images
 
@@ -44,8 +47,28 @@ export function ListingDetailPage({ listing, related, saved, currentUserId, onBa
   }
 
   async function reportListing() {
-    const reason = await showPrompt('Bạn muốn báo cáo tin này vì lý do gì?', 'Báo cáo tin đăng', 'Nhập lý do báo cáo...')
-    if (reason?.trim()) setReported(true)
+    if (reported || isSubmittingReport) return
+    if (!currentUserId) {
+      setReportError('Vui lòng đăng nhập để gửi báo cáo.')
+      return
+    }
+    if (currentUserId === listing.sellerId) {
+      setReportError('Bạn không thể báo cáo tin đăng của chính mình.')
+      return
+    }
+    setReportError('')
+    setIsSubmittingReport(true)
+    try {
+      const reason = await showPrompt('Bạn muốn báo cáo tin này vì lý do gì?', 'Báo cáo tin đăng', 'Nhập lý do báo cáo...')
+      if (!reason?.trim()) return
+      await onReport(listing.id, reason.trim())
+      setReported(true)
+      await showAlert('Báo cáo của bạn đã được gửi đến quản trị viên.')
+    } catch (error) {
+      setReportError(error instanceof Error ? error.message : 'Không thể gửi báo cáo. Vui lòng thử lại.')
+    } finally {
+      setIsSubmittingReport(false)
+    }
   }
 
   return (
@@ -84,7 +107,8 @@ export function ListingDetailPage({ listing, related, saved, currentUserId, onBa
               : <span className="contact-chat-owner">Đây là tin đăng của bạn</span>}
             <button className={`detail-save ${saved ? 'detail-save-active' : ''}`} onClick={() => onToggleSaved(listing.id)}><Heart size={17} fill={saved ? 'currentColor' : 'none'} />{saved ? 'Đã lưu tin' : 'Lưu tin này'}</button>
           </div>
-          <button className={`report-link ${reported ? 'report-sent' : ''}`} onClick={() => void reportListing()}><Flag size={14} />{reported ? 'Đã gửi báo cáo' : 'Báo cáo tin này'}</button>
+          <button className={`report-link ${reported ? 'report-sent' : ''}`} onClick={() => void reportListing()} disabled={reported || isSubmittingReport}><Flag size={14} />{isSubmittingReport ? 'Đang gửi báo cáo...' : reported ? 'Đã gửi báo cáo' : 'Báo cáo tin này'}</button>
+          {reportError && <span className="contact-phone-error" role="alert">{reportError}</span>}
           <div className="buyer-tip"><span>✦ MẸO NHỎ</span><p>Đừng chuyển tiền trước khi xem hàng. Hẹn gặp ở nơi công cộng để giao dịch an toàn nhé!</p></div>
         </aside>
       </div>
