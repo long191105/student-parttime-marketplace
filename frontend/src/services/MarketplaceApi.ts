@@ -28,6 +28,24 @@ export interface AuthSession {
   user: AuthUser
 }
 
+export interface AdminStats {
+  activeListings: number
+  pendingListings: number
+  users: number
+}
+
+export type AdminUserStatus = 'ACTIVE' | 'LOCKED'
+
+export interface AdminUser {
+  id: number
+  fullName: string
+  email: string
+  role: 'MEMBER' | 'ADMIN'
+  status: AdminUserStatus
+  listingCount: number
+  createdAt: string
+}
+
 export interface ChatConversation {
   id: string
   listingId: string
@@ -148,6 +166,7 @@ export interface ListingFormDraft {
 
 interface PageResponse<T> {
   content: T[]
+  totalPages: number
 }
 
 export class MarketplaceApi {
@@ -162,8 +181,43 @@ export class MarketplaceApi {
   }
 
   async listPendingListings(): Promise<Listing[]> {
-    const response = await this.request<PageResponse<ListingData>>('/admin/listings?status=PENDING&page=0&size=100')
-    return response.content.map((listing) => new Listing(listing))
+    return this.listAdminListings('PENDING')
+  }
+
+  async listAdminListings(status: ListingStatus): Promise<Listing[]> {
+    const listings: Listing[] = []
+    let totalPages = 1
+    for (let page = 0; page < totalPages; page += 1) {
+      const params = new URLSearchParams({ status, page: String(page), size: '100' })
+      const response = await this.request<PageResponse<ListingData>>(`/admin/listings?${params.toString()}`)
+      listings.push(...response.content.map((listing) => new Listing(listing)))
+      totalPages = response.totalPages
+    }
+    return listings
+  }
+
+  async listAdminUsers(): Promise<AdminUser[]> {
+    const users: AdminUser[] = []
+    let totalPages = 1
+    for (let page = 0; page < totalPages; page += 1) {
+      const params = new URLSearchParams({ page: String(page), size: '100' })
+      const response = await this.request<PageResponse<AdminUser>>(`/admin/users?${params.toString()}`)
+      users.push(...response.content)
+      totalPages = response.totalPages
+    }
+    return users
+  }
+
+  async updateAdminUserStatus(id: number, status: AdminUserStatus): Promise<AdminUser> {
+    return this.request<AdminUser>(`/admin/users/${id}/status`, {
+      method: 'PATCH',
+      body: JSON.stringify({ status }),
+    })
+  }
+
+  async getAdminStats(from: string, to: string): Promise<AdminStats> {
+    const params = new URLSearchParams({ from, to })
+    return this.request<AdminStats>(`/admin/stats?${params.toString()}`)
   }
 
   async createListing(draft: ListingDraft): Promise<Listing> {

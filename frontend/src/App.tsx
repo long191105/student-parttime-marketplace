@@ -13,7 +13,7 @@ import { ProfilePage } from './pages/ProfilePage'
 import { SearchPage } from './pages/SearchPage'
 import { SellPage } from './pages/SellPage'
 import type { Listing, ListingData, ListingStatus } from './domain/Listing'
-import { MarketplaceApi, MarketplaceApiError, type AuthSession, type AuthUser, type ListingFormDraft } from './services/MarketplaceApi'
+import { MarketplaceApi, MarketplaceApiError, type AdminStats, type AdminUserStatus, type AuthSession, type AuthUser, type ListingFormDraft } from './services/MarketplaceApi'
 import { MarketplaceService } from './services/MarketplaceService'
 
 const api = new MarketplaceApi()
@@ -24,6 +24,9 @@ export function App() {
   const loadListingDraft = useCallback(() => api.getListingDraft(), [])
   const saveListingDraft = useCallback((draft: ListingFormDraft) => api.saveListingDraft(draft), [])
   const deleteListingDraft = useCallback(() => api.deleteListingDraft(), [])
+  const loadAdminStats = useCallback((from: string, to: string): Promise<AdminStats> => api.getAdminStats(from, to), [])
+  const loadAdminUsers = useCallback(() => api.listAdminUsers(), [])
+  const updateAdminUserStatus = useCallback((id: number, status: AdminUserStatus) => api.updateAdminUserStatus(id, status), [])
   const [listings, setListings] = useState<Listing[]>(() => service.getListings())
   const [savedIds, setSavedIds] = useState<string[]>(() => service.getFavorites())
   const [user, setUser] = useState<AuthUser | null>(() => api.readSession()?.user ?? null)
@@ -85,12 +88,13 @@ export function App() {
         if (savedSession) {
           try {
             nextUser = await api.getCurrentUser()
-            const [myListings, favorites, pending] = await Promise.all([
+            const [myListings, favorites, active, pending] = await Promise.all([
               api.listMyListings(),
               api.listFavorites(),
+              nextUser.role === 'ADMIN' ? api.listAdminListings('ACTIVE') : Promise.resolve([]),
               nextUser.role === 'ADMIN' ? api.listPendingListings() : Promise.resolve([]),
             ])
-            nextListings = mergeListings(publicListings, myListings, pending)
+            nextListings = mergeListings(publicListings, myListings, active, pending)
             nextSavedIds = favorites.map((listing) => listing.id)
           } catch (error) {
             if (!(error instanceof MarketplaceApiError) || error.status !== 401) {
@@ -171,14 +175,14 @@ export function App() {
     let active = true
     async function refreshAdminListings() {
       try {
-        const [publicListings, pendingListings] = await Promise.all([
-          api.listListings(),
+        const [activeListings, pendingListings] = await Promise.all([
+          api.listAdminListings('ACTIVE'),
           api.listPendingListings(),
         ])
         if (!active) return
         setListings((current) => mergeListings(
           current.filter((listing) => listing.status !== 'ACTIVE' && listing.status !== 'PENDING'),
-          publicListings,
+          activeListings,
           pendingListings,
         ))
       } catch (error) {
@@ -272,12 +276,13 @@ export function App() {
     let nextListings = publicListings
     let nextSavedIds: string[] = []
     if (userOverride) {
-      const [myListings, favorites, pending] = await Promise.all([
+      const [myListings, favorites, active, pending] = await Promise.all([
         api.listMyListings(),
         api.listFavorites(),
+        userOverride.role === 'ADMIN' ? api.listAdminListings('ACTIVE') : Promise.resolve([]),
         userOverride.role === 'ADMIN' ? api.listPendingListings() : Promise.resolve([]),
       ])
-      nextListings = mergeListings(publicListings, myListings, pending)
+      nextListings = mergeListings(publicListings, myListings, active, pending)
       nextSavedIds = favorites.map((listing) => listing.id)
     }
     setListings(nextListings)
@@ -512,7 +517,7 @@ export function App() {
     if (user.role !== 'ADMIN') {
       return <div className="admin-route-message"><h1>Bạn không có quyền truy cập</h1><p>Trang quản trị chỉ dành cho tài khoản quản trị viên.</p><button className="button-primary" onClick={leaveAdminRoute}>Về trang chủ</button></div>
     }
-    return <AdminPage listings={listings} onStatusChange={changeStatus} onOpen={openListingFromAdmin} onExit={leaveAdminRoute} />
+    return <AdminPage listings={listings} onStatusChange={changeStatus} onOpen={openListingFromAdmin} onExit={leaveAdminRoute} onLoadStats={loadAdminStats} onLoadUsers={loadAdminUsers} onUserStatusChange={updateAdminUserStatus} />
   }
 
   if (view === 'auth') {

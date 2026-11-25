@@ -1,5 +1,6 @@
 package com.example.demo.repository;
 
+import java.time.Instant;
 import java.util.Optional;
 
 import org.springframework.data.domain.Page;
@@ -30,4 +31,8 @@ public interface ListingRepository extends JpaRepository<Listing, Long>, JpaSpec
     Optional<Listing> findByIdForUpdate(@Param("id") Long id);
 
     long countByStatus(ListingStatus status);
+    long countBySellerId(Long sellerId);
+
+    long countByStatusAndCreatedAtGreaterThanEqualAndCreatedAtLessThan(
+            ListingStatus status, Instant from, Instant to);
 }

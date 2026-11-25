@@ -1098,8 +1098,19 @@ img { display: block; max-width: 100%; }
 .admin-page-heading h1 { margin: 0; color: #384237; font-family: var(--display); font-size: 23px; letter-spacing: -.5px; }
 .admin-page-heading p { margin: 5px 0 0; color: #90978c; font-size: 11px; }
 .admin-page-heading .section-eyebrow { margin-bottom: 5px; font-size: 9px; }
+.admin-date-controls { display: grid; justify-items: end; gap: 7px; }
+.admin-date-filter { min-height: 39px; gap: 8px; padding: 0 12px; }
+.admin-date-filter select { max-width: 115px; padding: 0; border: 0; outline: 0; appearance: none; background: transparent; color: inherit; font: inherit; font-weight: 700; cursor: pointer; }
+.admin-custom-dates { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 7px; color: #737c70; font-size: 10px; }
+.admin-custom-dates label { display: flex; align-items: center; gap: 5px; }
+.admin-custom-dates input { min-height: 30px; padding: 4px 6px; border: 1px solid var(--line); border-radius: 4px; color: #586153; font: inherit; }
+.admin-stats-error { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: -7px 0 12px; padding: 9px 11px; border: 1px solid #f0c9bd; border-radius: 4px; background: #fff7f4; color: #a34f3c; font-size: 11px; }
+.admin-stats-error button { border: 0; background: none; color: #8d4636; font: inherit; font-weight: 700; cursor: pointer; }
+.admin-stats-updated { display: flex; align-items: center; gap: 6px; margin-top: 9px; color: #858d80; font-size: 10px; }
 .admin-stat-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 11px; }
-.admin-stat-card { position: relative; display: grid; min-height: 112px; align-content: start; gap: 5px; padding: 13px; border: 1px solid #e9ebe3; border-radius: 4px; background: #fff; }
+.admin-stat-card { position: relative; display: grid; width: 100%; min-height: 112px; align-content: start; gap: 5px; padding: 13px; border: 1px solid #e9ebe3; border-radius: 4px; background: #fff; color: inherit; font-family: inherit; text-align: left; cursor: pointer; }
+.admin-stat-card:hover { border-color: #b7c8aa; box-shadow: 0 3px 12px rgb(52 73 47 / 7%); }
+.admin-stat-card:focus-visible { outline: 2px solid #6f8b5c; outline-offset: 2px; }
 .admin-stat-icon { position: absolute; top: 11px; right: 11px; display: grid; width: 30px; height: 30px; place-items: center; border-radius: 8px; }
 .admin-stat-green { background: #eff4e9; color: #668356; }
 .admin-stat-orange { background: #fcf1e3; color: #b18b4d; }
@@ -1175,6 +1186,12 @@ img { display: block; max-width: 100%; }
 .user-table-heading, .user-table-row { grid-template-columns: 1.2fr 1.3fr .8fr .9fr .5fr 1fr; min-width: 700px; }
 .user-active { color: #6f8b5b; }.user-locked { color: #b96c57; }
 .user-status-button { justify-self: start; }
+.listing-admin-row { grid-template-columns: 1.7fr 1fr 1.2fr .8fr .6fr; min-width: 720px; }
+.listing-admin-title { display: flex; min-width: 0; align-items: center; gap: 8px; }
+.listing-admin-title img { width: 38px; height: 36px; border-radius: 3px; object-fit: cover; }
+.listing-admin-title > span { display: grid; min-width: 0; gap: 3px; }
+.listing-admin-title strong { overflow: hidden; color: #505a4e; text-overflow: ellipsis; white-space: nowrap; }
+.listing-admin-title small { color: #92998e; }
 
 .auth-page { display: grid; min-height: 100vh; min-height: 100svh; grid-template-columns: minmax(420px, .92fr) 1.08fr; overflow: hidden; background: #f3f5ef; }
 .auth-story { position: relative; display: flex; min-height: 100vh; min-height: 100svh; flex-direction: column; justify-content: space-between; overflow: hidden; padding: 28px clamp(28px, 5vw, 76px) 25px; background: radial-gradient(ellipse at 30% 54%, rgb(101 149 101 / 30%), transparent 48%), radial-gradient(ellipse at 100% 0%, rgb(226 156 94 / 16%), transparent 38%), linear-gradient(145deg, #173f32, #285a43 58%, #315c43); color: #fffdf4; isolation: isolate; }
@@ -1676,6 +1693,12 @@ img { display: block; max-width: 100%; }
   .admin-page-heading h1 { font-size: 19px; }
   .admin-page-heading p { max-width: 260px; font-size: 10px; line-height: 1.5; }
   .admin-page-heading > .button-primary, .admin-page-heading > .button-secondary { min-height: 30px; padding: 0 8px; font-size: 9px; white-space: nowrap; }
+  .admin-date-controls { min-width: 0; }
+  .admin-date-filter { min-height: 30px; gap: 5px; padding: 0 7px; }
+  .admin-date-filter select { max-width: 84px; font-size: 9px; }
+  .admin-custom-dates { flex-direction: column; font-size: 9px; }
+  .admin-custom-dates input { min-height: 27px; max-width: 130px; }
+  .admin-stats-updated { flex-wrap: wrap; font-size: 9px; }
   .admin-stat-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px; }
   .admin-stat-card { min-height: 94px; padding: 10px; }
   .admin-stat-icon { top: 8px; right: 8px; width: 25px; height: 25px; }

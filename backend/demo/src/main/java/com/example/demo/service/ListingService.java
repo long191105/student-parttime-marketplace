@@ -1,6 +1,7 @@
 package com.example.demo.service;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -63,6 +64,7 @@ public class ListingService {
         if (minPrice != null && maxPrice != null && minPrice.compareTo(maxPrice) > 0) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Giá tối thiểu không thể lớn hơn giá tối đa.");
         }
+
         ListingCondition parsedCondition = parseCondition(condition);
         Pageable pageable = PageRequest.of(page, size, sortOrder(sort));
         String normalizedKeyword = blankToNull(keyword);
@@ -105,6 +107,16 @@ public class ListingService {
             return criteriaBuilder.and(predicates.toArray(Predicate[]::new));
         };
         return listingRepository.findAll(specification, pageable).map(ListingResponse::from);
+    }
+
+    @Transactional(readOnly = true)
+    public long countByStatusAndCreatedAtBetween(ListingStatus status, Instant from, Instant to) {
+        return listingRepository.countByStatusAndCreatedAtGreaterThanEqualAndCreatedAtLessThan(status, from, to);
+    }
+
+    @Transactional(readOnly = true)
+    public long countListingsBySeller(Long sellerId) {
+        return listingRepository.countBySellerId(sellerId);
     }
 
     @Transactional
