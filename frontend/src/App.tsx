@@ -34,6 +34,10 @@ export function App() {
   const submitListingReport = useCallback((listingId: string, reason: string) => api.submitListingReport(listingId, reason), [])
   const [listings, setListings] = useState<Listing[]>(() => service.getListings())
   const [savedIds, setSavedIds] = useState<string[]>(() => service.getFavorites())
+  const [favoriteListings, setFavoriteListings] = useState<Listing[]>(() => {
+    const saved = new Set(service.getFavorites())
+    return service.getListings().filter((listing) => saved.has(listing.id))
+  })
   const [user, setUser] = useState<AuthUser | null>(() => api.readSession()?.user ?? null)
   const [apiState, setApiState] = useState<'connecting' | 'connected' | 'offline'>('connecting')
   const [apiError, setApiError] = useState('')
@@ -42,6 +46,7 @@ export function App() {
   const [isAdminRoute, setIsAdminRoute] = useState(() => window.location.pathname.replace(/\/+$/, '') === '/admin')
   const [previousView, setPreviousView] = useState<AppView>('home')
   const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [selectedListingSnapshot, setSelectedListingSnapshot] = useState<Listing | null>(null)
   const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null)
   const [unreadMessageCount, setUnreadMessageCount] = useState(0)
   const [query, setQuery] = useState('')
@@ -52,6 +57,9 @@ export function App() {
   const updateUnreadMessageCount = useCallback((count: number) => setUnreadMessageCount(count), [])
 
   const selectedListing = listings.find((listing) => listing.id === selectedId)
+    ?? favoriteListings.find((listing) => listing.id === selectedId)
+    ?? (selectedListingSnapshot?.id === selectedId ? selectedListingSnapshot : undefined)
+  const activeFavoriteListings = favoriteListings.filter((listing) => listing.status === 'ACTIVE')
   const activeListings = listings.filter((listing) => {
     if (listing.status !== 'ACTIVE') return false
     if (category !== 'Tất cả' && listing.category !== category) return false
@@ -88,6 +96,7 @@ export function App() {
         let nextListings = publicListings
         let nextUser: AuthUser | null = null
         let nextSavedIds: string[] = []
+        let nextFavoriteListings: Listing[] = []
         const savedSession = api.readSession()
 
         if (savedSession) {
@@ -100,6 +109,7 @@ export function App() {
               nextUser.role === 'ADMIN' ? api.listPendingListings() : Promise.resolve([]),
             ])
             nextListings = mergeListings(publicListings, myListings, active, pending)
+            nextFavoriteListings = favorites
             nextSavedIds = favorites.map((listing) => listing.id)
           } catch (error) {
             if (!(error instanceof MarketplaceApiError) || error.status !== 401) {
@@ -115,6 +125,7 @@ export function App() {
         if (!active) return
         setListings(nextListings)
         setSavedIds(nextSavedIds)
+        setFavoriteListings(nextFavoriteListings)
         setUser(nextUser)
         setApiState('connected')
         setApiError('')
@@ -246,6 +257,7 @@ export function App() {
     setIsAdminRoute(false)
     setPreviousView('home')
     setSelectedId(listing.id)
+    setSelectedListingSnapshot(listing)
     setView('detail')
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
@@ -253,6 +265,7 @@ export function App() {
   function openListing(listing: Listing) {
     setPreviousView(view === 'detail' ? previousView : view)
     setSelectedId(listing.id)
+    setSelectedListingSnapshot(listing)
     navigate('detail')
   }
 
@@ -280,6 +293,7 @@ export function App() {
     const publicListings = await api.listListings()
     let nextListings = publicListings
     let nextSavedIds: string[] = []
+    let nextFavoriteListings: Listing[] = []
     if (userOverride) {
       const [myListings, favorites, active, pending] = await Promise.all([
         api.listMyListings(),
@@ -288,10 +302,12 @@ export function App() {
         userOverride.role === 'ADMIN' ? api.listPendingListings() : Promise.resolve([]),
       ])
       nextListings = mergeListings(publicListings, myListings, active, pending)
+      nextFavoriteListings = favorites
       nextSavedIds = favorites.map((listing) => listing.id)
     }
     setListings(nextListings)
     setSavedIds(nextSavedIds)
+    setFavoriteListings(nextFavoriteListings)
     setApiState('connected')
     setApiError('')
   }
@@ -308,6 +324,7 @@ export function App() {
         await api.toggleFavorite(id, save)
         const favorites = await api.listFavorites()
         setSavedIds(favorites.map((listing) => listing.id))
+        setFavoriteListings(favorites)
         setNotice(save ? 'Đã lưu tin vào tài khoản của bạn.' : 'Đã bỏ lưu tin.')
       } catch (error) {
         console.error('Không thể cập nhật tin yêu thích.', error)
@@ -317,7 +334,9 @@ export function App() {
     }
 
     try {
-      setSavedIds(service.toggleFavorite(id))
+      const nextSavedIds = service.toggleFavorite(id)
+      setSavedIds(nextSavedIds)
+      setFavoriteListings(service.getListings().filter((listing) => nextSavedIds.includes(listing.id)))
       setNotice(savedIds.includes(id) ? 'Đã bỏ lưu tin trong dữ liệu demo.' : 'Đã lưu tin trong dữ liệu demo.')
     } catch (error) {
       console.error('Không thể thay đổi danh sách tin đã lưu.', error)
@@ -478,6 +497,7 @@ export function App() {
     api.clearSession()
     setUser(null)
     setSavedIds([])
+    setFavoriteListings([])
     setUnreadMessageCount(0)
     navigate('home')
     setAuthNotice('Bạn đã đăng xuất.')
@@ -540,7 +560,7 @@ export function App() {
       onAdminNavigate={openAdminRoute}
       onSearch={submitSearch}
       onSignOut={signOut}
-      favoritesCount={savedIds.length}
+      favoritesCount={activeFavoriteListings.length}
       unreadCount={unreadMessageCount}
       user={user}
       authNotice={authNotice}
@@ -563,7 +583,7 @@ export function App() {
       {view === 'detail' && !selectedListing && <div className="empty-state"><h3>Không tìm thấy tin đăng</h3><button className="button-primary" onClick={() => navigate('home')}>Về trang chủ</button></div>}
       {view === 'sell' && <SellPage onCancel={() => navigate(sellReturnView)} onSubmit={createListing} onLoadDraft={loadListingDraft} onSaveDraft={saveListingDraft} sellerName={user?.fullName ?? 'Người bán'} />}
       {view === 'my-listings' && <MyListingsPage listings={listings} onStatusChange={changeStatus} onOpen={openListing} onSell={startNewListing} onEditDraft={editSavedDraft} sellerId={currentSellerId} onLoadDraft={loadListingDraft} onDeleteDraft={deleteListingDraft} onPublishDraft={publishSavedDraft} />}
-      {view === 'favorites' && <FavoritesPage listings={listings} savedIds={savedIds} onOpen={openListing} onToggleSaved={toggleSaved} />}
+      {view === 'favorites' && <FavoritesPage savedListings={activeFavoriteListings} onOpen={openListing} onToggleSaved={toggleSaved} />}
       {view === 'check-in' && <CheckInPage userId={user?.id ?? null} onBack={() => navigate('home')} />}
       {user && apiState === 'connected' && <div className={view === 'messages' ? '' : 'inbox-background-listener'} aria-hidden={view !== 'messages'}>
         <InboxPage api={api} user={user} initialConversationId={selectedConversationId} isVisible={view === 'messages'} onUnreadCountChange={updateUnreadMessageCount} onListingSold={(id) => setListings((current) => current.map((listing) => listing.id === id ? listing.withStatus('SOLD') : listing))} onOpenListing={(id) => {
