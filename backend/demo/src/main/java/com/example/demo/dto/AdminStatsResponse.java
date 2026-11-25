@@ -1,4 +1,4 @@
 package com.example.demo.dto;
 
-public record AdminStatsResponse(long activeListings, long pendingListings, long users) {
+public record AdminStatsResponse(long activeListings, long pendingListings, long users, long openReports) {
 }

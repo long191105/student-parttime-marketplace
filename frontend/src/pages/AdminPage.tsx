@@ -1,11 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
 import { BarChart3, Check, ChevronDown, ChevronRight, CircleAlert, FolderTree, LayoutDashboard, List, LockKeyhole, Search, ShieldCheck, Users, X } from 'lucide-react'
 import { ChoHoiWordmark } from '../components/ChoHoiWordmark'
-import { useAppDialog } from '../components/AppDialogContext'
 import type { Listing, ListingStatus } from '../domain/Listing'
 import { categories } from '../data/categories'
 import { formatImageUrl } from '../services/ImageUrl'
-import type { AdminStats, AdminUser, AdminUserStatus } from '../services/MarketplaceApi'
+import type { AdminCategory, AdminReport, AdminReportAction, AdminReportStatus, AdminStats, AdminUser, AdminUserStatus } from '../services/MarketplaceApi'
 
 interface AdminPageProps {
   listings: Listing[]
@@ -15,10 +14,76 @@ interface AdminPageProps {
   onLoadStats: (from: string, to: string) => Promise<AdminStats>
   onLoadUsers: () => Promise<AdminUser[]>
   onUserStatusChange: (id: number, status: AdminUserStatus) => Promise<AdminUser>
+  onLoadReports: () => Promise<AdminReport[]>
+  onReportAction: (id: number, action: AdminReportAction) => Promise<AdminReport>
+  onLoadCategories: () => Promise<AdminCategory[]>
+  onCreateCategory: (name: string) => Promise<AdminCategory>
 }
 
 type AdminTab = 'overview' | 'listings' | 'review' | 'categories' | 'reports' | 'users'
 type DateRange = 'today' | '7days' | '30days' | '90days' | 'custom'
+type AttributeType = 'Lựa chọn' | 'Văn bản' | 'Số' | 'Có/Không'
+
+interface CategoryAttribute {
+  code: string
+  label: string
+  type: AttributeType
+  required: boolean
+  filterable: boolean
+  description: string
+}
+
+const categoryAttributePresets: Record<string, CategoryAttribute[]> = {
+  'Điện tử': [
+    { code: 'brand', label: 'Thương hiệu', type: 'Lựa chọn', required: true, filterable: true, description: 'Hãng sản xuất của thiết bị.' },
+    { code: 'model', label: 'Dòng sản phẩm', type: 'Văn bản', required: false, filterable: true, description: 'Tên model hoặc mã sản phẩm.' },
+    { code: 'condition', label: 'Tình trạng', type: 'Lựa chọn', required: true, filterable: true, description: 'Mới hoặc đã qua sử dụng.' },
+    { code: 'storage', label: 'Dung lượng', type: 'Lựa chọn', required: false, filterable: true, description: 'Dung lượng lưu trữ của thiết bị.' },
+    { code: 'warranty', label: 'Bảo hành', type: 'Số', required: false, filterable: false, description: 'Số tháng bảo hành còn lại.' },
+  ],
+  'Xe cộ': [
+    { code: 'vehicle_type', label: 'Loại phương tiện', type: 'Lựa chọn', required: true, filterable: true, description: 'Xe máy, ô tô hoặc xe đạp.' },
+    { code: 'brand', label: 'Thương hiệu', type: 'Lựa chọn', required: true, filterable: true, description: 'Hãng sản xuất phương tiện.' },
+    { code: 'year', label: 'Năm sản xuất', type: 'Số', required: false, filterable: true, description: 'Năm đăng ký hoặc sản xuất.' },
+    { code: 'mileage', label: 'Số kilomet', type: 'Số', required: false, filterable: true, description: 'Quãng đường phương tiện đã đi.' },
+  ],
+  'Bất động sản': [
+    { code: 'property_type', label: 'Loại bất động sản', type: 'Lựa chọn', required: true, filterable: true, description: 'Căn hộ, nhà ở, phòng trọ hoặc đất.' },
+    { code: 'area', label: 'Diện tích', type: 'Số', required: true, filterable: true, description: 'Diện tích sử dụng tính theo m².' },
+    { code: 'bedrooms', label: 'Số phòng ngủ', type: 'Số', required: false, filterable: true, description: 'Tổng số phòng ngủ.' },
+    { code: 'legal_status', label: 'Pháp lý', type: 'Lựa chọn', required: false, filterable: true, description: 'Tình trạng giấy tờ pháp lý.' },
+  ],
+  'Thời trang': [
+    { code: 'brand', label: 'Thương hiệu', type: 'Văn bản', required: false, filterable: true, description: 'Nhãn hiệu của sản phẩm.' },
+    { code: 'size', label: 'Kích cỡ', type: 'Lựa chọn', required: false, filterable: true, description: 'Kích thước theo nhãn sản phẩm.' },
+    { code: 'color', label: 'Màu sắc', type: 'Lựa chọn', required: false, filterable: true, description: 'Màu chính của sản phẩm.' },
+    { code: 'condition', label: 'Tình trạng', type: 'Lựa chọn', required: true, filterable: true, description: 'Mới hoặc đã qua sử dụng.' },
+  ],
+  'Đồ gia dụng': [
+    { code: 'brand', label: 'Thương hiệu', type: 'Văn bản', required: false, filterable: true, description: 'Hãng sản xuất đồ gia dụng.' },
+    { code: 'material', label: 'Chất liệu', type: 'Văn bản', required: false, filterable: true, description: 'Chất liệu chính của sản phẩm.' },
+    { code: 'condition', label: 'Tình trạng', type: 'Lựa chọn', required: true, filterable: true, description: 'Mới hoặc đã qua sử dụng.' },
+  ],
+  'Thú cưng': [
+    { code: 'species', label: 'Loài vật', type: 'Lựa chọn', required: true, filterable: true, description: 'Chó, mèo hoặc loài vật khác.' },
+    { code: 'age', label: 'Độ tuổi', type: 'Số', required: false, filterable: true, description: 'Tuổi của thú cưng tính theo tháng.' },
+    { code: 'vaccinated', label: 'Đã tiêm phòng', type: 'Có/Không', required: false, filterable: true, description: 'Tình trạng tiêm phòng.' },
+  ],
+  'Khác': [
+    { code: 'condition', label: 'Tình trạng', type: 'Lựa chọn', required: true, filterable: true, description: 'Mới hoặc đã qua sử dụng.' },
+    { code: 'origin', label: 'Xuất xứ', type: 'Văn bản', required: false, filterable: true, description: 'Nguồn gốc của sản phẩm.' },
+  ],
+}
+
+const categoryDescriptions: Record<string, string> = {
+  'Điện tử': 'Điện thoại, máy tính, thiết bị gia dụng thông minh và phụ kiện công nghệ.',
+  'Xe cộ': 'Xe máy, ô tô, xe đạp và các phương tiện đi lại.',
+  'Bất động sản': 'Nhà ở, phòng trọ, căn hộ và mặt bằng cho thuê.',
+  'Thời trang': 'Quần áo, giày dép, túi xách và phụ kiện.',
+  'Đồ gia dụng': 'Đồ dùng nhà bếp, nội thất và thiết bị sinh hoạt.',
+  'Thú cưng': 'Thú cưng, vật phẩm chăm sóc và phụ kiện.',
+  'Khác': 'Các sản phẩm chưa thuộc nhóm danh mục cụ thể.',
+}
 
 function formatDateInput(date: Date): string {
   const year = date.getFullYear()
@@ -31,6 +96,11 @@ function formatTime(date: Date): string {
   return date.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
 }
 
+function reportStatusLabel(status: AdminReportStatus): string {
+  if (status === 'OPEN') return 'Chưa xử lý'
+  return status === 'DISMISSED' ? 'Đã bỏ qua' : 'Đã xử lý'
+}
+
 const adminNavigation: { id: AdminTab; label: string; icon: typeof LayoutDashboard }[] = [
   { id: 'overview', label: 'Tổng quan', icon: LayoutDashboard },
   { id: 'listings', label: 'Tin hiển thị', icon: List },
@@ -40,16 +110,15 @@ const adminNavigation: { id: AdminTab; label: string; icon: typeof LayoutDashboa
   { id: 'users', label: 'Người dùng', icon: Users },
 ]
 
-const adminReports = [
-  ['Trần Thị Bích', 'Tin: Laptop Dell XPS', 'Nghi ngờ lừa đảo'],
-  ['Lê Văn Cường', 'Người dùng: Phạm D.', 'Spam / làm phiền'],
-  ['Nguyễn Hà', 'Tin: iPhone 13 Pro', 'Sai thông tin sản phẩm'],
-] as const
-
-export function AdminPage({ listings, onStatusChange, onOpen, onExit, onLoadStats, onLoadUsers, onUserStatusChange }: AdminPageProps) {
-  const { showAlert } = useAppDialog()
+export function AdminPage({ listings, onStatusChange, onOpen, onExit, onLoadStats, onLoadUsers, onUserStatusChange, onLoadReports, onReportAction, onLoadCategories, onCreateCategory }: AdminPageProps) {
   const [activeTab, setActiveTab] = useState<AdminTab>('overview')
-  const [categoryNames, setCategoryNames] = useState(categories.map((item) => item.name))
+  const [adminCategories, setAdminCategories] = useState<AdminCategory[]>([])
+  const [selectedCategory, setSelectedCategory] = useState('')
+  const [categorySearch, setCategorySearch] = useState('')
+  const [categoriesLoading, setCategoriesLoading] = useState(false)
+  const [categoriesError, setCategoriesError] = useState('')
+  const [categoryActionError, setCategoryActionError] = useState('')
+  const [categoriesReload, setCategoriesReload] = useState(0)
   const [newCategory, setNewCategory] = useState('')
   const [userSearch, setUserSearch] = useState('')
   const [rejectReasons, setRejectReasons] = useState<Record<string, string>>({})
@@ -59,6 +128,12 @@ export function AdminPage({ listings, onStatusChange, onOpen, onExit, onLoadStat
   const [userActionError, setUserActionError] = useState('')
   const [userActionId, setUserActionId] = useState<number | null>(null)
   const [usersReload, setUsersReload] = useState(0)
+  const [adminReports, setAdminReports] = useState<AdminReport[]>([])
+  const [reportsLoading, setReportsLoading] = useState(false)
+  const [reportsError, setReportsError] = useState('')
+  const [reportActionError, setReportActionError] = useState('')
+  const [reportActionId, setReportActionId] = useState<number | null>(null)
+  const [reportsReload, setReportsReload] = useState(0)
   const [now, setNow] = useState(() => new Date())
   const [dateRange, setDateRange] = useState<DateRange>('30days')
   const [customFrom, setCustomFrom] = useState(() => {
@@ -73,6 +148,14 @@ export function AdminPage({ listings, onStatusChange, onOpen, onExit, onLoadStat
   const [statsRetry, setStatsRetry] = useState(0)
   const pendingListings = useMemo(() => listings.filter((item) => item.status === 'PENDING'), [listings])
   const activeListings = useMemo(() => listings.filter((item) => item.status === 'ACTIVE'), [listings])
+  const filteredCategories = useMemo(
+    () => adminCategories.filter((category) => category.name.toLocaleLowerCase('vi').includes(categorySearch.toLocaleLowerCase('vi'))),
+    [adminCategories, categorySearch],
+  )
+  const selectedCategoryAttributes = categoryAttributePresets[selectedCategory] ?? []
+  const selectedCategoryListings = listings.filter((listing) => listing.category === selectedCategory)
+  const selectedCategoryActiveCount = selectedCategoryListings.filter((listing) => listing.status === 'ACTIVE').length
+  const selectedCategoryPendingCount = selectedCategoryListings.filter((listing) => listing.status === 'PENDING').length
   const today = formatDateInput(now)
   const dateBounds = useMemo(() => {
     if (dateRange === 'custom') {
@@ -138,6 +221,52 @@ export function AdminPage({ listings, onStatusChange, onOpen, onExit, onLoadStat
     }
   }, [activeTab, onLoadUsers, usersReload])
 
+  useEffect(() => {
+    if (activeTab !== 'reports') return
+    let active = true
+    async function loadReports() {
+      setReportsLoading(true)
+      setReportsError('')
+      try {
+        const reports = await onLoadReports()
+        if (active) setAdminReports(reports)
+      } catch (error) {
+        if (active) setReportsError(error instanceof Error ? error.message : 'Không thể tải báo cáo vi phạm.')
+      } finally {
+        if (active) setReportsLoading(false)
+      }
+    }
+    void loadReports()
+    return () => {
+      active = false
+    }
+  }, [activeTab, onLoadReports, reportsReload])
+
+  useEffect(() => {
+    if (activeTab !== 'categories') return
+    let active = true
+    async function loadCategories() {
+      setCategoriesLoading(true)
+      setCategoriesError('')
+      try {
+        const nextCategories = await onLoadCategories()
+        if (!active) return
+        setAdminCategories(nextCategories)
+        setSelectedCategory((current) => nextCategories.some((category) => category.name === current)
+          ? current
+          : nextCategories[0]?.name ?? '')
+      } catch (error) {
+        if (active) setCategoriesError(error instanceof Error ? error.message : 'Không thể tải danh mục.')
+      } finally {
+        if (active) setCategoriesLoading(false)
+      }
+    }
+    void loadCategories()
+    return () => {
+      active = false
+    }
+  }, [activeTab, categoriesReload, onLoadCategories])
+
   const greeting = now.getHours() < 12 ? 'sáng' : now.getHours() < 18 ? 'chiều' : 'tối'
   const dateLabel = now.toLocaleDateString('vi-VN', {
     weekday: 'long',
@@ -151,12 +280,32 @@ export function AdminPage({ listings, onStatusChange, onOpen, onExit, onLoadStat
       ? 'Tùy chỉnh'
       : `${dateRange.slice(0, -4)} ngày qua`
 
-  function addCategory(event: React.FormEvent<HTMLFormElement>) {
+  async function addCategory(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
     const name = newCategory.trim()
-    if (!name || categoryNames.includes(name)) return
-    setCategoryNames((current) => [...current, name])
-    setNewCategory('')
+    if (!name) return
+    setCategoryActionError('')
+    try {
+      const createdCategory = await onCreateCategory(name)
+      setAdminCategories((current) => [...current, createdCategory].sort((a, b) => a.name.localeCompare(b.name, 'vi')))
+      setSelectedCategory(createdCategory.name)
+      setNewCategory('')
+    } catch (error) {
+      setCategoryActionError(error instanceof Error ? error.message : 'Không thể tạo danh mục.')
+    }
+  }
+
+  async function applyReportAction(reportId: number, action: AdminReportAction) {
+    setReportActionId(reportId)
+    setReportActionError('')
+    try {
+      const updatedReport = await onReportAction(reportId, action)
+      setAdminReports((current) => current.map((report) => report.id === reportId ? updatedReport : report))
+    } catch (error) {
+      setReportActionError(error instanceof Error ? error.message : 'Không thể cập nhật báo cáo.')
+    } finally {
+      setReportActionId(null)
+    }
   }
 
   async function changeUserStatus(user: AdminUser) {
@@ -193,7 +342,7 @@ export function AdminPage({ listings, onStatusChange, onOpen, onExit, onLoadStat
                 { label: 'Tổng tin hiển thị', value: dateBounds ? stats?.activeListings.toLocaleString('vi-VN') ?? '—' : '—', change: dateRangeLabel, icon: BarChart3, tone: 'green', tab: 'listings' as const },
                 { label: 'Chờ duyệt', value: dateBounds ? stats?.pendingListings.toLocaleString('vi-VN') ?? '—' : '—', change: dateRangeLabel, icon: ShieldCheck, tone: 'orange', tab: 'review' as const },
                 { label: 'Người dùng', value: dateBounds ? stats?.users.toLocaleString('vi-VN') ?? '—' : '—', change: dateRangeLabel, icon: Users, tone: 'blue', tab: 'users' as const },
-                { label: 'Báo cáo mới', value: adminReports.length.toLocaleString('vi-VN'), change: 'Cần xem xét', icon: CircleAlert, tone: 'red', tab: 'reports' as const },
+                { label: 'Báo cáo mới', value: dateBounds ? stats?.openReports.toLocaleString('vi-VN') ?? '—' : '—', change: dateRangeLabel, icon: CircleAlert, tone: 'red', tab: 'reports' as const },
               ].map(({ label, value, change, icon: Icon, tone, tab }) => <button type="button" className="admin-stat-card" key={label} onClick={() => setActiveTab(tab)}><span className={`admin-stat-icon admin-stat-${tone}`}><Icon size={19} /></span><span>{label}</span><strong>{value}</strong><small>{change}</small></button>)}
             </div>
             <div className="admin-stats-updated" aria-live="polite"><span className="admin-status-dot" /> Đồng hồ trực tiếp: {formatTime(now)}{statsUpdatedAt && <> · Số liệu cập nhật lúc {formatTime(statsUpdatedAt)}</>}</div>
@@ -205,7 +354,7 @@ export function AdminPage({ listings, onStatusChange, onOpen, onExit, onLoadStat
               <section className="admin-panel admin-quick-panel">
                 <div className="admin-panel-heading"><div><h2>Việc cần làm</h2><p>Các mục đang chờ bạn xử lý.</p></div></div>
                 <button onClick={() => setActiveTab('review')}><span className="quick-task-icon"><ShieldCheck size={18} /></span><span><strong>Duyệt tin đăng mới</strong><small>{pendingListings.length} tin chờ kiểm duyệt</small></span><ChevronRight size={16} /></button>
-                <button onClick={() => setActiveTab('reports')}><span className="quick-task-icon quick-task-report"><CircleAlert size={18} /></span><span><strong>Xem báo cáo vi phạm</strong><small>{adminReports.length} báo cáo cần xem xét</small></span><ChevronRight size={16} /></button>
+                <button onClick={() => setActiveTab('reports')}><span className="quick-task-icon quick-task-report"><CircleAlert size={18} /></span><span><strong>Xem báo cáo vi phạm</strong><small>{stats?.openReports.toLocaleString('vi-VN') ?? '—'} báo cáo cần xem xét</small></span><ChevronRight size={16} /></button>
                 <button onClick={() => setActiveTab('users')}><span className="quick-task-icon quick-task-users"><Users size={18} /></span><span><strong>Quản lý người dùng</strong><small>Theo dõi tài khoản thành viên</small></span><ChevronRight size={16} /></button>
               </section>
             </div>
@@ -222,13 +371,96 @@ export function AdminPage({ listings, onStatusChange, onOpen, onExit, onLoadStat
 
           {activeTab === 'review' && <><div className="admin-page-heading"><div><span className="section-eyebrow">KIỂM DUYỆT NỘI DUNG</span><h1>Hàng đợi duyệt tin</h1><p>Kiểm tra kỹ thông tin trước khi tin được hiển thị công khai.</p></div><span className="pending-count">{pendingListings.length} tin đang chờ</span></div><div className="review-queue">{pendingListings.map((listing) => <article className="review-queue-card" key={listing.id}><button className="review-queue-image" onClick={() => onOpen(listing)}>          <img src={formatImageUrl(listing.image, 400)} alt={listing.title} /></button><div className="review-queue-info"><span className="review-queue-category">{listing.category} · {listing.conditionLabel}</span><button className="review-queue-title" onClick={() => onOpen(listing)}>{listing.title}</button><strong>{listing.priceLabel}</strong><span>Người đăng: {listing.seller} · {listing.location}</span><p>{listing.description}</p></div><div className="review-queue-actions"><button className="approve-button" onClick={() => onStatusChange(listing.id, 'ACTIVE')}><Check size={16} /> Duyệt tin</button><input aria-label={`Lý do từ chối ${listing.title}`} placeholder="Lý do từ chối..." value={rejectReasons[listing.id] ?? ''} onChange={(event) => setRejectReasons((current) => ({ ...current, [listing.id]: event.target.value }))} /><button className="reject-button" disabled={!rejectReasons[listing.id]?.trim()} onClick={() => onStatusChange(listing.id, 'REJECTED', rejectReasons[listing.id])}><X size={16} /> Từ chối</button><button className="review-detail-link" onClick={() => onOpen(listing)}>Xem chi tiết</button></div></article>)}{!pendingListings.length && <div className="empty-state"><span>✓</span><h3>Không còn tin chờ duyệt</h3><p>Hàng đợi của bạn đã được xử lý hết.</p></div>}</div></>}
 
-          {activeTab === 'categories' && <><div className="admin-page-heading"><div><span className="section-eyebrow">CẤU TRÚC NỘI DUNG</span><h1>Danh mục & thuộc tính</h1><p>Quản lý danh mục để người mua dễ tìm đúng món đồ.</p></div><button className="button-primary" onClick={() => document.getElementById('new-category')?.focus()}>+ Thêm danh mục</button></div><div className="category-admin-layout"><section className="admin-panel category-tree"><div className="admin-panel-heading"><div><h2>Cây danh mục</h2><p>{categoryNames.length} danh mục đang hoạt động</p></div></div>{categoryNames.map((name, index) => <button className="category-tree-item" key={name}><ChevronDown size={14} /><span className={`tree-category-dot tree-dot-${index % 5}`} />{name}<span className="category-tree-count">{[24, 18, 12, 16, 11, 8, 6, 10][index % 8]}</span></button>)}<form className="add-category-form" onSubmit={addCategory}><input id="new-category" value={newCategory} onChange={(event) => setNewCategory(event.target.value)} placeholder="Tên danh mục mới" /><button type="submit">Thêm</button></form></section><section className="admin-panel attributes-panel"><div className="admin-panel-heading"><div><h2>Thuộc tính danh mục</h2><p>Thiết lập trường thông tin cho Điện tử.</p></div><button className="button-secondary">+ Thuộc tính</button></div><div className="attributes-table"><div className="attributes-row attributes-head"><span>MÃ</span><span>TÊN HIỂN THỊ</span><span>KIỂU</span><span>LỌC</span></div>{[['brand', 'Hãng', 'SELECT'], ['storage', 'Dung lượng', 'SELECT'], ['warranty', 'Bảo hành', 'NUMBER'], ['color', 'Màu sắc', 'TEXT']].map(([code, name, type]) => <div className="attributes-row" key={code}><code>{code}</code><strong>{name}</strong><span>{type}</span><span><Check size={15} /></span></div>)}</div></section></div></>}
+          {activeTab === 'categories' && <>
+            <div className="admin-page-heading category-page-heading">
+              <div><span className="section-eyebrow">CẤU TRÚC NỘI DUNG</span><h1>Danh mục & thuộc tính</h1><p>Tổ chức sản phẩm và chuẩn hóa thông tin để người mua tìm kiếm dễ dàng.</p></div>
+              <button className="button-primary" onClick={() => document.getElementById('new-category')?.focus()}><FolderTree size={15} /> Tạo danh mục</button>
+            </div>
+            <div className="category-summary-grid">
+              <article><span className="category-summary-icon"><FolderTree size={17} /></span><span>Danh mục đang hoạt động</span><strong>{adminCategories.length}</strong><small>Danh mục hiển thị trên sàn</small></article>
+              <article><span className="category-summary-icon category-summary-listing"><List size={17} /></span><span>Tin đang hiển thị</span><strong>{activeListings.length.toLocaleString('vi-VN')}</strong><small>Tin đã được duyệt</small></article>
+              <article><span className="category-summary-icon category-summary-fields"><Check size={17} /></span><span>Trường thuộc tính</span><strong>{Object.values(categoryAttributePresets).reduce((total, items) => total + items.length, 0)}</strong><small>Cấu hình tham khảo theo danh mục</small></article>
+            </div>
+            {categoriesError && <div className="admin-stats-error" role="alert">Không thể tải danh mục: {categoriesError}<button onClick={() => setCategoriesReload((value) => value + 1)}>Thử lại</button></div>}
+            {categoryActionError && <div className="admin-stats-error" role="alert">{categoryActionError}</div>}
+            <div className="category-management-layout">
+              <section className="admin-panel category-directory">
+                <div className="category-panel-heading"><div><span className="category-panel-kicker">DANH SÁCH</span><h2>Danh mục sản phẩm</h2><p>{adminCategories.length} danh mục · chọn để xem cấu hình</p></div><span className="category-count-badge">{adminCategories.length}</span></div>
+                <label className="category-search"><Search size={15} /><input value={categorySearch} onChange={(event) => setCategorySearch(event.target.value)} placeholder="Tìm danh mục..." aria-label="Tìm danh mục" /></label>
+                {categoriesLoading && <div className="category-directory-state">Đang tải danh mục...</div>}
+                {!categoriesLoading && filteredCategories.map((category) => {
+                  const CategoryIcon = categories.find((item) => item.name === category.name)?.icon ?? FolderTree
+                  const categoryListingCount = listings.filter((listing) => listing.category === category.name).length
+                  const selected = category.name === selectedCategory
+                  return <button type="button" className={`category-directory-item${selected ? ' category-directory-item-selected' : ''}`} key={category.id} onClick={() => setSelectedCategory(category.name)} aria-pressed={selected}>
+                    <span className="category-directory-icon"><CategoryIcon size={17} /></span>
+                    <span className="category-directory-copy"><strong>{category.name}</strong><small>{category.slug}</small></span>
+                    <span className="category-directory-count">{categoryListingCount}</span>
+                    <ChevronRight size={15} />
+                  </button>
+                })}
+                {!categoriesLoading && filteredCategories.length === 0 && <div className="category-directory-state">{adminCategories.length ? 'Không tìm thấy danh mục phù hợp.' : 'Chưa có danh mục nào.'}</div>}
+                <form className="category-create-form" onSubmit={(event) => void addCategory(event)}>
+                  <label htmlFor="new-category">Tạo danh mục mới</label>
+                  <div><input id="new-category" value={newCategory} onChange={(event) => setNewCategory(event.target.value)} placeholder="Ví dụ: Đồ thể thao" maxLength={80} /><button type="submit" disabled={!newCategory.trim()}><Check size={14} /> Thêm</button></div>
+                  <small>Tên danh mục tối đa 80 ký tự.</small>
+                </form>
+              </section>
+              <section className="admin-panel category-detail">
+                {selectedCategory ? <>
+                  {(() => {
+                    const CategoryIcon = categories.find((item) => item.name === selectedCategory)?.icon ?? FolderTree
+                    const category = adminCategories.find((item) => item.name === selectedCategory)
+                    return <div className="category-detail-heading">
+                      <span className="category-detail-icon"><CategoryIcon size={21} /></span>
+                      <div><span className="category-panel-kicker">CHI TIẾT DANH MỤC</span><h2>{selectedCategory}</h2><p>{categoryDescriptions[selectedCategory] ?? 'Danh mục sản phẩm trên Chợ Hời.'}</p></div>
+                      <span className="category-active-badge"><i /> Đang hoạt động</span>
+                      <small className="category-slug">/{category?.slug ?? ''}</small>
+                    </div>
+                  })()}
+                  <div className="category-detail-stats">
+                    <div><span>Tin đang hiển thị</span><strong>{selectedCategoryActiveCount}</strong></div>
+                    <div><span>Chờ kiểm duyệt</span><strong>{selectedCategoryPendingCount}</strong></div>
+                    <div><span>Thuộc tính</span><strong>{selectedCategoryAttributes.length}</strong></div>
+                  </div>
+                  <div className="category-attributes-heading"><div><span className="category-panel-kicker">THÔNG TIN SẢN PHẨM</span><h3>Thuộc tính danh mục</h3><p>Các trường dữ liệu giúp mô tả và lọc sản phẩm.</p></div><span className="category-count-badge">{selectedCategoryAttributes.length} trường</span></div>
+                  {selectedCategoryAttributes.length ? <div className="category-attributes-table">
+                    <div className="category-attribute-row category-attribute-header"><span>THUỘC TÍNH</span><span>MÃ TRƯỜNG</span><span>KIỂU DỮ LIỆU</span><span>YÊU CẦU</span><span>BỘ LỌC</span></div>
+                    {selectedCategoryAttributes.map((attribute) => <div className="category-attribute-row" key={attribute.code}>
+                      <span className="category-attribute-label"><strong>{attribute.label}</strong><small>{attribute.description}</small></span>
+                      <code>{attribute.code}</code>
+                      <span><i className="attribute-type-dot" />{attribute.type}</span>
+                      <span className={attribute.required ? 'attribute-state attribute-state-required' : 'attribute-state'}>{attribute.required ? 'Bắt buộc' : 'Tùy chọn'}</span>
+                      <span className={attribute.filterable ? 'attribute-filter-enabled' : 'attribute-filter-disabled'}>{attribute.filterable ? <><Check size={13} /> Có</> : 'Không'}</span>
+                    </div>)}
+                  </div> : <div className="category-directory-state category-attribute-empty">Danh mục này chưa có cấu hình thuộc tính.</div>}
+                  <div className="category-detail-note"><CircleAlert size={15} /><span>Thuộc tính giúp chuẩn hóa thông tin đăng tin và tạo bộ lọc phù hợp cho người mua.</span></div>
+                </> : <div className="empty-state"><h3>Chọn một danh mục</h3><p>Chọn danh mục bên trái để xem thông tin và thuộc tính chi tiết.</p></div>}
+              </section>
+            </div>
+          </>}
 
           {activeTab === 'reports' && <>
-            <div className="admin-page-heading"><div><span className="section-eyebrow">AN TOÀN CỘNG ĐỒNG</span><h1>Báo cáo vi phạm</h1><p>Toàn bộ báo cáo hiện có để quản trị viên xem xét.</p></div><span className="pending-count">{adminReports.length} báo cáo</span></div>
+            <div className="admin-page-heading"><div><span className="section-eyebrow">AN TOÀN CỘNG ĐỒNG</span><h1>Báo cáo vi phạm</h1><p>Báo cáo được gửi bởi người dùng và đồng bộ trực tiếp từ cơ sở dữ liệu.</p></div><span className="pending-count">{adminReports.length} báo cáo</span></div>
+            {reportsError && <div className="admin-stats-error" role="alert">Không thể tải báo cáo: {reportsError}<button onClick={() => setReportsReload((value) => value + 1)}>Thử lại</button></div>}
+            {reportActionError && <div className="admin-stats-error" role="alert">{reportActionError}</div>}
             <div className="admin-panel report-table">
-              <div className="admin-table-heading"><span>NGƯỜI BÁO CÁO</span><span>NỘI DUNG</span><span>LÝ DO</span><span>TRẠNG THÁI</span><span>THAO TÁC</span></div>
-              {adminReports.map(([reporter, target, reason], index) => <div className="admin-table-row" key={reporter}><strong>{reporter}</strong><span>{target}</span><span>{reason}</span><span className="report-open-status">Chưa xử lý</span><div className="report-actions"><button onClick={() => void showAlert('Đã ghi nhận xử lý báo cáo.')}>Bỏ qua</button><button className="report-resolve" onClick={() => void showAlert('Đã gỡ nội dung được báo cáo.')}>{index === 1 ? <LockKeyhole size={13} /> : <X size={13} />}{index === 1 ? 'Khóa TK' : 'Gỡ tin'}</button></div></div>)}
+              <div className="admin-table-heading admin-report-heading"><span>NGƯỜI BÁO CÁO</span><span>TIN ĐƯỢC BÁO CÁO</span><span>LÝ DO</span><span>TRẠNG THÁI</span><span>THAO TÁC</span></div>
+              {reportsLoading && <div className="empty-state"><p>Đang tải báo cáo...</p></div>}
+              {!reportsLoading && !reportsError && adminReports.map((report) => <div className="admin-table-row admin-report-row" key={report.id}>
+                <span className="report-reporter"><strong>{report.reporterName}</strong><small>{new Date(report.createdAt).toLocaleString('vi-VN')}</small></span>
+                <span className="report-target"><strong>{report.listingTitle}</strong><small>#{report.listingId} · {report.sellerName}</small></span>
+                <span>{report.reason}</span>
+                <span className={report.status === 'OPEN' ? 'report-open-status' : 'report-closed-status'}>{reportStatusLabel(report.status)}</span>
+                <div className="report-actions">
+                  {report.status === 'OPEN' ? <>
+                    <button disabled={reportActionId !== null} onClick={() => void applyReportAction(report.id, 'DISMISS')}>Bỏ qua</button>
+                    <button className="report-resolve" disabled={reportActionId !== null} onClick={() => void applyReportAction(report.id, 'REMOVE_LISTING')}><X size={13} />Gỡ tin</button>
+                    <button className="report-resolve" disabled={reportActionId !== null} onClick={() => void applyReportAction(report.id, 'LOCK_USER')}><LockKeyhole size={13} />Khóa TK</button>
+                  </> : <span>—</span>}
+                </div>
+              </div>)}
+              {!reportsLoading && !reportsError && adminReports.length === 0 && <div className="empty-state"><span>✓</span><h3>Chưa có báo cáo vi phạm</h3><p>Báo cáo do người dùng gửi sẽ xuất hiện tại đây.</p></div>}
             </div>
           </>}
 

@@ -13,7 +13,7 @@ import { ProfilePage } from './pages/ProfilePage'
 import { SearchPage } from './pages/SearchPage'
 import { SellPage } from './pages/SellPage'
 import type { Listing, ListingData, ListingStatus } from './domain/Listing'
-import { MarketplaceApi, MarketplaceApiError, type AdminStats, type AdminUserStatus, type AuthSession, type AuthUser, type ListingFormDraft } from './services/MarketplaceApi'
+import { MarketplaceApi, MarketplaceApiError, type AdminCategory, type AdminReport, type AdminReportAction, type AdminStats, type AdminUserStatus, type AuthSession, type AuthUser, type ListingFormDraft } from './services/MarketplaceApi'
 import { MarketplaceService } from './services/MarketplaceService'
 
 const api = new MarketplaceApi()
@@ -27,6 +27,11 @@ export function App() {
   const loadAdminStats = useCallback((from: string, to: string): Promise<AdminStats> => api.getAdminStats(from, to), [])
   const loadAdminUsers = useCallback(() => api.listAdminUsers(), [])
   const updateAdminUserStatus = useCallback((id: number, status: AdminUserStatus) => api.updateAdminUserStatus(id, status), [])
+  const loadAdminReports = useCallback(() => api.listAdminReports(), [])
+  const processAdminReport = useCallback((id: number, action: AdminReportAction): Promise<AdminReport> => api.processAdminReport(id, action), [])
+  const loadAdminCategories = useCallback(() => api.listAdminCategories(), [])
+  const createAdminCategory = useCallback((name: string): Promise<AdminCategory> => api.createAdminCategory(name), [])
+  const submitListingReport = useCallback((listingId: string, reason: string) => api.submitListingReport(listingId, reason), [])
   const [listings, setListings] = useState<Listing[]>(() => service.getListings())
   const [savedIds, setSavedIds] = useState<string[]>(() => service.getFavorites())
   const [user, setUser] = useState<AuthUser | null>(() => api.readSession()?.user ?? null)
@@ -517,7 +522,7 @@ export function App() {
     if (user.role !== 'ADMIN') {
       return <div className="admin-route-message"><h1>Bạn không có quyền truy cập</h1><p>Trang quản trị chỉ dành cho tài khoản quản trị viên.</p><button className="button-primary" onClick={leaveAdminRoute}>Về trang chủ</button></div>
     }
-    return <AdminPage listings={listings} onStatusChange={changeStatus} onOpen={openListingFromAdmin} onExit={leaveAdminRoute} onLoadStats={loadAdminStats} onLoadUsers={loadAdminUsers} onUserStatusChange={updateAdminUserStatus} />
+    return <AdminPage listings={listings} onStatusChange={changeStatus} onOpen={openListingFromAdmin} onExit={leaveAdminRoute} onLoadStats={loadAdminStats} onLoadUsers={loadAdminUsers} onUserStatusChange={updateAdminUserStatus} onLoadReports={loadAdminReports} onReportAction={processAdminReport} onLoadCategories={loadAdminCategories} onCreateCategory={createAdminCategory} />
   }
 
   if (view === 'auth') {
@@ -546,7 +551,7 @@ export function App() {
       {notice && <div className="toast-message" role="status">{notice}<button onClick={() => setNotice('')} aria-label="Đóng thông báo">×</button></div>}
       {view === 'home' && <ExplorePage listings={activeListings} savedIds={savedIds} onOpen={openListing} onToggleSaved={toggleSaved} onCategory={selectCategory} />}
       {view === 'search' && <SearchPage listings={activeListings} savedIds={savedIds} query={query} category={category} location={location} onQueryChange={setQuery} onCategoryChange={setCategory} onLocationChange={setLocation} onOpen={openListing} onToggleSaved={toggleSaved} />}
-      {view === 'detail' && selectedListing && <ListingDetailPage key={selectedListing.id} listing={selectedListing} related={relatedListings} saved={savedIds.includes(selectedListing.id)} currentUserId={user ? String(user.id) : null} onBack={() => navigate(previousView === 'detail' ? 'home' : previousView)} onToggleSaved={toggleSaved} onOpen={openListing} onContact={() => void openChat(selectedListing.id)} onSeller={() => navigate('profile')} onRevealPhone={async (id) => {
+      {view === 'detail' && selectedListing && <ListingDetailPage key={selectedListing.id} listing={selectedListing} related={relatedListings} saved={savedIds.includes(selectedListing.id)} currentUserId={user ? String(user.id) : null} onBack={() => navigate(previousView === 'detail' ? 'home' : previousView)} onToggleSaved={toggleSaved} onOpen={openListing} onContact={() => void openChat(selectedListing.id)} onSeller={() => navigate('profile')} onReport={submitListingReport} onRevealPhone={async (id) => {
         if (apiState !== 'connected') throw new Error('Backend chưa kết nối; không thể tải số điện thoại thật.')
         if (!user) {
           setNotice('Đăng nhập để xem số điện thoại người bán.')

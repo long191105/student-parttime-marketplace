@@ -32,6 +32,21 @@ export interface AdminStats {
   activeListings: number
   pendingListings: number
   users: number
+  openReports: number
+}
+
+export type AdminReportStatus = 'OPEN' | 'DISMISSED' | 'RESOLVED'
+export type AdminReportAction = 'DISMISS' | 'REMOVE_LISTING' | 'LOCK_USER'
+
+export interface AdminReport {
+  id: number
+  reporterName: string
+  listingId: string
+  listingTitle: string
+  sellerName: string
+  reason: string
+  status: AdminReportStatus
+  createdAt: string
 }
 
 export type AdminUserStatus = 'ACTIVE' | 'LOCKED'
@@ -44,6 +59,12 @@ export interface AdminUser {
   status: AdminUserStatus
   listingCount: number
   createdAt: string
+}
+
+export interface AdminCategory {
+  id: number
+  name: string
+  slug: string
 }
 
 export interface ChatConversation {
@@ -215,9 +236,46 @@ export class MarketplaceApi {
     })
   }
 
+  async listAdminReports(): Promise<AdminReport[]> {
+    const reports: AdminReport[] = []
+    let totalPages = 1
+    for (let page = 0; page < totalPages; page += 1) {
+      const params = new URLSearchParams({ page: String(page), size: '100' })
+      const response = await this.request<PageResponse<AdminReport>>(`/admin/reports?${params.toString()}`)
+      reports.push(...response.content)
+      totalPages = response.totalPages
+    }
+    return reports
+  }
+
+  async processAdminReport(id: number, action: AdminReportAction): Promise<AdminReport> {
+    return this.request<AdminReport>(`/admin/reports/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ action }),
+    })
+  }
+
+  async submitListingReport(listingId: string, reason: string): Promise<void> {
+    await this.request<void>('/reports', {
+      method: 'POST',
+      body: JSON.stringify({ listingId: Number(listingId), reason }),
+    })
+  }
+
   async getAdminStats(from: string, to: string): Promise<AdminStats> {
     const params = new URLSearchParams({ from, to })
     return this.request<AdminStats>(`/admin/stats?${params.toString()}`)
+  }
+
+  async listAdminCategories(): Promise<AdminCategory[]> {
+    return this.request<AdminCategory[]>('/admin/categories')
+  }
+
+  async createAdminCategory(name: string): Promise<AdminCategory> {
+    return this.request<AdminCategory>('/admin/categories', {
+      method: 'POST',
+      body: JSON.stringify({ name }),
+    })
   }
 
   async createListing(draft: ListingDraft): Promise<Listing> {

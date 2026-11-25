@@ -21,17 +21,21 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
 import com.example.demo.dto.AdminStatsResponse;
+import com.example.demo.dto.AdminReportResponse;
 import com.example.demo.dto.AdminUserResponse;
 import com.example.demo.dto.CategoryResponse;
 import com.example.demo.dto.ListingResponse;
 import com.example.demo.dto.RejectListingRequest;
 import com.example.demo.model.AccountStatus;
+import com.example.demo.model.AdminReportAction;
+import com.example.demo.model.ListingReportStatus;
 import com.example.demo.model.ListingStatus;
 import com.example.demo.model.UserAccount;
 import com.example.demo.model.UserRole;
 import com.example.demo.repository.UserAccountRepository;
 import com.example.demo.service.CategoryService;
 import com.example.demo.service.ListingService;
+import com.example.demo.service.ListingReportService;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
@@ -46,14 +50,17 @@ public class AdminController {
     private static final ZoneId MARKETPLACE_ZONE = ZoneId.of("Asia/Ho_Chi_Minh");
 
     private final ListingService listingService;
+    private final ListingReportService listingReportService;
     private final CategoryService categoryService;
     private final UserAccountRepository userAccountRepository;
 
     public AdminController(
             ListingService listingService,
+            ListingReportService listingReportService,
             CategoryService categoryService,
             UserAccountRepository userAccountRepository) {
         this.listingService = listingService;
+        this.listingReportService = listingReportService;
         this.categoryService = categoryService;
         this.userAccountRepository = userAccountRepository;
     }
@@ -94,6 +101,21 @@ public class AdminController {
         return AdminUserResponse.from(updatedUser, listingService.countListingsBySeller(updatedUser.getId()));
     }
 
+    @GetMapping("/reports")
+    public Page<AdminReportResponse> reports(
+            @RequestParam(required = false) ListingReportStatus status,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "100") int size) {
+        return listingReportService.search(status, page, size);
+    }
+
+    @PatchMapping("/reports/{id}")
+    public AdminReportResponse processReport(
+            @PathVariable Long id,
+            @Valid @RequestBody ProcessReportRequest request) {
+        return listingReportService.process(id, request.action());
+    }
+
     @PostMapping("/listings/{id}/approve")
     public ListingResponse approve(@PathVariable String id) {
         return listingService.moderate(parseId(id), ListingStatus.ACTIVE, null);
@@ -112,7 +134,8 @@ public class AdminController {
             return new AdminStatsResponse(
                     listingService.countByStatus(ListingStatus.ACTIVE),
                     listingService.countByStatus(ListingStatus.PENDING),
-                    userAccountRepository.count());
+                    userAccountRepository.count(),
+                    listingReportService.countOpenReports());
         }
         if (from == null || to == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Cần cung cấp cả ngày bắt đầu và ngày kết thúc.");
@@ -125,7 +148,8 @@ public class AdminController {
         return new AdminStatsResponse(
                 listingService.countByStatusAndCreatedAtBetween(ListingStatus.ACTIVE, start, end),
                 listingService.countByStatusAndCreatedAtBetween(ListingStatus.PENDING, start, end),
-                userAccountRepository.countByCreatedAtGreaterThanEqualAndCreatedAtLessThan(start, end));
+                userAccountRepository.countByCreatedAtGreaterThanEqualAndCreatedAtLessThan(start, end),
+                listingReportService.countOpenReportsCreatedBetween(start, end));
     }
 
     @PostMapping("/categories")
@@ -155,6 +179,9 @@ public class AdminController {
     }
 
     public record UpdateUserStatusRequest(@NotNull AccountStatus status) {
+    }
+
+    public record ProcessReportRequest(@NotNull AdminReportAction action) {
     }
 
     public record CreateCategoryRequest(@NotBlank @Size(max = 80) String name) {
