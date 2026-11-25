@@ -401,23 +401,6 @@ img { display: block; max-width: 100%; }
 .site-header-home-compact .main-nav button { color: #6b7169; }
 .site-header-home-compact .main-nav button:hover, .site-header-home-compact .main-nav button.nav-active { color: var(--green); }
 .site-header-home-compact .main-nav button.nav-active::after { background: #71925e; }
-.site-header-home-compact { background: #ffca20; }
-.site-header-home-compact .brand-icon { border: 1px solid rgb(255 255 255 / 62%); background: rgb(255 249 228 / 84%); color: #17345f; }
-.site-header-home-compact .brand small, .site-header-home-compact .chohoi-wordmark-market,
-.site-header-home-compact .header-icon, .site-header-home-compact .header-icon span,
-.site-header-home-compact .profile-menu, .site-header-home-compact .profile-menu > svg { color: #17345f; }
-.site-header-home-compact .avatar-header { border-color: rgb(23 52 95 / 32%); background: rgb(255 248 225 / 80%); color: #17345f; }
-.site-header-home-compact .header-search { border-color: #fff; border-radius: 24px; background: #fff; color: #292929; box-shadow: 0 8px 24px rgb(23 52 95 / 12%); }
-.site-header-home-compact .header-search > svg, .site-header-home-compact .header-search input { color: #292929; }
-.site-header-home-compact .header-search input::placeholder { color: #8d8d8d; }
-.site-header-home-compact .header-bottom { border: 0; background: transparent; }
-.site-header-home-compact .main-nav { gap: 3px; padding: 4px; border: 1px solid rgb(255 255 255 / 72%); border-radius: 999px; background: rgb(255 255 255 / 82%); box-shadow: 0 5px 16px rgb(23 52 95 / 15%); backdrop-filter: blur(10px); }
-.site-header-home-compact .main-nav button { height: 32px; padding: 0 13px; border: 0; border-radius: 999px; color: #17345f; font-size: 12px; font-weight: 750; }
-.site-header-home-compact .main-nav button:hover { background: rgb(23 52 95 / 8%); color: #17345f; }
-.site-header-home-compact .main-nav button.nav-active { background: #17345f; color: #fff; }
-.site-header-home-compact .main-nav button.nav-active::after { display: none; }
-.site-header-home-compact .sell-button { border-radius: 999px; background: #17345f; }
-.site-header-home-compact .sell-button:hover { background: #244b80; }
 .hero-section { position: relative; display: grid; min-height: 344px; grid-template-columns: 1.02fr .98fr; overflow: hidden; border: 1px solid #6b713e; border-radius: 8px; background: radial-gradient(ellipse at 68% 115%, rgb(226 169 68 / 29%), transparent 43%), radial-gradient(ellipse at 4% 5%, rgb(125 147 74 / 25%), transparent 36%), linear-gradient(116deg, #183d2e 0%, #234831 46%, #423e20 100%); box-shadow: 0 15px 34px rgb(34 53 34 / 15%); }
 .hero-section::before { position: absolute; top: -164px; right: 3%; z-index: 0; width: 76%; height: 330px; border: 1px solid rgb(245 201 104 / 45%); border-radius: 50%; box-shadow: 0 0 0 13px rgb(245 201 104 / 6%), 0 0 0 29px rgb(245 201 104 / 6%), 0 0 0 47px rgb(245 201 104 / 4%); content: ''; pointer-events: none; transform: rotate(-8deg); }
 .hero-section::after { position: absolute; right: -9%; bottom: -240px; z-index: 0; width: 87%; height: 350px; border: 13px solid rgb(226 177 62 / 92%); border-right-color: transparent; border-bottom-color: transparent; border-radius: 50%; content: ''; filter: drop-shadow(0 -5px 15px rgb(244 192 66 / 18%)); pointer-events: none; transform: rotate(-8deg); }
