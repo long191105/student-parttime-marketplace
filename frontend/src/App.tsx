@@ -18,9 +18,59 @@ import { MarketplaceService } from './services/MarketplaceService'
 
 const api = new MarketplaceApi()
 const authenticationRequiredViews: AppView[] = ['sell', 'my-listings', 'messages', 'notifications', 'check-in']
+const appNavigationKey = 'chohoiNavigation'
+
+interface AppNavigationEntry {
+  view: AppView
+  selectedId: string | null
+  selectedConversationId: string | null
+  previousView: AppView
+  sellReturnView: AppView
+  depth: number
+}
+
+interface NavigationOptions {
+  historyMode?: 'push' | 'replace'
+  selectedId?: string | null
+  selectedConversationId?: string | null
+  previousView?: AppView
+  sellReturnView?: AppView
+}
+
+function isAppView(value: unknown): value is AppView {
+  return value === 'home' || value === 'search' || value === 'detail' || value === 'sell'
+    || value === 'my-listings' || value === 'favorites' || value === 'messages'
+    || value === 'notifications' || value === 'profile' || value === 'check-in' || value === 'auth'
+}
+
+function readAppNavigationEntry(state: unknown): AppNavigationEntry | null {
+  if (typeof state !== 'object' || state === null || Array.isArray(state)) return null
+  const value = (state as Record<string, unknown>)[appNavigationKey]
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) return null
+  const entry = value as Record<string, unknown>
+  if (!isAppView(entry.view)) return null
+
+  return {
+    view: entry.view,
+    selectedId: typeof entry.selectedId === 'string' ? entry.selectedId : null,
+    selectedConversationId: typeof entry.selectedConversationId === 'string' ? entry.selectedConversationId : null,
+    previousView: isAppView(entry.previousView) ? entry.previousView : 'home',
+    sellReturnView: isAppView(entry.sellReturnView) ? entry.sellReturnView : 'home',
+    depth: typeof entry.depth === 'number' && Number.isInteger(entry.depth) && entry.depth >= 0 ? entry.depth : 0,
+  }
+}
+
+function withAppNavigationEntry(entry: AppNavigationEntry): Record<string, unknown> {
+  const state = window.history.state
+  const stateRecord = typeof state === 'object' && state !== null && !Array.isArray(state)
+    ? state as Record<string, unknown>
+    : {}
+  return { ...stateRecord, [appNavigationKey]: entry }
+}
 
 export function App() {
   const [service] = useState(() => new MarketplaceService())
+  const initialNavigationEntry = readAppNavigationEntry(window.history.state)
   const loadListingDraft = useCallback(() => api.getListingDraft(), [])
   const saveListingDraft = useCallback((draft: ListingFormDraft) => api.saveListingDraft(draft), [])
   const deleteListingDraft = useCallback(() => api.deleteListingDraft(), [])
@@ -41,13 +91,13 @@ export function App() {
   const [user, setUser] = useState<AuthUser | null>(() => api.readSession()?.user ?? null)
   const [apiState, setApiState] = useState<'connecting' | 'connected' | 'offline'>('connecting')
   const [apiError, setApiError] = useState('')
-  const [view, setView] = useState<AppView>('home')
-  const [sellReturnView, setSellReturnView] = useState<AppView>('home')
+  const [view, setView] = useState<AppView>(initialNavigationEntry?.view ?? 'home')
+  const [sellReturnView, setSellReturnView] = useState<AppView>(initialNavigationEntry?.sellReturnView ?? 'home')
   const [isAdminRoute, setIsAdminRoute] = useState(() => window.location.pathname.replace(/\/+$/, '') === '/admin')
-  const [previousView, setPreviousView] = useState<AppView>('home')
-  const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [previousView, setPreviousView] = useState<AppView>(initialNavigationEntry?.previousView ?? 'home')
+  const [selectedId, setSelectedId] = useState<string | null>(initialNavigationEntry?.selectedId ?? null)
   const [selectedListingSnapshot, setSelectedListingSnapshot] = useState<Listing | null>(null)
-  const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null)
+  const [selectedConversationId, setSelectedConversationId] = useState<string | null>(initialNavigationEntry?.selectedConversationId ?? null)
   const [unreadMessageCount, setUnreadMessageCount] = useState(0)
   const [notifications, setNotifications] = useState<UserNotification[]>([])
   const [notificationUnreadCount, setNotificationUnreadCount] = useState(0)
@@ -86,11 +136,34 @@ export function App() {
   }, [authNotice])
 
   useEffect(() => {
-    function syncAdminRoute() {
-      setIsAdminRoute(window.location.pathname.replace(/\/+$/, '') === '/admin')
+    if (!readAppNavigationEntry(window.history.state)) {
+      const initialEntry: AppNavigationEntry = {
+        view: 'home',
+        selectedId: null,
+        selectedConversationId: null,
+        previousView: 'home',
+        sellReturnView: 'home',
+        depth: 0,
+      }
+      window.history.replaceState(withAppNavigationEntry(initialEntry), '', window.location.href)
     }
-    window.addEventListener('popstate', syncAdminRoute)
-    return () => window.removeEventListener('popstate', syncAdminRoute)
+
+    function restoreNavigation(event: PopStateEvent) {
+      const adminRoute = window.location.pathname.replace(/\/+$/, '') === '/admin'
+      setIsAdminRoute(adminRoute)
+      const entry = readAppNavigationEntry(event.state)
+      if (!adminRoute) {
+        setView(entry?.view ?? 'home')
+        setSelectedId(entry?.selectedId ?? null)
+        setSelectedConversationId(entry?.selectedConversationId ?? null)
+        setPreviousView(entry?.previousView ?? 'home')
+        setSellReturnView(entry?.sellReturnView ?? 'home')
+      }
+      window.scrollTo({ top: 0, behavior: 'auto' })
+    }
+
+    window.addEventListener('popstate', restoreNavigation)
+    return () => window.removeEventListener('popstate', restoreNavigation)
   }, [])
 
   useEffect(() => {
@@ -253,59 +326,98 @@ export function App() {
     }
   }, [apiState, isAdminRoute, user?.role])
 
-  function navigate(nextView: AppView) {
-    if (nextView === 'sell' && view !== 'my-listings') setSellReturnView('home')
-    if (nextView === 'auth') {
-      setPreviousView(view === 'auth' ? previousView : view)
-      setView('auth')
-    } else if (authenticationRequiredViews.includes(nextView) && !user) {
-      setPreviousView(nextView)
-      setView('auth')
-    } else {
-      setView(nextView)
+  function getCurrentNavigationEntry(): AppNavigationEntry {
+    return readAppNavigationEntry(window.history.state) ?? {
+      view,
+      selectedId,
+      selectedConversationId,
+      previousView,
+      sellReturnView,
+      depth: 0,
     }
-    window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
-  function startNewListing() {
-    setSellReturnView('home')
-    navigate('sell')
-  }
+  function navigate(nextView: AppView, options: NavigationOptions = {}) {
+    const needsAuth = authenticationRequiredViews.includes(nextView) && !user
+    const targetView = nextView === 'auth' || needsAuth ? 'auth' : nextView
+    const targetPreviousView = options.previousView ?? (nextView === 'auth'
+      ? view === 'auth' ? previousView : view
+      : needsAuth ? nextView : previousView)
+    const targetSellReturnView = options.sellReturnView
+      ?? (nextView === 'sell' && view !== 'my-listings' ? 'home' : sellReturnView)
+    const targetSelectedId = options.selectedId === undefined ? selectedId : options.selectedId
+    const targetConversationId = options.selectedConversationId === undefined ? selectedConversationId : options.selectedConversationId
+    const historyMode = options.historyMode ?? 'push'
 
-  function editSavedDraft() {
-    setSellReturnView('my-listings')
-    navigate('sell')
-  }
+    if (!isAdminRoute && targetView === view && targetSelectedId === selectedId && targetConversationId === selectedConversationId) {
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+      return
+    }
 
-  function leaveAdminRoute() {
-    window.history.replaceState({}, '', '/')
+    const currentEntry = getCurrentNavigationEntry()
+    const entry: AppNavigationEntry = {
+      view: targetView,
+      selectedId: targetSelectedId,
+      selectedConversationId: targetConversationId,
+      previousView: targetPreviousView,
+      sellReturnView: targetSellReturnView,
+      depth: historyMode === 'replace' ? currentEntry.depth : currentEntry.depth + 1,
+    }
+    const url = window.location.pathname.replace(/\/+$/, '') === '/admin' ? '/' : window.location.href
+    const state = withAppNavigationEntry(entry)
+    if (historyMode === 'replace') window.history.replaceState(state, '', url)
+    else window.history.pushState(state, '', url)
+
+    setView(targetView)
+    setSelectedId(targetSelectedId)
+    setSelectedConversationId(targetConversationId)
+    setPreviousView(targetPreviousView)
+    setSellReturnView(targetSellReturnView)
     setIsAdminRoute(false)
-    setView('home')
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
-  function openAdminRoute() {
-    if (user?.role !== 'ADMIN') return
-    window.history.pushState({}, '', '/admin')
+  function goBack(fallbackView: AppView) {
+    if (getCurrentNavigationEntry().depth > 0) {
+      window.history.back()
+      return
+    }
+    navigate(fallbackView, { historyMode: 'replace' })
+  }
+
+  function enterAdminRoute() {
+    const currentEntry = getCurrentNavigationEntry()
+    const entry = { ...currentEntry, depth: currentEntry.depth + 1 }
+    window.history.pushState(withAppNavigationEntry(entry), '', '/admin')
     setIsAdminRoute(true)
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
+  function startNewListing() {
+    navigate('sell', { sellReturnView: 'home' })
+  }
+
+  function editSavedDraft() {
+    navigate('sell', { sellReturnView: 'my-listings' })
+  }
+
+  function leaveAdminRoute() {
+    goBack('home')
+  }
+
+  function openAdminRoute() {
+    if (user?.role !== 'ADMIN') return
+    enterAdminRoute()
+  }
+
   function openListingFromAdmin(listing: Listing) {
-    window.history.replaceState({}, '', '/')
-    setIsAdminRoute(false)
-    setPreviousView('home')
-    setSelectedId(listing.id)
     setSelectedListingSnapshot(listing)
-    setView('detail')
-    window.scrollTo({ top: 0, behavior: 'smooth' })
+    navigate('detail', { selectedId: listing.id, previousView: 'home' })
   }
 
   function openListing(listing: Listing) {
-    setPreviousView(view === 'detail' ? previousView : view)
-    setSelectedId(listing.id)
     setSelectedListingSnapshot(listing)
-    navigate('detail')
+    navigate('detail', { selectedId: listing.id, previousView: view === 'detail' ? previousView : view })
   }
 
   async function markNotificationRead(id: number) {
@@ -335,8 +447,7 @@ export function App() {
   async function openNotification(notification: UserNotification) {
     await markNotificationRead(notification.id)
     if (notification.type === 'NEW_MESSAGE') {
-      setSelectedConversationId(notification.targetId)
-      navigate('messages')
+      navigate('messages', { selectedConversationId: notification.targetId })
       return
     }
     navigate('my-listings')
@@ -354,8 +465,7 @@ export function App() {
     }
     try {
       const conversation = await api.openChatForListing(listingId)
-      setSelectedConversationId(conversation.id)
-      navigate('messages')
+      navigate('messages', { selectedConversationId: conversation.id })
     } catch (error) {
       console.error('Không thể mở cuộc trò chuyện với người bán.', error)
       setNotice(error instanceof Error ? error.message : 'Không thể mở cuộc trò chuyện.')
@@ -462,7 +572,7 @@ export function App() {
       try {
         await api.createListing(data)
         await reloadFromApi()
-        setView('my-listings')
+        navigate('my-listings')
         setNotice('Tin đăng đã được gửi và đang chờ quản trị viên duyệt.')
       } catch (error) {
         console.error('Không thể đăng tin.', error)
@@ -474,7 +584,7 @@ export function App() {
 
     service.createListing(data)
     setListings(service.getListings())
-    setView('my-listings')
+    navigate('my-listings')
     setNotice('Tin demo đã được lưu trên trình duyệt và đang chờ duyệt.')
   }
 
@@ -525,7 +635,7 @@ export function App() {
         giveaway: draft.giveaway,
         specs: [draft.condition === 'NEW' ? 'Hàng mới' : 'Đã sử dụng'],
       })
-      setView('my-listings')
+      navigate('my-listings')
       setNotice('Tin đăng đã được gửi và đang chờ quản trị viên duyệt.')
       try {
         await reloadFromApi()
@@ -552,14 +662,12 @@ export function App() {
       setAuthNotice('Đăng nhập thành công. Chào mừng đến với Chợ Hời!')
       await reloadFromApi(session.user)
       if (session.user.role === 'ADMIN') {
-        if (window.location.pathname.replace(/\/+$/, '') !== '/admin') {
-          window.history.pushState({}, '', '/admin')
-        }
-        setIsAdminRoute(true)
+        if (window.location.pathname.replace(/\/+$/, '') !== '/admin') enterAdminRoute()
+        else setIsAdminRoute(true)
         window.scrollTo({ top: 0, behavior: 'smooth' })
         return
       }
-      navigate(previousView === 'auth' ? 'home' : previousView)
+      navigate(previousView === 'auth' ? 'home' : previousView, { historyMode: 'replace' })
     } catch (error) {
       console.error('Không thể tải dữ liệu tài khoản.', error)
       setAuthNotice(error instanceof Error ? error.message : 'Đăng nhập thành công nhưng không tải được dữ liệu.')
@@ -623,7 +731,7 @@ export function App() {
   }
 
   if (view === 'auth') {
-    return <AuthPage onBack={() => navigate(previousView === 'auth' || authenticationRequiredViews.includes(previousView) ? 'home' : previousView)} onAuthenticate={authenticate} onVerify={api.verifyRegistration.bind(api)} onResend={api.resendRegistrationCode.bind(api)} onSuccess={authenticationSucceeded} />
+    return <AuthPage onBack={() => goBack(previousView === 'auth' || authenticationRequiredViews.includes(previousView) ? 'home' : previousView)} onAuthenticate={authenticate} onVerify={api.verifyRegistration.bind(api)} onResend={api.resendRegistrationCode.bind(api)} onSuccess={authenticationSucceeded} />
   }
 
   return (
@@ -652,7 +760,7 @@ export function App() {
       {notice && <div className="toast-message" role="status">{notice}<button onClick={() => setNotice('')} aria-label="Đóng thông báo">×</button></div>}
       {view === 'home' && <ExplorePage listings={activeListings} savedIds={savedIds} onOpen={openListing} onToggleSaved={toggleSaved} onCategory={selectCategory} />}
       {view === 'search' && <SearchPage listings={activeListings} savedIds={savedIds} query={query} category={category} location={location} onQueryChange={setQuery} onCategoryChange={setCategory} onLocationChange={setLocation} onOpen={openListing} onToggleSaved={toggleSaved} />}
-      {view === 'detail' && selectedListing && <ListingDetailPage key={selectedListing.id} listing={selectedListing} related={relatedListings} saved={savedIds.includes(selectedListing.id)} currentUserId={user ? String(user.id) : null} onBack={() => navigate(previousView === 'detail' ? 'home' : previousView)} onToggleSaved={toggleSaved} onOpen={openListing} onContact={() => void openChat(selectedListing.id)} onSeller={() => navigate('profile')} onReport={submitListingReport} onRevealPhone={async (id) => {
+      {view === 'detail' && selectedListing && <ListingDetailPage key={selectedListing.id} listing={selectedListing} related={relatedListings} saved={savedIds.includes(selectedListing.id)} currentUserId={user ? String(user.id) : null} onBack={() => goBack(previousView === 'detail' ? 'home' : previousView)} onToggleSaved={toggleSaved} onOpen={openListing} onContact={() => void openChat(selectedListing.id)} onSeller={() => navigate('profile')} onReport={submitListingReport} onRevealPhone={async (id) => {
         if (apiState !== 'connected') throw new Error('Backend chưa kết nối; không thể tải số điện thoại thật.')
         if (!user) {
           setNotice('Đăng nhập để xem số điện thoại người bán.')
@@ -662,10 +770,10 @@ export function App() {
         return api.getSellerPhone(id)
       }} />}
       {view === 'detail' && !selectedListing && <div className="empty-state"><h3>Không tìm thấy tin đăng</h3><button className="button-primary" onClick={() => navigate('home')}>Về trang chủ</button></div>}
-      {view === 'sell' && <SellPage onCancel={() => navigate(sellReturnView)} onSubmit={createListing} onLoadDraft={loadListingDraft} onSaveDraft={saveListingDraft} sellerName={user?.fullName ?? 'Người bán'} />}
+      {view === 'sell' && <SellPage onCancel={() => goBack(sellReturnView)} onSubmit={createListing} onLoadDraft={loadListingDraft} onSaveDraft={saveListingDraft} sellerName={user?.fullName ?? 'Người bán'} />}
       {view === 'my-listings' && <MyListingsPage listings={listings} onStatusChange={changeStatus} onOpen={openListing} onSell={startNewListing} onEditDraft={editSavedDraft} sellerId={currentSellerId} onLoadDraft={loadListingDraft} onDeleteDraft={deleteListingDraft} onPublishDraft={publishSavedDraft} />}
       {view === 'favorites' && <FavoritesPage savedListings={activeFavoriteListings} onOpen={openListing} onToggleSaved={toggleSaved} />}
-      {view === 'check-in' && <CheckInPage userId={user?.id ?? null} onBack={() => navigate('home')} />}
+      {view === 'check-in' && <CheckInPage userId={user?.id ?? null} onBack={() => goBack('home')} />}
       {user && apiState === 'connected' && <div className={view === 'messages' ? '' : 'inbox-background-listener'} aria-hidden={view !== 'messages'}>
         <InboxPage api={api} user={user} initialConversationId={selectedConversationId} isVisible={view === 'messages'} onUnreadCountChange={updateUnreadMessageCount} onListingSold={(id) => setListings((current) => current.map((listing) => listing.id === id ? listing.withStatus('SOLD') : listing))} onOpenListing={(id) => {
           const listing = listings.find((item) => item.id === id)
