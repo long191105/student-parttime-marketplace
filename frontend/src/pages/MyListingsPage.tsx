@@ -8,6 +8,7 @@ import { formatImageUrl } from '../services/ImageUrl'
 interface MyListingsPageProps {
   listings: Listing[]
   onStatusChange: (id: string, status: ListingStatus) => void
+  onDeleteListing: (id: string) => Promise<void>
   onOpen: (listing: Listing) => void
   onSell: () => void
   onEditDraft: () => void
@@ -29,10 +30,10 @@ const tabs: { status: ListingsTab; label: string }[] = [
 ]
 
 const statusNames: Record<ListingStatus, string> = {
-  ACTIVE: 'Đang hiển thị', PENDING: 'Chờ duyệt', REJECTED: 'Bị từ chối', SOLD: 'Đã bán', HIDDEN: 'Đã ẩn', EXPIRED: 'Hết hạn',
+  ACTIVE: 'Đang hiển thị', PENDING: 'Chờ duyệt', REJECTED: 'Bị từ chối', SOLD: 'Đã bán', HIDDEN: 'Đã ẩn', EXPIRED: 'Hết hạn', DELETED: 'Đã xóa',
 }
 
-export function MyListingsPage({ listings, onStatusChange, onOpen, onSell, onEditDraft, sellerId, onLoadDraft, onDeleteDraft, onPublishDraft }: MyListingsPageProps) {
+export function MyListingsPage({ listings, onStatusChange, onDeleteListing, onOpen, onSell, onEditDraft, sellerId, onLoadDraft, onDeleteDraft, onPublishDraft }: MyListingsPageProps) {
   const { showConfirm } = useAppDialog()
   const [activeTab, setActiveTab] = useState<ListingsTab>('ALL')
   const [draft, setDraft] = useState<ListingFormDraft | null>(null)
@@ -41,6 +42,8 @@ export function MyListingsPage({ listings, onStatusChange, onOpen, onSell, onEdi
   const [draftActionError, setDraftActionError] = useState('')
   const [isDeletingDraft, setIsDeletingDraft] = useState(false)
   const [isPublishingDraft, setIsPublishingDraft] = useState(false)
+  const [deletingListingId, setDeletingListingId] = useState<string | null>(null)
+  const [listingActionError, setListingActionError] = useState('')
   const myListings = listings.filter((listing) => listing.sellerId === sellerId)
   const visibleListings = useMemo(() => activeTab === 'ALL' ? myListings : myListings.filter((item) => item.status === activeTab || (activeTab === 'SOLD' && item.status === 'HIDDEN')), [activeTab, myListings])
 
@@ -89,6 +92,20 @@ export function MyListingsPage({ listings, onStatusChange, onOpen, onSell, onEdi
     }
   }
 
+  async function deleteHiddenListing(listing: Listing) {
+    if (!await showConfirm(`Xóa tin “${listing.title}” khỏi danh sách của bạn?`, 'Xóa tin đã ẩn', 'Xóa tin')) return
+    setDeletingListingId(listing.id)
+    setListingActionError('')
+    try {
+      await onDeleteListing(listing.id)
+    } catch (error) {
+      console.error('Không thể xóa tin đã ẩn.', error)
+      setListingActionError(error instanceof Error ? error.message : 'Không thể xóa tin đăng. Vui lòng thử lại.')
+    } finally {
+      setDeletingListingId(null)
+    }
+  }
+
   const draftImage = draft?.photos?.find((photo) => photo.id === draft.coverPhotoId)?.src ?? draft?.photos?.[0]?.src
   const draftPrice = Number(draft?.price)
   const draftPriceLabel = draft?.giveaway
@@ -126,6 +143,7 @@ export function MyListingsPage({ listings, onStatusChange, onOpen, onSell, onEdi
         {!isLoadingDraft && !draftError && !draft && <div className="empty-state"><span>✎</span><h3>Chưa có tin lưu nháp</h3><p>Bạn có thể lưu thông tin đang điền để hoàn thiện và đăng sau.</p><button className="button-primary" onClick={onSell}>Tạo tin mới</button></div>}
       </div>}
       {activeTab !== 'DRAFTS' && <>
+      {listingActionError && <div className="draft-list-error" role="alert">{listingActionError}</div>}
       <div className="my-listings-list">
         {visibleListings.map((listing) => <article className="my-listing-row" key={listing.id}>
           <button className="my-listing-image" onClick={() => onOpen(listing)}><img src={formatImageUrl(listing.image, 400)} alt={listing.title} /></button>
@@ -135,7 +153,10 @@ export function MyListingsPage({ listings, onStatusChange, onOpen, onSell, onEdi
               <span className="muted-status">Xác nhận đã bán cho người mua trong cuộc trò chuyện để mở đánh giá.</span>
               <button className="row-action" onClick={() => onStatusChange(listing.id, 'HIDDEN')}>Ẩn tin</button>
             </>}
-            {listing.status === 'HIDDEN' && <button className="row-action" onClick={() => onStatusChange(listing.id, 'ACTIVE')}>Hiển thị lại</button>}
+            {listing.status === 'HIDDEN' && <>
+              <button className="row-action" disabled={deletingListingId === listing.id} onClick={() => onStatusChange(listing.id, 'ACTIVE')}>Hiển thị lại</button>
+              <button className="row-action" disabled={deletingListingId === listing.id} onClick={() => void deleteHiddenListing(listing)}><Trash2 size={12} />{deletingListingId === listing.id ? 'Đang xóa...' : 'Xóa'}</button>
+            </>}
             {listing.status === 'PENDING' && <span className="muted-status">Đang được kiểm duyệt</span>}
           </div>}
         </article>)}

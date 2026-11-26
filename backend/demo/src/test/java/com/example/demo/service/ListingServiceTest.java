@@ -98,6 +98,31 @@ class ListingServiceTest {
     }
 
     @Test
+    void memberCanDeleteOwnHiddenListing() {
+        pendingListing.changeStatus(ListingStatus.HIDDEN, null);
+        when(currentUserService.requireUser()).thenReturn(seller);
+        when(listingRepository.findByIdAndSellerId(41L, 7L)).thenReturn(java.util.Optional.of(pendingListing));
+
+        listingService.deleteHiddenListing(41L);
+
+        assertEquals(ListingStatus.DELETED, pendingListing.getStatus());
+    }
+
+    @Test
+    void memberCannotDeleteListingThatIsNotHidden() {
+        pendingListing.changeStatus(ListingStatus.ACTIVE, null);
+        when(currentUserService.requireUser()).thenReturn(seller);
+        when(listingRepository.findByIdAndSellerId(41L, 7L)).thenReturn(java.util.Optional.of(pendingListing));
+
+        ResponseStatusException exception = assertThrows(
+                ResponseStatusException.class,
+                () -> listingService.deleteHiddenListing(41L));
+
+        assertEquals(HttpStatus.CONFLICT, exception.getStatusCode());
+        assertEquals(ListingStatus.ACTIVE, pendingListing.getStatus());
+    }
+
+    @Test
     void memberMustConfirmSaleInTheBuyerConversation() {
         pendingListing.changeStatus(ListingStatus.ACTIVE, null);
 

@@ -601,6 +601,20 @@ export function App() {
     }
   }
 
+  async function deleteHiddenListing(id: string): Promise<void> {
+    if (apiState === 'connected') {
+      if (!user) throw new Error('Vui lòng đăng nhập để xóa tin đăng.')
+      await api.deleteListing(id)
+    } else {
+      service.deleteHiddenListing(id)
+    }
+
+    setListings((current) => current.filter((listing) => listing.id !== id))
+    setFavoriteListings((current) => current.filter((listing) => listing.id !== id))
+    setSavedIds((current) => current.filter((listingId) => listingId !== id))
+    setNotice('Tin đã được xóa khỏi danh sách của bạn.')
+  }
+
   async function createListing(data: Omit<ListingData, 'id' | 'status' | 'views' | 'postedAt'> & { contactPhone: string }): Promise<void> {
     if (!user) {
       setNotice('Đăng nhập trước khi đăng tin.')
@@ -812,7 +826,7 @@ export function App() {
       }} />}
       {view === 'detail' && !selectedListing && <div className="empty-state"><h3>Không tìm thấy tin đăng</h3><button className="button-primary" onClick={() => navigate('home')}>Về trang chủ</button></div>}
       {view === 'sell' && <SellPage key={sellFormInstance} categories={categoryOptions} restoreDraft={isEditingSavedDraft} onCancel={() => goBack(sellReturnView)} onSubmit={createListing} onLoadDraft={loadListingDraft} onSaveDraft={saveListingDraft} sellerName={user?.fullName ?? 'Người bán'} />}
-      {view === 'my-listings' && <MyListingsPage listings={listings} onStatusChange={changeStatus} onOpen={openListing} onSell={startNewListing} onEditDraft={editSavedDraft} sellerId={currentSellerId} onLoadDraft={loadListingDraft} onDeleteDraft={deleteListingDraft} onPublishDraft={publishSavedDraft} />}
+      {view === 'my-listings' && <MyListingsPage listings={listings} onStatusChange={changeStatus} onDeleteListing={deleteHiddenListing} onOpen={openListing} onSell={startNewListing} onEditDraft={editSavedDraft} sellerId={currentSellerId} onLoadDraft={loadListingDraft} onDeleteDraft={deleteListingDraft} onPublishDraft={publishSavedDraft} />}
       {view === 'favorites' && <FavoritesPage savedListings={activeFavoriteListings} onOpen={openListing} onToggleSaved={toggleSaved} />}
       {view === 'check-in' && <CheckInPage userId={user?.id ?? null} onBack={() => goBack('home')} />}
       {user && apiState === 'connected' && <div className={view === 'messages' ? '' : 'inbox-background-listener'} aria-hidden={view !== 'messages'}>

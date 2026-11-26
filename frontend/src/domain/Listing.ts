@@ -1,4 +1,4 @@
-export type ListingStatus = 'ACTIVE' | 'PENDING' | 'REJECTED' | 'SOLD' | 'HIDDEN' | 'EXPIRED'
+export type ListingStatus = 'ACTIVE' | 'PENDING' | 'REJECTED' | 'SOLD' | 'HIDDEN' | 'EXPIRED' | 'DELETED'
 export type ListingCondition = 'NEW' | 'USED'
 
 export interface ListingData {

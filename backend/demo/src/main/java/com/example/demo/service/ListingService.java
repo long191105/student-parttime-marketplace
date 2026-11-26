@@ -119,7 +119,7 @@ public class ListingService {
 
     @Transactional(readOnly = true)
     public long countListingsBySeller(Long sellerId) {
-        return listingRepository.countBySellerId(sellerId);
+        return listingRepository.countBySellerIdAndStatusNot(sellerId, ListingStatus.DELETED);
     }
 
     @Transactional
@@ -151,9 +151,11 @@ public class ListingService {
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
         Page<Listing> result;
         if (status == null || status.isBlank()) {
-            result = listingRepository.findAllBySellerId(user.getId(), pageable);
+            result = listingRepository.findAllBySellerIdAndStatusNot(user.getId(), ListingStatus.DELETED, pageable);
         } else {
-            result = listingRepository.findAllBySellerIdAndStatus(user.getId(), parseStatus(status), pageable);
+            ListingStatus requestedStatus = parseStatus(status);
+            if (requestedStatus == ListingStatus.DELETED) return Page.empty(pageable);
+            result = listingRepository.findAllBySellerIdAndStatus(user.getId(), requestedStatus, pageable);
         }
         return result.map(ListingResponse::from);
     }
@@ -220,6 +222,17 @@ public class ListingService {
         }
         listing.changeStatus(requestedStatus, null);
         return ListingResponse.from(listing);
+    }
+
+    @Transactional
+    public void deleteHiddenListing(Long id) {
+        UserAccount user = currentUserService.requireUser();
+        Listing listing = listingRepository.findByIdAndSellerId(id, user.getId())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy tin đăng của bạn."));
+        if (listing.getStatus() != ListingStatus.HIDDEN) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Chỉ tin đã ẩn mới có thể xóa.");
+        }
+        listing.changeStatus(ListingStatus.DELETED, null);
     }
 
     @Transactional(readOnly = true)

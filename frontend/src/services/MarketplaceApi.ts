@@ -352,6 +352,10 @@ export class MarketplaceApi {
     return new Listing(response)
   }
 
+  async deleteListing(id: string): Promise<void> {
+    await this.request<void>(`/listings/${encodeURIComponent(id)}`, { method: 'DELETE' }, false)
+  }
+
   async getSellerPhone(id: string): Promise<string> {
     const response = await this.request<{ phone: string }>(`/listings/${encodeURIComponent(id)}/phone`)
     return response.phone
