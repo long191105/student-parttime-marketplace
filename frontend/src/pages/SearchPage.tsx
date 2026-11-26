@@ -4,6 +4,7 @@ import type { Listing } from '../domain/Listing'
 import { categories, locations } from '../data/categories'
 import { ListingCard } from '../components/ListingCard'
 import { getProvinceWards, type LocationOption } from '../services/AdministrativeLocationApi'
+import { formatCurrencyAmount, handleCurrencyInputChange } from '../utils/CurrencyInput'
 
 interface SearchPageProps {
   listings: Listing[]
@@ -160,7 +161,7 @@ export function SearchPage({ listings, savedIds, query, category, location, onQu
           </div>
 
           <span className="filter-section-heading">Khoảng giá (đ)</span>
-          <div className="price-inputs"><input aria-label="Giá từ" inputMode="numeric" placeholder="Từ" value={minPrice} onChange={(event) => setMinPrice(event.target.value)} /><span>—</span><input aria-label="Giá đến" inputMode="numeric" placeholder="Đến" value={maxPrice} onChange={(event) => setMaxPrice(event.target.value)} /></div>
+          <div className="price-inputs"><input aria-label="Giá từ" type="text" inputMode="numeric" placeholder="Từ" value={formatCurrencyAmount(minPrice)} onChange={(event) => handleCurrencyInputChange(event, setMinPrice)} /><span>—</span><input aria-label="Giá đến" type="text" inputMode="numeric" placeholder="Đến" value={formatCurrencyAmount(maxPrice)} onChange={(event) => handleCurrencyInputChange(event, setMaxPrice)} /></div>
           <button type="button" className="filter-apply" onClick={() => setMobileFiltersOpen(false)}><SlidersHorizontal size={15} /> Áp dụng bộ lọc</button>
         </aside>
         {mobileFiltersOpen && <button className="filter-backdrop" aria-label="Đóng bộ lọc" onClick={() => setMobileFiltersOpen(false)} />}

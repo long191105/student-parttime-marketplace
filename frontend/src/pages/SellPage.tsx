@@ -7,6 +7,7 @@ import { SellDropdown } from '../components/SellDropdown'
 import { getProvinceWards, type LocationOption } from '../services/AdministrativeLocationApi'
 import type { ListingFormDraft } from '../services/MarketplaceApi'
 import { uploadImagesToCloudinary } from '../services/CloudinaryUpload'
+import { formatCurrencyAmount, handleCurrencyInputChange, normalizeCurrencyAmount } from '../utils/CurrencyInput'
 import { formatImageUrl } from '../services/ImageUrl'
 
 interface SellPageProps {
@@ -84,7 +85,7 @@ export function SellPage({ restoreDraft, onCancel, onSubmit, onLoadDraft, onSave
       if (!active || !draft) return
       setTitle(draft.title ?? '')
       setCategory(draft.category ?? 'Điện tử')
-      setPrice((draft.price ?? '').replace(/\D/g, ''))
+      setPrice(normalizeCurrencyAmount(draft.price ?? ''))
       setCondition(draft.condition ?? 'USED')
       setDescription(draft.description ?? '')
       setLocation(draft.location ?? 'TP. Hồ Chí Minh')
@@ -166,15 +167,7 @@ export function SellPage({ restoreDraft, onCancel, onSubmit, onLoadDraft, onSave
   }
 
   function handlePriceChange(event: React.ChangeEvent<HTMLInputElement>) {
-    const input = event.currentTarget
-    const cursorPosition = input.selectionStart ?? input.value.length
-    const digitsBeforeCursor = input.value.slice(0, cursorPosition).replace(/\D/g, '').length
-    const nextPrice = input.value.replace(/\D/g, '')
-    setPrice(nextPrice)
-    window.requestAnimationFrame(() => {
-      const nextCursor = findCursorAfterDigits(formatCurrencyAmount(nextPrice), digitsBeforeCursor)
-      input.setSelectionRange(nextCursor, nextCursor)
-    })
+    handleCurrencyInputChange(event, setPrice)
   }
 
   async function handlePhotoChange(event: React.ChangeEvent<HTMLInputElement>) {
@@ -448,16 +441,3 @@ function isAbortError(error: unknown): boolean {
   return error instanceof DOMException && error.name === 'AbortError'
 }
 
-function formatCurrencyAmount(value: string): string {
-  return value.replace(/\B(?=(\d{3})+(?!\d))/g, '.')
-}
-
-function findCursorAfterDigits(value: string, digitCount: number): number {
-  if (digitCount === 0) return 0
-  let digitsFound = 0
-  for (let index = 0; index < value.length; index += 1) {
-    if (/\d/.test(value[index])) digitsFound += 1
-    if (digitsFound === digitCount) return index + 1
-  }
-  return value.length
-}
