@@ -93,6 +93,8 @@ export function App() {
   const [apiError, setApiError] = useState('')
   const [view, setView] = useState<AppView>(initialNavigationEntry?.view ?? 'home')
   const [sellReturnView, setSellReturnView] = useState<AppView>(initialNavigationEntry?.sellReturnView ?? 'home')
+  const [isEditingSavedDraft, setIsEditingSavedDraft] = useState(false)
+  const [sellFormInstance, setSellFormInstance] = useState(0)
   const [isAdminRoute, setIsAdminRoute] = useState(() => window.location.pathname.replace(/\/+$/, '') === '/admin')
   const [previousView, setPreviousView] = useState<AppView>(initialNavigationEntry?.previousView ?? 'home')
   const [selectedId, setSelectedId] = useState<string | null>(initialNavigationEntry?.selectedId ?? null)
@@ -400,10 +402,14 @@ export function App() {
   }
 
   function startNewListing() {
+    setIsEditingSavedDraft(false)
+    setSellFormInstance((current) => current + 1)
     navigate('sell', { sellReturnView: 'home' })
   }
 
   function editSavedDraft() {
+    setIsEditingSavedDraft(true)
+    setSellFormInstance((current) => current + 1)
     navigate('sell', { sellReturnView: 'my-listings' })
   }
 
@@ -748,6 +754,7 @@ export function App() {
       onQueryChange={setQuery}
       onLocationChange={setLocation}
       onNavigate={navigate}
+      onStartNewListing={startNewListing}
       onAdminNavigate={openAdminRoute}
       onSearch={submitSearch}
       onSignOut={signOut}
@@ -776,7 +783,7 @@ export function App() {
         return api.getSellerPhone(id)
       }} />}
       {view === 'detail' && !selectedListing && <div className="empty-state"><h3>Không tìm thấy tin đăng</h3><button className="button-primary" onClick={() => navigate('home')}>Về trang chủ</button></div>}
-      {view === 'sell' && <SellPage onCancel={() => goBack(sellReturnView)} onSubmit={createListing} onLoadDraft={loadListingDraft} onSaveDraft={saveListingDraft} sellerName={user?.fullName ?? 'Người bán'} />}
+      {view === 'sell' && <SellPage key={sellFormInstance} restoreDraft={isEditingSavedDraft} onCancel={() => goBack(sellReturnView)} onSubmit={createListing} onLoadDraft={loadListingDraft} onSaveDraft={saveListingDraft} sellerName={user?.fullName ?? 'Người bán'} />}
       {view === 'my-listings' && <MyListingsPage listings={listings} onStatusChange={changeStatus} onOpen={openListing} onSell={startNewListing} onEditDraft={editSavedDraft} sellerId={currentSellerId} onLoadDraft={loadListingDraft} onDeleteDraft={deleteListingDraft} onPublishDraft={publishSavedDraft} />}
       {view === 'favorites' && <FavoritesPage savedListings={activeFavoriteListings} onOpen={openListing} onToggleSaved={toggleSaved} />}
       {view === 'check-in' && <CheckInPage userId={user?.id ?? null} onBack={() => goBack('home')} />}

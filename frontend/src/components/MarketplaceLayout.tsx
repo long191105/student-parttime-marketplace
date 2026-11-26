@@ -15,6 +15,7 @@ interface MarketplaceLayoutProps {
   onQueryChange: (value: string) => void
   onLocationChange: (value: string) => void
   onNavigate: (view: AppView) => void
+  onStartNewListing: () => void
   onAdminNavigate: () => void
   onSearch: () => void
   onSignOut: () => void
@@ -30,7 +31,7 @@ interface MarketplaceLayoutProps {
 }
 
 export function MarketplaceLayout({
-  children, view, query, location, onQueryChange, onLocationChange, onNavigate, onAdminNavigate, onSearch, onSignOut, favoritesCount, unreadCount, notificationUnreadCount, notifications, onOpenNotification, onMarkAllNotificationsRead, user, authNotice, onDismissAuthNotice,
+  children, view, query, location, onQueryChange, onLocationChange, onNavigate, onStartNewListing, onAdminNavigate, onSearch, onSignOut, favoritesCount, unreadCount, notificationUnreadCount, notifications, onOpenNotification, onMarkAllNotificationsRead, user, authNotice, onDismissAuthNotice,
 }: MarketplaceLayoutProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [accountMenuOpen, setAccountMenuOpen] = useState(false)
@@ -281,7 +282,7 @@ export function MarketplaceLayout({
                       </div>
                       <div className="account-dropdown-actions">
                         <button type="button" onClick={() => navigate('profile')}>Hồ sơ cá nhân</button>
-                        <button type="button" onClick={() => navigate('sell')}><Plus size={15} /> Đăng tin</button>
+                        <button type="button" onClick={onStartNewListing}><Plus size={15} /> Đăng tin</button>
                       </div>
                       <div className="account-dropdown-links" role="menu" aria-label="Tiện ích tài khoản">
                         <button type="button" role="menuitem" onClick={() => navigate('favorites')}><Heart size={17} /><span>Tin đã lưu</span><small>{favoritesCount}</small></button>
@@ -302,7 +303,7 @@ export function MarketplaceLayout({
                 </section>
               )}
             </div>
-            <button className="sell-button" type="button" onClick={() => navigate('sell')}><Plus size={18} /> Đăng tin miễn phí</button>
+            <button className="sell-button" type="button" onClick={onStartNewListing}><Plus size={18} /> Đăng tin miễn phí</button>
             {authNotice && (
               <div className="toast-message auth-toast-message" role="status">
                 {authNotice}
@@ -346,7 +347,7 @@ export function MarketplaceLayout({
       <nav className="mobile-bottom-nav" aria-label="Điều hướng di động">
         <button className={view === 'home' || view === 'search' ? 'mobile-nav-active' : ''} onClick={() => navigate('home')}><Search size={19} /><span>Khám phá</span></button>
         <button className={view === 'favorites' ? 'mobile-nav-active' : ''} onClick={() => navigate('favorites')}><Heart size={19} /><span>Đã lưu</span></button>
-        <button className="mobile-create" onClick={() => navigate('sell')}><Plus size={21} /><span>Đăng tin</span></button>
+        <button className="mobile-create" onClick={onStartNewListing}><Plus size={21} /><span>Đăng tin</span></button>
         <button className={view === 'messages' ? 'mobile-nav-active' : ''} onClick={() => navigate('messages')}><MessageCircle size={19} /><span>Hộp thư</span></button>
         <button className={view === 'profile' ? 'mobile-nav-active' : ''} onClick={() => navigate('profile')}><UserRound size={19} /><span>Tôi</span></button>
       </nav>
