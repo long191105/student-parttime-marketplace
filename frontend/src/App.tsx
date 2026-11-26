@@ -582,7 +582,7 @@ export function App() {
           await api.setListingStatus(id, status)
         }
         await reloadFromApi()
-        const message = status === 'ACTIVE' ? 'Tin đăng đã được duyệt và hiển thị.' : status === 'REJECTED' ? 'Tin đăng đã bị từ chối.' : status === 'SOLD' ? 'Đã cập nhật tin đăng là đã bán.' : status === 'HIDDEN' ? 'Tin đăng đã được ẩn.' : 'Tin đăng đã được cập nhật.'
+        const message = status === 'ACTIVE' ? 'Tin đăng đã được duyệt và hiển thị.' : status === 'REJECTED' ? 'Tin đăng đã bị từ chối và xóa cùng các dữ liệu liên quan.' : status === 'SOLD' ? 'Đã cập nhật tin đăng là đã bán.' : status === 'HIDDEN' ? 'Tin đăng đã được ẩn.' : 'Tin đăng đã được cập nhật.'
         setNotice(message)
       } catch (error) {
         console.error('Không thể cập nhật trạng thái tin đăng.', error)
@@ -601,12 +601,12 @@ export function App() {
     }
   }
 
-  async function deleteHiddenListing(id: string): Promise<void> {
+  async function deleteListingFromMyListings(id: string): Promise<void> {
     if (apiState === 'connected') {
       if (!user) throw new Error('Vui lòng đăng nhập để xóa tin đăng.')
       await api.deleteListing(id)
     } else {
-      service.deleteHiddenListing(id)
+      service.deleteOwnListing(id)
     }
 
     setListings((current) => current.filter((listing) => listing.id !== id))
@@ -826,7 +826,7 @@ export function App() {
       }} />}
       {view === 'detail' && !selectedListing && <div className="empty-state"><h3>Không tìm thấy tin đăng</h3><button className="button-primary" onClick={() => navigate('home')}>Về trang chủ</button></div>}
       {view === 'sell' && <SellPage key={sellFormInstance} categories={categoryOptions} restoreDraft={isEditingSavedDraft} onCancel={() => goBack(sellReturnView)} onSubmit={createListing} onLoadDraft={loadListingDraft} onSaveDraft={saveListingDraft} sellerName={user?.fullName ?? 'Người bán'} />}
-      {view === 'my-listings' && <MyListingsPage listings={listings} onStatusChange={changeStatus} onDeleteListing={deleteHiddenListing} onOpen={openListing} onSell={startNewListing} onEditDraft={editSavedDraft} sellerId={currentSellerId} onLoadDraft={loadListingDraft} onDeleteDraft={deleteListingDraft} onPublishDraft={publishSavedDraft} />}
+      {view === 'my-listings' && <MyListingsPage listings={listings} onStatusChange={changeStatus} onDeleteListing={deleteListingFromMyListings} onOpen={openListing} onSell={startNewListing} onEditDraft={editSavedDraft} sellerId={currentSellerId} onLoadDraft={loadListingDraft} onDeleteDraft={deleteListingDraft} onPublishDraft={publishSavedDraft} />}
       {view === 'favorites' && <FavoritesPage savedListings={activeFavoriteListings} onOpen={openListing} onToggleSaved={toggleSaved} />}
       {view === 'check-in' && <CheckInPage userId={user?.id ?? null} onBack={() => goBack('home')} />}
       {user && apiState === 'connected' && <div className={view === 'messages' ? '' : 'inbox-background-listener'} aria-hidden={view !== 'messages'}>

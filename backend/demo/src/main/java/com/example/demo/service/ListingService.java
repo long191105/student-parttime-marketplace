@@ -21,12 +21,17 @@ import org.springframework.web.server.ResponseStatusException;
 import com.example.demo.dto.CreateListingRequest;
 import com.example.demo.dto.ListingResponse;
 import com.example.demo.dto.PhoneResponse;
+import com.example.demo.model.ChatConversation;
 import com.example.demo.model.Listing;
 import com.example.demo.model.ListingCondition;
 import com.example.demo.model.ListingStatus;
+import com.example.demo.model.UserNotificationType;
 import com.example.demo.model.UserAccount;
 import com.example.demo.repository.CategoryRepository;
+import com.example.demo.repository.ChatConversationRepository;
+import com.example.demo.repository.ListingReportRepository;
 import com.example.demo.repository.ListingRepository;
+import com.example.demo.repository.UserNotificationRepository;
 
 @Service
 public class ListingService {
@@ -35,6 +40,9 @@ public class ListingService {
 
     private final ListingRepository listingRepository;
     private final CategoryRepository categoryRepository;
+    private final ChatConversationRepository chatConversationRepository;
+    private final ListingReportRepository listingReportRepository;
+    private final UserNotificationRepository userNotificationRepository;
     private final CurrentUserService currentUserService;
     private final ListingDraftService listingDraftService;
     private final UserNotificationService notificationService;
@@ -42,11 +50,17 @@ public class ListingService {
     public ListingService(
             ListingRepository listingRepository,
             CategoryRepository categoryRepository,
+            ChatConversationRepository chatConversationRepository,
+            ListingReportRepository listingReportRepository,
+            UserNotificationRepository userNotificationRepository,
             CurrentUserService currentUserService,
             ListingDraftService listingDraftService,
             UserNotificationService notificationService) {
         this.listingRepository = listingRepository;
         this.categoryRepository = categoryRepository;
+        this.chatConversationRepository = chatConversationRepository;
+        this.listingReportRepository = listingReportRepository;
+        this.userNotificationRepository = userNotificationRepository;
         this.currentUserService = currentUserService;
         this.listingDraftService = listingDraftService;
         this.notificationService = notificationService;
@@ -229,12 +243,17 @@ public class ListingService {
     }
 
     @Transactional
-    public void deleteHiddenListing(Long id) {
+    public void deleteOwnListing(Long id) {
         UserAccount user = currentUserService.requireUser();
         Listing listing = listingRepository.findByIdAndSellerId(id, user.getId())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy tin đăng của bạn."));
+        if (listing.getStatus() == ListingStatus.REJECTED) {
+            deleteRejectedListingAndRelatedData(listing);
+            return;
+        }
         if (listing.getStatus() != ListingStatus.HIDDEN) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Chỉ tin đã ẩn mới có thể xóa.");
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT, "Chỉ tin đã ẩn hoặc bị từ chối mới có thể xóa.");
         }
         listing.markRemovedBySeller();
     }
@@ -255,7 +274,34 @@ public class ListingService {
         }
         listing.changeStatus(status, reason);
         notificationService.notifyListingStatus(listing.getSeller(), listing, status, reason);
-        return ListingResponse.from(listing);
+        ListingResponse response = ListingResponse.from(listing);
+        if (status == ListingStatus.REJECTED) {
+            deleteRejectedListingAndRelatedData(listing);
+        }
+        return response;
+    }
+
+    public void deleteRejectedListingAndRelatedData(Listing listing) {
+        if (listing.getStatus() != ListingStatus.REJECTED) {
+            throw new IllegalArgumentException("Only rejected listings can be permanently deleted.");
+        }
+        Long listingId = listing.getId();
+        List<ChatConversation> conversations = chatConversationRepository.findAllByListingId(listingId);
+        List<String> conversationIds = conversations.stream()
+                .map(ChatConversation::getId)
+                .map(String::valueOf)
+                .toList();
+
+        if (!conversationIds.isEmpty()) {
+            userNotificationRepository.deleteAllByTargetIdInAndType(
+                    conversationIds, UserNotificationType.NEW_MESSAGE);
+            chatConversationRepository.deleteAll(conversations);
+        }
+        userNotificationRepository.deleteAllByTargetIdAndTypeIn(
+                listingId.toString(),
+                List.of(UserNotificationType.LISTING_APPROVED, UserNotificationType.LISTING_REJECTED));
+        listingReportRepository.deleteAllByListingId(listingId);
+        listingRepository.delete(listing);
     }
 
     public Listing getListingForFavorite(Long id) {

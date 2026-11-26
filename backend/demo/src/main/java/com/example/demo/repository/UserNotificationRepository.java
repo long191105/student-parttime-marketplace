@@ -1,6 +1,7 @@
 package com.example.demo.repository;
 
 import java.time.Instant;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -10,10 +11,15 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import com.example.demo.model.UserNotification;
+import com.example.demo.model.UserNotificationType;
 
 public interface UserNotificationRepository extends JpaRepository<UserNotification, Long> {
 
     List<UserNotification> findTop100ByRecipientIdOrderByCreatedAtDesc(Long recipientId);
+
+    void deleteAllByTargetIdAndTypeIn(String targetId, Collection<UserNotificationType> types);
+
+    void deleteAllByTargetIdInAndType(Collection<String> targetIds, UserNotificationType type);
 
     long countByRecipientIdAndReadAtIsNull(Long recipientId);
 
