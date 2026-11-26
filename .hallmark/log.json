@@ -1,0 +1,31 @@
+[
+    {
+        "date":  "2026-11-26",
+        "mode":  "redesign",
+        "depth":  "full",
+        "scope":  "app",
+        "shape":  "two-pane messaging workspace",
+        "axes":  "viewport-height panel, independent conversation and message scrolling, anchored composer",
+        "hero":  "existing page title retained",
+        "nav":  "project shell retained",
+        "footer":  "project shell retained",
+        "imagery":  "existing listing thumbnail retained",
+        "photos":  [
+
+                   ],
+        "entry":  "messages",
+        "fingerprint":  "inbox-two-pane-viewport-thread",
+        "sections":  [
+                         "conversation list and search",
+                         "active conversation and listing context",
+                         "message thread",
+                         "composer"
+                     ],
+        "signature":  "conversation thread",
+        "waived":  [
+
+                   ],
+        "theme":  "ChoHoi brand",
+        "prompt":  "Redesign inbox layout to match the supplied screenshot while preserving all logic and handlers"
+    }
+]
