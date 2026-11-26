@@ -47,7 +47,7 @@ export function ListingDetailPreview({
     : [{ id: 'preview-placeholder', src: fallbackImage }]
   const activeImageIndex = Math.min(activeImage, gallery.length - 1)
   const sellerInitials = sellerName.split(/\s+/).filter(Boolean).slice(-2).map((part) => part[0]).join('').toUpperCase()
-  const conditionLabel = condition === 'NEW' ? 'Mới' : 'Đã sử dụng'
+  const conditionLabel = condition === 'NEW' ? 'Hàng mới' : 'Đã sử dụng'
 
   return (
     <div className="listing-detail-preview">
@@ -79,10 +79,6 @@ export function ListingDetailPreview({
             <div className="detail-divider" />
             <h3>Mô tả chi tiết</h3>
             <p className="detail-description">{description.trim() || 'Phần mô tả sản phẩm của bạn sẽ hiển thị ở đây.'}</p>
-            <h3>Thông tin sản phẩm</h3>
-            <div className="specs-grid">
-              <div><span>Thông tin</span><strong>{condition === 'NEW' ? 'Hàng mới' : 'Đã sử dụng'}</strong></div>
-            </div>
             <div className="detail-safe-note"><ShieldCheck size={18} /><span><strong>Giao dịch an toàn</strong> · Hẹn gặp nơi công cộng, kiểm tra kỹ món đồ trước khi thanh toán.</span></div>
           </div>
         </section>
