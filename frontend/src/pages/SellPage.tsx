@@ -10,6 +10,7 @@ import { uploadImagesToCloudinary } from '../services/CloudinaryUpload'
 import { formatImageUrl } from '../services/ImageUrl'
 
 interface SellPageProps {
+  restoreDraft: boolean
   onCancel: () => void
   onSubmit: (data: Omit<ListingData, 'id' | 'status' | 'views' | 'postedAt'> & { contactPhone: string }) => Promise<void> | void
   onLoadDraft: () => Promise<ListingFormDraft | null>
@@ -30,7 +31,7 @@ const sellSteps = [
   { id: 4, title: 'Kiểm tra & hoàn tất', description: 'Xem trước tin đăng' },
 ]
 
-export function SellPage({ onCancel, onSubmit, onLoadDraft, onSaveDraft, sellerName }: SellPageProps) {
+export function SellPage({ restoreDraft, onCancel, onSubmit, onLoadDraft, onSaveDraft, sellerName }: SellPageProps) {
   const [title, setTitle] = useState('')
   const [category, setCategory] = useState('Điện tử')
   const [price, setPrice] = useState('')
@@ -52,7 +53,7 @@ export function SellPage({ onCancel, onSubmit, onLoadDraft, onSaveDraft, sellerN
   const [isProcessingPhotos, setIsProcessingPhotos] = useState(false)
   const [errorMessage, setErrorMessage] = useState('')
   const [activeStep, setActiveStep] = useState(1)
-  const [isLoadingDraft, setIsLoadingDraft] = useState(true)
+  const [isLoadingDraft, setIsLoadingDraft] = useState(restoreDraft)
   const [draftLoadAttempt, setDraftLoadAttempt] = useState(0)
   const [draftLoadError, setDraftLoadError] = useState('')
   const [draftRestored, setDraftRestored] = useState(false)
@@ -76,6 +77,8 @@ export function SellPage({ onCancel, onSubmit, onLoadDraft, onSaveDraft, sellerN
         : `${new Intl.NumberFormat('vi-VN').format(parsedPreviewPrice)} đ`
 
   useEffect(() => {
+    if (!restoreDraft) return
+
     let active = true
     void onLoadDraft().then((draft) => {
       if (!active || !draft) return
@@ -109,7 +112,7 @@ export function SellPage({ onCancel, onSubmit, onLoadDraft, onSaveDraft, sellerN
     return () => {
       active = false
     }
-  }, [onLoadDraft, draftLoadAttempt])
+  }, [onLoadDraft, draftLoadAttempt, restoreDraft])
 
   useEffect(() => {
     if (isLoadingDraft) return
