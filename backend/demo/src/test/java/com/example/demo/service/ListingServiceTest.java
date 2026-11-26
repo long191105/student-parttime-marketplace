@@ -27,13 +27,18 @@ import org.springframework.web.server.ResponseStatusException;
 import com.example.demo.dto.CreateListingRequest;
 import com.example.demo.dto.ListingResponse;
 import com.example.demo.dto.PhoneResponse;
+import com.example.demo.model.ChatConversation;
 import com.example.demo.model.Listing;
 import com.example.demo.model.ListingCondition;
 import com.example.demo.model.ListingStatus;
 import com.example.demo.model.UserAccount;
+import com.example.demo.model.UserNotificationType;
 import com.example.demo.model.UserRole;
 import com.example.demo.repository.CategoryRepository;
+import com.example.demo.repository.ChatConversationRepository;
+import com.example.demo.repository.ListingReportRepository;
 import com.example.demo.repository.ListingRepository;
+import com.example.demo.repository.UserNotificationRepository;
 
 @ExtendWith(MockitoExtension.class)
 class ListingServiceTest {
@@ -43,6 +48,15 @@ class ListingServiceTest {
 
     @Mock
     private CategoryRepository categoryRepository;
+
+    @Mock
+    private ChatConversationRepository chatConversationRepository;
+
+    @Mock
+    private ListingReportRepository listingReportRepository;
+
+    @Mock
+    private UserNotificationRepository userNotificationRepository;
 
     @Mock
     private CurrentUserService currentUserService;
@@ -62,6 +76,9 @@ class ListingServiceTest {
         listingService = new ListingService(
                 listingRepository,
                 categoryRepository,
+                chatConversationRepository,
+                listingReportRepository,
+                userNotificationRepository,
                 currentUserService,
                 listingDraftService,
                 notificationService);
@@ -103,7 +120,7 @@ class ListingServiceTest {
         when(currentUserService.requireUser()).thenReturn(seller);
         when(listingRepository.findByIdAndSellerId(41L, 7L)).thenReturn(java.util.Optional.of(pendingListing));
 
-        listingService.deleteHiddenListing(41L);
+        listingService.deleteOwnListing(41L);
 
         assertEquals(ListingStatus.HIDDEN, pendingListing.getStatus());
         assertTrue(pendingListing.isSellerRemoved());
@@ -118,7 +135,7 @@ class ListingServiceTest {
 
         ResponseStatusException exception = assertThrows(
                 ResponseStatusException.class,
-                () -> listingService.deleteHiddenListing(41L));
+                () -> listingService.deleteOwnListing(41L));
 
         assertEquals(HttpStatus.CONFLICT, exception.getStatusCode());
         assertEquals(ListingStatus.ACTIVE, pendingListing.getStatus());
@@ -130,11 +147,23 @@ class ListingServiceTest {
         when(currentUserService.requireUser()).thenReturn(seller);
         when(listingRepository.findByIdAndSellerId(41L, 7L)).thenReturn(java.util.Optional.of(pendingListing));
 
-        listingService.deleteHiddenListing(41L);
+        listingService.deleteOwnListing(41L);
 
         assertEquals(ListingStatus.HIDDEN, pendingListing.getStatus());
         assertTrue(pendingListing.isSellerRemoved());
         verify(listingRepository, org.mockito.Mockito.never()).delete(pendingListing);
+    }
+
+    @Test
+    void memberCanPermanentlyDeleteOwnRejectedListing() {
+        pendingListing.changeStatus(ListingStatus.REJECTED, "Tin không phù hợp.");
+        when(currentUserService.requireUser()).thenReturn(seller);
+        when(listingRepository.findByIdAndSellerId(41L, 7L)).thenReturn(java.util.Optional.of(pendingListing));
+
+        listingService.deleteOwnListing(41L);
+
+        verify(listingRepository).delete(pendingListing);
+        verify(listingReportRepository).deleteAllByListingId(41L);
     }
 
     @Test
@@ -177,6 +206,7 @@ class ListingServiceTest {
         listingService.moderate(41L, ListingStatus.ACTIVE, null);
 
         verify(notificationService).notifyListingStatus(seller, pendingListing, ListingStatus.ACTIVE, null);
+        verify(listingRepository, org.mockito.Mockito.never()).delete(any(Listing.class));
     }
 
     @Test
@@ -190,6 +220,39 @@ class ListingServiceTest {
                 pendingListing,
                 ListingStatus.REJECTED,
                 "Thiếu hình ảnh rõ nét.");
+        verify(listingRepository).delete(pendingListing);
+        verify(listingReportRepository).deleteAllByListingId(41L);
+        verify(userNotificationRepository).deleteAllByTargetIdAndTypeIn(
+                "41",
+                List.of(UserNotificationType.LISTING_APPROVED, UserNotificationType.LISTING_REJECTED));
+    }
+
+    @Test
+    void rejectingListingAlsoDeletesConversationNotificationsAndConversations() {
+        UserAccount buyer = new UserAccount("Buyer", "buyer@example.com", "hashed", null, UserRole.MEMBER);
+        ReflectionTestUtils.setField(buyer, "id", 8L);
+        ChatConversation conversation = new ChatConversation(pendingListing, buyer, seller);
+        ReflectionTestUtils.setField(conversation, "id", 52L);
+        when(listingRepository.findById(41L)).thenReturn(java.util.Optional.of(pendingListing));
+        when(chatConversationRepository.findAllByListingId(41L)).thenReturn(List.of(conversation));
+
+        listingService.moderate(41L, ListingStatus.REJECTED, "Tin không phù hợp.");
+
+        verify(userNotificationRepository).deleteAllByTargetIdInAndType(
+                List.of("52"), UserNotificationType.NEW_MESSAGE);
+        verify(chatConversationRepository).deleteAll(List.of(conversation));
+        verify(listingRepository).delete(pendingListing);
+    }
+
+    @Test
+    void rejectedListingCleanupCannotBeUsedForAnotherStatus() {
+        pendingListing.changeStatus(ListingStatus.ACTIVE, null);
+
+        assertThrows(IllegalArgumentException.class,
+                () -> listingService.deleteRejectedListingAndRelatedData(pendingListing));
+
+        verifyNoInteractions(chatConversationRepository, listingReportRepository, userNotificationRepository);
+        verify(listingRepository, org.mockito.Mockito.never()).delete(any(Listing.class));
     }
 
     @Test

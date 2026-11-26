@@ -43,6 +43,9 @@ class ListingReportServiceTest {
     private CurrentUserService currentUserService;
 
     @Mock
+    private ListingService listingService;
+
+    @Mock
     private Listing listing;
 
     @Mock
@@ -55,7 +58,7 @@ class ListingReportServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new ListingReportService(reportRepository, listingRepository, currentUserService);
+        service = new ListingReportService(reportRepository, listingRepository, currentUserService, listingService);
         lenient().when(currentUserService.requireUser()).thenReturn(reporter);
         lenient().when(reporter.getId()).thenReturn(7L);
         lenient().when(reporter.getFullName()).thenReturn("Reporter");
@@ -101,6 +104,7 @@ class ListingReportServiceTest {
 
         assertEquals(ListingReportStatus.RESOLVED.name(), response.status());
         verify(listing).changeStatus(ListingStatus.REJECTED, "Tin đã bị gỡ sau khi xử lý báo cáo vi phạm.");
+        verify(listingService).deleteRejectedListingAndRelatedData(listing);
     }
 
     @Test

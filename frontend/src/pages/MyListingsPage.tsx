@@ -92,14 +92,18 @@ export function MyListingsPage({ listings, onStatusChange, onDeleteListing, onOp
     }
   }
 
-  async function deleteHiddenListing(listing: Listing) {
-    if (!await showConfirm(`Gỡ tin “${listing.title}” khỏi danh sách của bạn? Tin sẽ không còn hiển thị trong giao diện. Lịch sử trò chuyện và thông tin sản phẩm vẫn được lưu.`, 'Gỡ tin khỏi danh sách', 'Gỡ tin')) return
+  async function deleteListing(listing: Listing) {
+    const isRejected = listing.status === 'REJECTED'
+    const message = isRejected
+      ? `Xóa vĩnh viễn tin “${listing.title}” cùng tất cả dữ liệu liên quan? Bạn không thể hoàn tác thao tác này.`
+      : `Gỡ tin “${listing.title}” khỏi danh sách của bạn? Tin sẽ không còn hiển thị trong giao diện. Lịch sử trò chuyện và thông tin sản phẩm vẫn được lưu.`
+    if (!await showConfirm(message, isRejected ? 'Xóa tin bị từ chối' : 'Gỡ tin khỏi danh sách', isRejected ? 'Xóa vĩnh viễn' : 'Gỡ tin')) return
     setDeletingListingId(listing.id)
     setListingActionError('')
     try {
       await onDeleteListing(listing.id)
     } catch (error) {
-      console.error('Không thể xóa tin đã ẩn.', error)
+      console.error('Không thể xóa tin đăng.', error)
       setListingActionError(error instanceof Error ? error.message : 'Không thể xóa tin đăng. Vui lòng thử lại.')
     } finally {
       setDeletingListingId(null)
@@ -148,15 +152,16 @@ export function MyListingsPage({ listings, onStatusChange, onDeleteListing, onOp
         {visibleListings.map((listing) => <article className="my-listing-row" key={listing.id}>
           <button className="my-listing-image" onClick={() => onOpen(listing)}><img src={formatImageUrl(listing.image, 400)} alt={listing.title} /></button>
           <div className="my-listing-content"><span className={`status-pill status-${listing.status.toLowerCase()}`}><i />{statusNames[listing.status]}</span><button className="my-listing-title" onClick={() => onOpen(listing)}>{listing.title}</button><strong>{listing.priceLabel}</strong><span className="my-listing-date">{listing.postedAt} <span>·</span> <Eye size={14} /> {listing.views} lượt xem</span>{listing.status === 'REJECTED' && <span className="reject-reason"><ShieldAlert size={14} /> {listing.reviewReason ?? 'Tin đăng chưa đạt tiêu chuẩn, vui lòng chỉnh sửa và gửi lại.'}</span>}</div>
-          {(listing.status === 'ACTIVE' || listing.status === 'HIDDEN' || listing.status === 'PENDING') && <div className="my-listing-actions">
+          {(listing.status === 'ACTIVE' || listing.status === 'HIDDEN' || listing.status === 'PENDING' || listing.status === 'REJECTED') && <div className="my-listing-actions">
             {listing.status === 'ACTIVE' && <>
               <button className="row-action" onClick={() => onStatusChange(listing.id, 'HIDDEN')}>Ẩn tin</button>
             </>}
             {listing.status === 'HIDDEN' && <>
               <button className="row-action" disabled={deletingListingId === listing.id} onClick={() => onStatusChange(listing.id, 'ACTIVE')}>Hiển thị lại</button>
-              <button className="row-action" disabled={deletingListingId === listing.id} onClick={() => void deleteHiddenListing(listing)}><Trash2 size={12} />{deletingListingId === listing.id ? 'Đang gỡ...' : 'Xóa tin'}</button>
             </>}
             {listing.status === 'PENDING' && <span className="muted-status">Đang được kiểm duyệt</span>}
+            {listing.status === 'REJECTED' && <button className="row-action" disabled={deletingListingId === listing.id} onClick={() => void deleteListing(listing)}><Trash2 size={12} />{deletingListingId === listing.id ? 'Đang xóa...' : 'Xóa tin'}</button>}
+            {listing.status === 'HIDDEN' && <button className="row-action" disabled={deletingListingId === listing.id} onClick={() => void deleteListing(listing)}><Trash2 size={12} />{deletingListingId === listing.id ? 'Đang gỡ...' : 'Xóa tin'}</button>}
           </div>}
         </article>)}
         {!visibleListings.length && <div className="empty-state"><span>♡</span><h3>Chưa có tin trong mục này</h3><p>Đăng món đồ đầu tiên để bắt đầu nhé.</p><button className="button-primary" onClick={onSell}>Đăng tin ngay</button></div>}

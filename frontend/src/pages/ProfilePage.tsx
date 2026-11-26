@@ -1,21 +1,41 @@
 import { useEffect, useState } from 'react'
-import { BadgeCheck, CalendarDays, MapPin, ShieldCheck, Star } from 'lucide-react'
+import { BadgeCheck, CalendarDays, MapPin, ShieldCheck, Star, Users } from 'lucide-react'
 import type { Listing } from '../domain/Listing'
 import { ListingCard } from '../components/ListingCard'
-import type { ChatReview, MarketplaceApi } from '../services/MarketplaceApi'
+import type { ChatReview, MarketplaceApi, UserProfile } from '../services/MarketplaceApi'
 
 interface ProfilePageProps {
   listings: Listing[]
   onOpen: (listing: Listing) => void
   onToggleSaved: (id: string) => void
-  onAuth: () => void
+  onRequireAuth: () => void
+  onSignOut: () => void
   fullName: string
   sellerId: string
+  currentUserId: string | null
   api: MarketplaceApi
 }
 
-export function ProfilePage({ listings, onOpen, onToggleSaved, onAuth, fullName, sellerId, api }: ProfilePageProps) {
+export function ProfilePage({ listings, onOpen, onToggleSaved, onRequireAuth, onSignOut, fullName, sellerId, currentUserId, api }: ProfilePageProps) {
+  const [profileState, setProfileState] = useState<{ userId: string; profile: UserProfile | null; error: string }>({ userId: '', profile: null, error: '' })
+  const [followError, setFollowError] = useState('')
+  const [isUpdatingFollow, setIsUpdatingFollow] = useState(false)
   const [reviewState, setReviewState] = useState<{ userId: string; reviews: ChatReview[]; error: string }>({ userId: '', reviews: [], error: '' })
+
+  useEffect(() => {
+    let active = true
+    void api.getUserProfile(sellerId).then((profile) => {
+      if (active) setProfileState({ userId: sellerId, profile, error: '' })
+    }).catch((error: unknown) => {
+      if (active) setProfileState({
+        userId: sellerId,
+        profile: null,
+        error: error instanceof Error ? error.message : 'Không thể tải hồ sơ người dùng.',
+      })
+    })
+    return () => { active = false }
+  }, [api, sellerId])
+
   useEffect(() => {
     let active = true
     async function refreshReviews() {
@@ -34,17 +54,43 @@ export function ProfilePage({ listings, onOpen, onToggleSaved, onAuth, fullName,
     }
   }, [api, sellerId])
 
-  const initials = fullName.split(/\s+/).slice(-2).map((part) => part[0]).join('').toLocaleUpperCase('vi')
+  const profile = profileState.userId === sellerId ? profileState.profile : null
+  const profileName = profile?.fullName ?? (fullName || 'Hồ sơ người dùng')
+  const isOwnProfile = profile?.currentUser ?? currentUserId === sellerId
+  const isFollowing = profile?.following ?? false
+  const initials = profileName.split(/\s+/).slice(-2).map((part) => part[0]).join('').toLocaleUpperCase('vi')
   const myListings = listings.filter((item) => item.sellerId === sellerId && item.status === 'ACTIVE')
   const reviews = reviewState.userId === sellerId ? reviewState.reviews : []
   const averageRating = reviews.length ? reviews.reduce((total, review) => total + review.rating, 0) / reviews.length : 0
 
+  async function toggleFollow() {
+    if (!currentUserId) {
+      onRequireAuth()
+      return
+    }
+    if (isOwnProfile || !profile || isUpdatingFollow) return
+    setIsUpdatingFollow(true)
+    setFollowError('')
+    try {
+      const updatedProfile = isFollowing
+        ? await api.unfollowUser(sellerId)
+        : await api.followUser(sellerId)
+      setProfileState({ userId: sellerId, profile: updatedProfile, error: '' })
+    } catch (error) {
+      setFollowError(error instanceof Error ? error.message : 'Không thể cập nhật theo dõi. Vui lòng thử lại.')
+    } finally {
+      setIsUpdatingFollow(false)
+    }
+  }
+
   return (
     <div className="seller-profile-page">
       <div className="breadcrumbs"><span>Trang chủ</span><span>/</span><strong>Hồ sơ người bán</strong></div>
-      <section className="seller-profile-hero"><div className="seller-profile-avatar">{initials}<span><BadgeCheck size={18} fill="currentColor" /></span></div><div className="seller-profile-copy"><span className="section-eyebrow">HỒ SƠ NGƯỜI BÁN</span><h1>{fullName} <BadgeCheck size={20} /></h1><div className="profile-rating"><Star size={16} fill="currentColor" /><strong>{reviews.length ? averageRating.toFixed(1) : '—'}</strong><span>{reviews.length} đánh giá công khai</span><i /><span>Thành viên Chợ Hời</span></div><p><MapPin size={15} /> Quận 3, TP. Hồ Chí Minh</p></div><div className="profile-actions"><button className="profile-follow-button"><span>+</span> Theo dõi</button><button className="profile-signout-button" onClick={onAuth}>Đăng xuất</button></div></section>
-      <div className="profile-trust-row"><span><ShieldCheck size={19} /><strong>Email đã xác thực</strong></span><span><BadgeCheck size={19} /><strong>{reviews.length} đánh giá công khai</strong></span><span><CalendarDays size={19} /><strong>Phản hồi trong ngày</strong></span></div>
-      <section className="profile-listings"><div className="section-title-row"><div><span className="section-eyebrow">ĐANG TÌM CHỦ MỚI</span><h2>Tin đăng của {fullName} <small>{myListings.length}</small></h2></div></div><div className="listing-grid">{myListings.map((listing) => <ListingCard key={listing.id} listing={listing} saved={false} onOpen={onOpen} onToggleSaved={onToggleSaved} />)}</div></section>
+      <section className="seller-profile-hero"><div className="seller-profile-avatar">{initials}<span><BadgeCheck size={18} fill="currentColor" /></span></div><div className="seller-profile-copy"><span className="section-eyebrow">HỒ SƠ NGƯỜI BÁN</span><h1>{profileName} <BadgeCheck size={20} /></h1><div className="profile-rating"><Star size={16} fill="currentColor" /><strong>{reviews.length ? averageRating.toFixed(1) : '—'}</strong><span>{reviews.length} đánh giá công khai</span><i /><span>Thành viên Chợ Hời</span></div><p><MapPin size={15} /> Quận 3, TP. Hồ Chí Minh</p></div><div className="profile-actions">{isOwnProfile ? <button className="profile-signout-button" onClick={onSignOut}>Đăng xuất</button> : <button className="profile-follow-button" type="button" aria-pressed={isFollowing} disabled={isUpdatingFollow || !profile} onClick={() => void toggleFollow()}><span>{isFollowing ? '✓' : '+'}</span>{isUpdatingFollow ? 'Đang cập nhật...' : isFollowing ? 'Đang theo dõi' : 'Theo dõi'}</button>}</div></section>
+      {profileState.userId === sellerId && profileState.error && <p className="profile-review-error" role="alert">{profileState.error}</p>}
+      {followError && <p className="profile-review-error" role="alert">{followError}</p>}
+      <div className="profile-trust-row"><span><ShieldCheck size={19} /><strong>Email đã xác thực</strong></span><span><BadgeCheck size={19} /><strong>{reviews.length} đánh giá công khai</strong></span><span><Users size={19} /><strong>{profile ? `${profile.followerCount.toLocaleString('vi-VN')} người theo dõi` : 'Đang tải người theo dõi...'}</strong></span><span><CalendarDays size={19} /><strong>Phản hồi trong ngày</strong></span></div>
+      <section className="profile-listings"><div className="section-title-row"><div><span className="section-eyebrow">ĐANG TÌM CHỦ MỚI</span><h2>Tin đăng của {profileName} <small>{myListings.length}</small></h2></div></div><div className="listing-grid">{myListings.map((listing) => <ListingCard key={listing.id} listing={listing} saved={false} onOpen={onOpen} onToggleSaved={onToggleSaved} />)}</div></section>
       <section className="reviews-section"><div className="section-title-row"><div><span className="section-eyebrow">CỘNG ĐỒNG NÓI GÌ</span><h2>Đánh giá gần đây</h2></div><span className="review-summary"><Star size={16} fill="currentColor" /> {reviews.length ? `${averageRating.toFixed(1)} / 5` : 'Chưa có đánh giá'}</span></div>
         {reviewState.userId === sellerId && reviewState.error && <p className="profile-review-error" role="alert">{reviewState.error}</p>}
         {reviewState.userId !== sellerId && <p className="profile-review-empty">Đang tải đánh giá...</p>}

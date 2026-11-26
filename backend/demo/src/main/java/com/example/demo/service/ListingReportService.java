@@ -26,14 +26,17 @@ public class ListingReportService {
     private final ListingReportRepository reportRepository;
     private final ListingRepository listingRepository;
     private final CurrentUserService currentUserService;
+    private final ListingService listingService;
 
     public ListingReportService(
             ListingReportRepository reportRepository,
             ListingRepository listingRepository,
-            CurrentUserService currentUserService) {
+            CurrentUserService currentUserService,
+            ListingService listingService) {
         this.reportRepository = reportRepository;
         this.listingRepository = listingRepository;
         this.currentUserService = currentUserService;
+        this.listingService = listingService;
     }
 
     @Transactional
@@ -85,7 +88,11 @@ public class ListingReportService {
                 report.setStatus(ListingReportStatus.RESOLVED);
             }
         }
-        return AdminReportResponse.from(reportRepository.save(report));
+        AdminReportResponse response = AdminReportResponse.from(reportRepository.save(report));
+        if (action == AdminReportAction.REMOVE_LISTING) {
+            listingService.deleteRejectedListingAndRelatedData(listing);
+        }
+        return response;
     }
 
     @Transactional(readOnly = true)

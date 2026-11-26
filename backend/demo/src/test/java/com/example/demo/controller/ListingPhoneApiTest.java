@@ -26,7 +26,10 @@ import com.example.demo.model.ListingStatus;
 import com.example.demo.model.UserAccount;
 import com.example.demo.model.UserRole;
 import com.example.demo.repository.CategoryRepository;
+import com.example.demo.repository.ChatConversationRepository;
+import com.example.demo.repository.ListingReportRepository;
 import com.example.demo.repository.ListingRepository;
+import com.example.demo.repository.UserNotificationRepository;
 import com.example.demo.service.CurrentUserService;
 import com.example.demo.service.ListingDraftService;
 import com.example.demo.service.ListingService;
@@ -67,6 +70,9 @@ class ListingPhoneApiTest {
         ListingService listingService = new ListingService(
                 listingRepository,
                 mock(CategoryRepository.class),
+                mock(ChatConversationRepository.class),
+                mock(ListingReportRepository.class),
+                mock(UserNotificationRepository.class),
                 currentUserService,
                 mock(ListingDraftService.class),
                 mock(UserNotificationService.class));

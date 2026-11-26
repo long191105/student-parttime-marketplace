@@ -11,5 +11,7 @@ public interface ChatConversationRepository extends JpaRepository<ChatConversati
 
     List<ChatConversation> findByBuyerIdOrSellerIdOrderByUpdatedAtDesc(Long buyerId, Long sellerId);
 
+    List<ChatConversation> findAllByListingId(Long listingId);
+
     Optional<ChatConversation> findByListingIdAndBuyerId(Long listingId, Long buyerId);
 }

@@ -101,8 +101,8 @@ public class ListingController {
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteHiddenListing(@PathVariable String id) {
-        listingService.deleteHiddenListing(parseId(id));
+    public ResponseEntity<Void> deleteOwnListing(@PathVariable String id) {
+        listingService.deleteOwnListing(parseId(id));
         return ResponseEntity.noContent().build();
     }
 

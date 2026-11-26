@@ -11,6 +11,7 @@ interface InboxPageProps {
   initialConversationId: string | null
   isVisible: boolean
   onOpenListing: (listingId: string) => void
+  onOpenProfile: (userId: string) => void
   onListingSold: (listingId: string) => void
   onUnreadCountChange: (count: number) => void
 }
@@ -23,7 +24,7 @@ type CallState =
 type ActiveCallState = Exclude<CallState, { status: 'idle' }>
 type CallSignalEvent = Extract<ChatSocketEvent, { type: `call-${string}` }>
 
-export function InboxPage({ api, user, initialConversationId, isVisible, onOpenListing, onListingSold, onUnreadCountChange }: InboxPageProps) {
+export function InboxPage({ api, user, initialConversationId, isVisible, onOpenListing, onOpenProfile, onListingSold, onUnreadCountChange }: InboxPageProps) {
   const [conversations, setConversations] = useState<ChatConversation[]>([])
   const [activeId, setActiveId] = useState(initialConversationId ?? '')
   const [messagesByConversation, setMessagesByConversation] = useState<Record<string, ChatMessage[]>>({})
@@ -1015,8 +1016,10 @@ export function InboxPage({ api, user, initialConversationId, isVisible, onOpenL
             <>
               <header className="chat-header">
                 <button className="chat-back" aria-label="Đóng cuộc trò chuyện" onClick={() => setActiveId('')}><ArrowLeft size={18} /></button>
-                <span className="avatar avatar-tone-green">{activeChat.participantInitials}</span>
-                <span className="chat-person"><strong>{activeChat.participantName}</strong><small className={activePresence?.online ? 'chat-presence-online' : 'chat-presence-offline'}>{presenceLabel}</small></span>
+                <button className="chat-profile-link" type="button" onClick={() => onOpenProfile(activeChat.participantId)} aria-label={`Xem hồ sơ ${activeChat.participantName}`}>
+                  <span className="avatar avatar-tone-green">{activeChat.participantInitials}</span>
+                  <span className="chat-person"><strong>{activeChat.participantName}</strong><small className={activePresence?.online ? 'chat-presence-online' : 'chat-presence-offline'}>{presenceLabel}</small></span>
+                </button>
                 <div className="chat-header-actions">
                   <button type="button" aria-label="Gọi thoại" title="Gọi thoại" onClick={() => startCallSafely('audio')} disabled={connection !== 'connected' || callState.status !== 'idle'}>
                     <Phone size={17} />

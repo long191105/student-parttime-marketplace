@@ -859,6 +859,8 @@ img { display: block; max-width: 100%; }
 .chat-header { display: flex; height: 56px; align-items: center; gap: 9px; padding: 0 15px; border-bottom: 1px solid #f0f0ea; }
 .chat-back { display: none; border: 0; background: none; }
 .chat-header .avatar { width: 32px; height: 32px; }
+.chat-profile-link { display: flex; min-width: 0; align-items: center; gap: 9px; padding: 0; border: 0; background: transparent; text-align: left; cursor: pointer; }
+.chat-profile-link:hover .chat-person strong { text-decoration: underline; }
 .chat-person { display: grid; gap: 3px; }
 .chat-person strong { color: #475245; font-size: 12px; }
 .chat-person small { display: flex; align-items: center; gap: 5px; color: #879185; font-size: 11px; }
