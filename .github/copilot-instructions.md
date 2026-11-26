@@ -15,3 +15,9 @@ source files when (a) modifying/debugging specific code, (b) the graph lacks the
 (c) the graph is missing or stale.
 
 Type `/graphify` in Copilot Chat to build or update the graph.
+
+## Responsive UI
+
+- Treat every user-facing UI change as a desktop-and-mobile change; update the responsive layout and interactions in the same task.
+- Verify the affected view at representative phone widths (at least 360px and 390px) and desktop width. Check for horizontal overflow, clipped content, touch-target usability, and fixed navigation covering content.
+- Preserve intentional horizontal carousels, but make their mobile affordances and visible card edges clear.

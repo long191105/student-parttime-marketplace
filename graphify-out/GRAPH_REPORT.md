@@ -1,17 +1,17 @@
-# Graph Report - student-parttime-marketplace  (2026-11-26)
+# Graph Report - student-parttime-marketplace  (2026-11-27)
 
 ## Corpus Check
-- 171 files · ~251,547 words
+- 188 files · ~255,010 words
 - Verdict: corpus is large enough that graph structure adds value.
-- Unclassified: 31 file(s) not represented in the graph (top: .woff2 10, (none) 8, .drawio 4)
+- Unclassified: 33 file(s) not represented in the graph (top: .woff2 10, (none) 9, .css 4)
 
 ## Summary
-- 1833 nodes · 5086 edges · 75 communities (53 shown, 22 thin omitted)
-- Extraction: 87% EXTRACTED · 13% INFERRED · 0% AMBIGUOUS · INFERRED: 636 edges (avg confidence: 0.85)
+- 1968 nodes · 5501 edges · 92 communities (55 shown, 37 thin omitted)
+- Extraction: 87% EXTRACTED · 13% INFERRED · 0% AMBIGUOUS · INFERRED: 723 edges (avg confidence: 0.85)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `ebef5e57`
+- Built from commit: `4c370530`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -26,22 +26,22 @@
 - ChatService.java
 - CategoryService
 - package.json
-- ListingRepository
-- lucide-react
+- ListingReportRepository
+- SellPage.tsx
 - Favorite
 - Listing
 - ListingController.java
 - Listing
 - org.junit.jupiter.api.Test
 - ListingReport
-- UserNotificationService
+- ListingRepository
 - org.springframework.web.bind.annotation.GetMapping
 - SecurityConfig.java
 - ChatService
-- CallIceServerService
+- ChatService
 - ChatWebSocketHandler
 - CheckInPage.tsx
-- MarketplaceLayout.tsx
+- com.example.demo.model.UserAccount
 - compilerOptions
 - AdminController.java
 - SellDropdown
@@ -50,10 +50,11 @@
 - ListingPhoneApiTest.java
 - compilerOptions
 - sloplint.mjs
+- ListingDraftRequest.java
 - refcheck.mjs
 - ChatWebSocketConfig.java
 - DemoApplication.java
-- SellPage.tsx
+- uploadImagesToCloudinary
 - tsconfig.json
 - com.example:demo
 - theme.mjs
@@ -69,155 +70,158 @@
 - JwtService
 - UserAccountRepository
 - install.mjs
-- ListingService.java
 - AuthService.java
 - clsLits
 - twGroup
 - picture.mjs
 - org.springframework.http.ResponseEntity
 - imagegen.mjs
-- OtpEmailService
 - checkTailwind
-- .register
-- AuthService
+- .requireUser
+- react
 - install-hook.mjs
+- org.springframework.transaction.annotation.Transactional
 - interface
 - tailwind-fail/Hero.tsx
-- Category
+- org.springframework.stereotype.Service
 - Feature.vue
+- org.springframework.transaction.annotation.Transactional
+- BrevoEmailService
+- UserNotificationService
+- .from
+- UserAccountRepository
+- org.slf4j.Logger
+- SecurityConfigTest.java
+- .currentUser
+- ProfilePage.tsx
+- HealthController
+- FavoriteController
+- ListingReportServiceTest
 
 ## God Nodes (most connected - your core abstractions)
-1. `UserAccount` - 105 edges
-2. `report()` - 90 edges
-3. `Listing` - 68 edges
-4. `App()` - 63 edges
-5. `MarketplaceApi` - 48 edges
-6. `ChatService` - 45 edges
-7. `trunc()` - 44 edges
-8. `InboxPage()` - 43 edges
-9. `resolveVars()` - 42 edges
-10. `ChatServiceTest` - 41 edges
+1. `report()` - 90 edges
+2. `UserAccount` - 90 edges
+3. `Listing` - 75 edges
+4. `App()` - 67 edges
+5. `MarketplaceApi` - 53 edges
+6. `ListingService` - 47 edges
+7. `ChatService` - 45 edges
+8. `trunc()` - 44 edges
+9. `ListingStatus` - 44 edges
+10. `InboxPage()` - 43 edges
 
 ## Surprising Connections (you probably didn't know these)
 - `handleSaveDraft()` --indirect_call--> `photos()`  [INFERRED]
   frontend/src/pages/SellPage.tsx → .agents/skills/hallmark/scripts/theme.mjs
-- `ExplorePageProps` --references--> `Listing`  [EXTRACTED]
-  frontend/src/pages/ExplorePage.tsx → frontend/src/domain/Listing.ts
-- `SearchPageProps` --references--> `Listing`  [EXTRACTED]
-  frontend/src/pages/SearchPage.tsx → frontend/src/domain/Listing.ts
-- `handlePhotoChange()` --calls--> `uploadImagesToCloudinary()`  [EXTRACTED]
-  frontend/src/pages/SellPage.tsx → frontend/src/services/CloudinaryUpload.ts
-- `ChatWebSocketHandler` --references--> `JwtService`  [EXTRACTED]
-  backend/demo/src/main/java/com/example/demo/chat/ChatWebSocketHandler.java → backend/demo/src/main/java/com/example/demo/security/JwtService.java
+- `ListingController` --references--> `ListingService`  [EXTRACTED]
+  backend/demo/src/main/java/com/example/demo/controller/ListingController.java → backend/demo/src/main/java/com/example/demo/service/ListingService.java
+- `ChatConversation` --references--> `Listing`  [EXTRACTED]
+  backend/demo/src/main/java/com/example/demo/model/ChatConversation.java → backend/demo/src/main/java/com/example/demo/model/Listing.java
+- `Favorite` --references--> `Listing`  [EXTRACTED]
+  backend/demo/src/main/java/com/example/demo/model/Favorite.java → backend/demo/src/main/java/com/example/demo/model/Listing.java
+- `Listing` --references--> `ListingStatus`  [EXTRACTED]
+  backend/demo/src/main/java/com/example/demo/model/Listing.java → backend/demo/src/main/java/com/example/demo/model/ListingStatus.java
 
 ## Import Cycles
 - None detected.
 
-## Communities (75 total, 22 thin omitted)
+## Communities (92 total, 37 thin omitted)
 
 ### Community 0 - "instant"
-Cohesion: 0.07
-Nodes (11): ListingDraftRequest, DraftPhoto, NotificationFeedResponse, UserNotificationResponse, ListingDraft, UserNotification, UserNotificationType, LISTING_APPROVED (+3 more)
+Cohesion: 0.12
+Nodes (8): NotificationFeedResponse, UserNotificationResponse, UserFollow, UserNotification, UserNotificationType, LISTING_APPROVED, LISTING_REJECTED, NEW_MESSAGE
+
+### Community 1 - "PendingRegistration"
+Cohesion: 0.12
+Nodes (4): RegisterRequest, VerifyRegistrationRequest, PendingRegistration, PendingRegistrationRepository
 
 ### Community 2 - "ChatServiceTest.java"
-Cohesion: 0.15
-Nodes (3): UserRole, ADMIN, MEMBER
+Cohesion: 0.13
+Nodes (6): PhoneResponse, UserRole, ADMIN, MEMBER, ListingDraftServiceTest, ListingModerationEmailListenerTest
 
 ### Community 4 - "InboxPage"
 Cohesion: 0.07
 Nodes (47): ActiveCallState, CallHistoryMessage(), CallSignalEvent, CallState, ConnectionState, createCoordinatesMapUrl(), formatCallDuration(), formatLastActive() (+39 more)
 
-### Community 5 - "UserAccount"
-Cohesion: 0.11
-Nodes (3): UserSummary, UserAccount, AuthControllerTest
-
 ### Community 6 - "App.tsx"
-Cohesion: 0.07
-Nodes (38): api, authenticationRequiredViews, ListingStatus, adminNavigation, AdminPage(), AdminPageProps, AdminTab, AttributeType (+30 more)
+Cohesion: 0.05
+Nodes (43): api, AppNavigationEntry, authenticationRequiredViews, NavigationOptions, AppView, MarketplaceLayout(), MarketplaceLayoutProps, ScrollToTopButton() (+35 more)
 
 ### Community 7 - "ChatService.java"
-Cohesion: 0.08
-Nodes (7): ChatController, ChatConversationResponse, ChatReviewRequest, ChatReviewResponse, ChatReviewStatusResponse, ChatReview, ChatReviewRepository
+Cohesion: 0.10
+Nodes (5): ChatReviewRequest, ChatReviewResponse, ChatReviewStatusResponse, ChatReview, ChatReviewRepository
 
 ### Community 8 - "CategoryService"
-Cohesion: 0.18
+Cohesion: 0.21
 Nodes (3): CategoryController, CategoryResponse, CategoryService
 
 ### Community 9 - "package.json"
 Cohesion: 0.08
 Nodes (34): devDependencies, eslint@^10.10.0, @eslint/js@^10.0.1, eslint-plugin-react-hooks@^7.1.1, eslint-plugin-react-refresh@^0.5.6, globals@^17.12.0, @types/node@^24.13.3, @types/react@^19.2.18 (+26 more)
 
-### Community 10 - "ListingRepository"
-Cohesion: 0.12
-Nodes (7): ListingReportStatus, DISMISSED, OPEN, RESOLVED, ListingReportRepository, ListingRepository, ListingReportService
+### Community 10 - "ListingReportRepository"
+Cohesion: 0.16
+Nodes (3): AdminStatsResponse, ListingReportRepository, ListingReportService
 
-### Community 11 - "lucide-react"
-Cohesion: 0.08
-Nodes (25): HeroProps, dependencies, lucide-react@^1.48.0, react@^19.2.8, react-dom@^19.2.8, AppDialogContext, AppDialogContextValue, useAppDialog() (+17 more)
+### Community 11 - "SellPage.tsx"
+Cohesion: 0.11
+Nodes (20): useAppDialog(), ListingCard(), ListingDetailPreview(), ListingDetailPreviewProps, PreviewPhoto, FavoritesPage(), ListingDetailPage(), MyListingsPage() (+12 more)
 
 ### Community 12 - "Favorite"
-Cohesion: 0.19
-Nodes (4): FavoriteController, Favorite, FavoriteRepository, FavoriteService
+Cohesion: 0.23
+Nodes (3): Favorite, FavoriteRepository, FavoriteService
 
 ### Community 14 - "ListingController.java"
-Cohesion: 0.17
-Nodes (5): HealthController, HealthResponse, NotificationController, ReportController, CreateListingReportRequest
+Cohesion: 0.15
+Nodes (6): AuthController, NotificationController, ReportController, CreateListingReportRequest, EmailRequest, MessageResponse
 
 ### Community 15 - "Listing"
-Cohesion: 0.10
-Nodes (6): ListingCardProps, Listing, FavoritesPageProps, ListingDetailPageProps, ProfilePageProps, MarketplaceService
+Cohesion: 0.07
+Nodes (18): ListingCardProps, categoryImages, featuredCategoryImages, seedListings, Listing, ListingCondition, ListingData, ListingStatus (+10 more)
 
 ### Community 16 - "org.junit.jupiter.api.Test"
-Cohesion: 0.10
-Nodes (4): CreateListingRequest, JwtServiceTest, ChatServiceTest, ListingServiceTest
+Cohesion: 0.12
+Nodes (3): ChatMessageRepository, CallIceServerServiceTest, ChatServiceTest
 
 ### Community 17 - "ListingReport"
-Cohesion: 0.17
-Nodes (4): AdminReportResponse, ListingReportSubmittedResponse, ListingReport, ListingReportServiceTest
-
-### Community 19 - "UserNotificationService"
-Cohesion: 0.17
-Nodes (3): ChatConversationRepository, ChatMessageRepository, UserNotificationService
-
-### Community 20 - "org.springframework.web.bind.annotation.GetMapping"
-Cohesion: 0.20
-Nodes (3): ListingController, ListingResponse, PhoneResponse
+Cohesion: 0.16
+Nodes (7): AdminReportResponse, ListingReportSubmittedResponse, ListingReport, ListingReportStatus, DISMISSED, OPEN, RESOLVED
 
 ### Community 22 - "ChatService"
-Cohesion: 0.12
-Nodes (9): ChatMessageResponse, ChatConversation, ChatMessage, ChatMessageType, CALL, LOCATION, MISSED_CALL, TEXT (+1 more)
+Cohesion: 0.11
+Nodes (7): ChatMessageResponse, ChatMessage, ChatMessageType, CALL, LOCATION, MISSED_CALL, TEXT
+
+### Community 23 - "ChatService"
+Cohesion: 0.17
+Nodes (5): ChatController, ChatConversationResponse, ChatConversation, CallIceServerService, ChatService
 
 ### Community 25 - "CheckInPage.tsx"
-Cohesion: 0.14
-Nodes (12): ChoHoiWordmark(), ChoHoiWordmarkProps, AuthPage(), AuthPageProps, CheckInPage(), CheckInPageProps, CheckInProgress, DAILY_REWARDS (+4 more)
+Cohesion: 0.17
+Nodes (13): ChoHoiWordmark(), ChoHoiWordmarkProps, CategoryOption, CheckInPage(), CheckInPageProps, CheckInProgress, DAILY_REWARDS, EMPTY_PROGRESS (+5 more)
 
-### Community 26 - "MarketplaceLayout.tsx"
-Cohesion: 0.15
-Nodes (10): AppNavigationEntry, NavigationOptions, FloatingPromotions(), FloatingPromotionsProps, AppView, MarketplaceLayout(), MarketplaceLayoutProps, locations (+2 more)
+### Community 26 - "com.example.demo.model.UserAccount"
+Cohesion: 0.18
+Nodes (5): UserProfileController, UserProfileResponse, UserFollowRepository, UserProfileService, UserProfileServiceTest
 
 ### Community 27 - "compilerOptions"
 Cohesion: 0.10
 Nodes (19): compilerOptions, allowArbitraryExtensions, allowImportingTsExtensions, erasableSyntaxOnly, jsx, lib, module, moduleDetection (+11 more)
 
 ### Community 28 - "AdminController.java"
-Cohesion: 0.14
-Nodes (6): AdminController, CreateCategoryRequest, ProcessReportRequest, AdminStatsResponse, AdminUserResponse, RejectListingRequest
+Cohesion: 0.12
+Nodes (9): AdminController, CreateCategoryRequest, ProcessReportRequest, ListingResponse, RejectListingRequest, AdminReportAction, DISMISS, LOCK_USER (+1 more)
 
 ### Community 29 - "SellDropdown"
 Cohesion: 0.20
 Nodes (5): SellDropdown(), handleTriggerKeyDown(), openAt(), SellDropdownOption, SellDropdownProps
 
 ### Community 30 - "SearchPage.tsx"
-Cohesion: 0.30
-Nodes (11): SearchPage(), SearchPageProps, ApiProvince, getProvinceCodeIndex(), getProvinceWards(), isApiProvince(), isLocationOption(), isRecord() (+3 more)
+Cohesion: 0.44
+Nodes (9): ApiProvince, getProvinceCodeIndex(), getProvinceWards(), isApiProvince(), isLocationOption(), isRecord(), LocationOption, normalizeProvinceName() (+1 more)
 
 ### Community 31 - "ListingStatus"
-Cohesion: 0.19
-Nodes (8): StatusRequest, ListingStatus, ACTIVE, EXPIRED, HIDDEN, PENDING, REJECTED, SOLD
-
-### Community 32 - "ListingPhoneApiTest.java"
-Cohesion: 0.13
-Nodes (4): ListingCondition, NEW, USED, ListingPhoneApiTest
+Cohesion: 0.18
+Nodes (9): StatusRequest, ListingStatus, ACTIVE, DELETED, EXPIRED, HIDDEN, PENDING, REJECTED (+1 more)
 
 ### Community 33 - "compilerOptions"
 Cohesion: 0.12
@@ -227,17 +231,21 @@ Nodes (16): compilerOptions, allowImportingTsExtensions, erasableSyntaxOnly, lib
 Cohesion: 0.03
 Nodes (72): ANSWERED, APP_SKIP, args, BUILD_DIRS, check25(), check62(), check76(), CHECKS (+64 more)
 
+### Community 35 - "ListingDraftRequest.java"
+Cohesion: 0.16
+Nodes (4): CreateListingRequest, ListingCondition, NEW, USED
+
 ### Community 36 - "refcheck.mjs"
 Cohesion: 0.04
 Nodes (47): args, AS_JSON, BY_BASE, CANON, catalogFaces, clean, exemplarDir, expectations (+39 more)
 
-### Community 40 - "SellPage.tsx"
-Cohesion: 0.10
-Nodes (21): categories, categoryImages, featuredCategoryImages, seedListings, ListingCondition, ListingData, ExplorePage(), ExplorePageProps (+13 more)
+### Community 40 - "uploadImagesToCloudinary"
+Cohesion: 0.33
+Nodes (7): addReviewImages(), handlePhotoChange(), CloudinaryUploadError, SUPPORTED_TYPES, uploadImagesToCloudinary(), uploadImageToCloudinary(), validateCloudinaryImage()
 
 ### Community 43 - "theme.mjs"
 Cohesion: 0.09
-Nodes (51): addLog(), ADJUST, args, ASK, BASE_CUSTOM, buildIndex(), check(), contrastOf() (+43 more)
+Nodes (52): addLog(), ADJUST, args, ASK, BASE_CUSTOM, buildIndex(), check(), contrastOf() (+44 more)
 
 ### Community 44 - "report"
 Cohesion: 0.08
@@ -252,8 +260,8 @@ Cohesion: 0.12
 Nodes (35): accentedHeads(), accentedWordInHero(), ancestorMap(), capsRatio(), check28(), check3(), check30(), check33() (+27 more)
 
 ### Community 47 - "App"
-Cohesion: 0.11
-Nodes (31): App(), authenticationSucceeded(), changeStatus(), connectToBackend(), createListing(), editSavedDraft(), enterAdminRoute(), getCurrentNavigationEntry() (+23 more)
+Cohesion: 0.10
+Nodes (34): App(), authenticationSucceeded(), changeStatus(), connectToBackend(), createListing(), editSavedDraft(), enterAdminRoute(), getCurrentNavigationEntry() (+26 more)
 
 ### Community 48 - "ref_node_fs"
 Cohesion: 0.13
@@ -263,10 +271,6 @@ Nodes (10): globalRoot(), script, png, script, main(), OK(), script, dir (+2 mor
 Cohesion: 0.11
 Nodes (30): bannedGradient(), check2(), check29Glow(), check48(), check65(), check7(), firstFamily(), gradientHues() (+22 more)
 
-### Community 50 - "ListingService"
-Cohesion: 0.14
-Nodes (5): ListingDraftRepository, CurrentUserService, ListingDraftService, ListingService, ListingDraftServiceTest
-
 ### Community 51 - "sloplint-render.mjs"
 Cohesion: 0.18
 Nodes (21): CHROMES, contrast(), focusRing(), frames(), hideStyles(), inventory(), isUrl(), lineBreaks() (+13 more)
@@ -275,17 +279,17 @@ Nodes (21): CHROMES, contrast(), focusRing(), frames(), hideStyles(), inventory(
 Cohesion: 0.10
 Nodes (15): argv, chrome, CHROMES, HERE, isUrl, made, out, roots (+7 more)
 
+### Community 53 - "JwtService"
+Cohesion: 0.12
+Nodes (3): JwtAuthenticationFilter, JwtService, JwtServiceTest
+
 ### Community 54 - "UserAccountRepository"
-Cohesion: 0.19
-Nodes (5): CategoryInitializer, CategoryRepository, PendingRegistrationRepository, UserAccountRepository, AdminAccountInitializer
+Cohesion: 0.17
+Nodes (4): CategoryInitializer, Category, CategoryRepository, AdminAccountInitializer
 
 ### Community 55 - "install.mjs"
 Cohesion: 0.13
 Nodes (14): args, copyDir(), DRY, explicit, FLAGS, has(), HERE, HOME (+6 more)
-
-### Community 56 - "ListingService.java"
-Cohesion: 0.14
-Nodes (8): UpdateUserStatusRequest, AccountStatus, ACTIVE, LOCKED, AdminReportAction, DISMISS, LOCK_USER, REMOVE_LISTING
 
 ### Community 59 - "clsLits"
 Cohesion: 0.24
@@ -307,13 +311,9 @@ Nodes (7): args, hash, n, prompt, stem, steps, [w, h]
 Cohesion: 0.23
 Nodes (12): checkComponentText(), checkTailwind(), closeIndex(), compInner(), directChildren(), tw54(), tw67(), twDataText() (+4 more)
 
-### Community 66 - ".register"
-Cohesion: 0.35
-Nodes (3): MessageResponse, RegisterRequest, AuthServiceTest
-
-### Community 67 - "AuthService"
-Cohesion: 0.25
-Nodes (3): AuthController, EmailRequest, AuthService
+### Community 67 - "react"
+Cohesion: 0.13
+Nodes (11): HeroProps, dependencies, lucide-react@^1.48.0, react@^19.2.8, react-dom@^19.2.8, AppDialogContext, AppDialogContextValue, AppDialogProvider() (+3 more)
 
 ### Community 68 - "install-hook.mjs"
 Cohesion: 0.22
@@ -327,25 +327,45 @@ Nodes (7): dependencies, interface, default_prompts, display_name, short_descrip
 Cohesion: 0.33
 Nodes (3): badge, Hero(), HeroProps
 
+### Community 73 - "org.springframework.stereotype.Service"
+Cohesion: 0.19
+Nodes (4): ListingDraft, ListingDraftRepository, CurrentUserService, ListingDraftService
+
+### Community 77 - "UserNotificationService"
+Cohesion: 0.25
+Nodes (3): UserNotificationRepository, UserNotificationService, UserNotificationServiceTest
+
+### Community 78 - ".from"
+Cohesion: 0.21
+Nodes (5): UpdateUserStatusRequest, AdminUserResponse, AccountStatus, ACTIVE, LOCKED
+
+### Community 83 - ".currentUser"
+Cohesion: 0.22
+Nodes (4): AuthResponse, LoginRequest, UserSummary, AuthControllerTest
+
+### Community 86 - "ProfilePage.tsx"
+Cohesion: 0.29
+Nodes (4): ProfilePage(), ProfilePageProps, ChatReview, UserProfile
+
 ## Knowledge Gaps
-- **26 isolated node(s):** `com.example:demo`, `ACTIVE`, `LOCKED`, `DISMISS`, `REMOVE_LISTING` (+21 more)
-  These have ≤1 connection - possible missing edges. (Counts symbols only; 465 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
-- **22 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **27 isolated node(s):** `PENDING`, `ACTIVE`, `REJECTED`, `SOLD`, `HIDDEN` (+22 more)
+  These have ≤1 connection - possible missing edges. (Counts symbols only; 481 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
+- **37 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `SellPage()` connect `SellPage.tsx` to `InboxPage`, `App.tsx`, `lucide-react`, `App`, `SellDropdown`, `SearchPage.tsx`?**
-  _High betweenness centrality (0.144) - this node is a cross-community bridge._
-- **What connects `com.example:demo`, `ACTIVE`, `LOCKED` to the rest of the system?**
-  _26 weakly-connected nodes found - possible missing edges._
+- **Why does `SellPage()` connect `SellPage.tsx` to `App.tsx`, `uploadImagesToCloudinary`, `theme.mjs`, `App`, `SellDropdown`, `SearchPage.tsx`?**
+  _High betweenness centrality (0.104) - this node is a cross-community bridge._
+- **What connects `PENDING`, `ACTIVE`, `REJECTED` to the rest of the system?**
+  _27 weakly-connected nodes found - possible missing edges._
 - **Should `instant` be split into smaller, more focused modules?**
-  _Cohesion score 0.07326007326007326 - nodes in this community are weakly interconnected._
-- **Why does `photos()` connect `theme.mjs` to `SellPage.tsx`?**
-  _High betweenness centrality (0.142) - this node is a cross-community bridge._
+  _Cohesion score 0.1222921034241789 - nodes in this community are weakly interconnected._
+- **Why does `handleSaveDraft()` connect `theme.mjs` to `SellPage.tsx`?**
+  _High betweenness centrality (0.103) - this node is a cross-community bridge._
+- **Should `PendingRegistration` be split into smaller, more focused modules?**
+  _Cohesion score 0.12233285917496443 - nodes in this community are weakly interconnected._
+- **Should `ChatServiceTest.java` be split into smaller, more focused modules?**
+  _Cohesion score 0.13386524822695037 - nodes in this community are weakly interconnected._
 - **Should `MarketplaceApi` be split into smaller, more focused modules?**
-  _Cohesion score 0.08412698412698413 - nodes in this community are weakly interconnected._
-- **Why does `handleSaveDraft()` connect `SellPage.tsx` to `theme.mjs`?**
-  _High betweenness centrality (0.142) - this node is a cross-community bridge._
-- **Should `InboxPage` be split into smaller, more focused modules?**
-  _Cohesion score 0.07205513784461152 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.07560975609756097 - nodes in this community are weakly interconnected._

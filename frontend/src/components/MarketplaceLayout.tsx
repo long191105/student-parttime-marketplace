@@ -3,7 +3,6 @@ import { Bell, Bookmark, Check, ChevronDown, Heart, LogOut, MapPin, Menu, Messag
 import { locations } from '../data/categories'
 import type { AuthUser, UserNotification } from '../services/MarketplaceApi'
 import { ChoHoiWordmark } from './ChoHoiWordmark'
-import { FloatingPromotions } from './FloatingPromotions'
 import { ScrollToTopButton } from './ScrollToTopButton'
 
 export type AppView = 'home' | 'search' | 'detail' | 'sell' | 'my-listings' | 'favorites' | 'messages' | 'notifications' | 'profile' | 'check-in' | 'auth'
@@ -353,7 +352,6 @@ export function MarketplaceLayout({
         <button className={view === 'messages' ? 'mobile-nav-active' : ''} onClick={() => navigate('messages')}><MessageCircle size={19} /><span>Hộp thư</span></button>
         <button className={view === 'profile' ? 'mobile-nav-active' : ''} onClick={() => navigate('profile')}><UserRound size={19} /><span>Tôi</span></button>
       </nav>
-      <FloatingPromotions onNavigate={navigate} view={view} />
       <ScrollToTopButton />
     </div>
   )
