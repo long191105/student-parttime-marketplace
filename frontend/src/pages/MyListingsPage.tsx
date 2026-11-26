@@ -93,7 +93,7 @@ export function MyListingsPage({ listings, onStatusChange, onDeleteListing, onOp
   }
 
   async function deleteHiddenListing(listing: Listing) {
-    if (!await showConfirm(`Xóa tin “${listing.title}” khỏi danh sách của bạn?`, 'Xóa tin đã ẩn', 'Xóa tin')) return
+    if (!await showConfirm(`Xóa vĩnh viễn tin “${listing.title}”? Lịch sử trò chuyện và báo cáo đã xử lý liên quan (nếu có) cũng sẽ bị xóa.`, 'Xóa tin đã ẩn', 'Xóa vĩnh viễn')) return
     setDeletingListingId(listing.id)
     setListingActionError('')
     try {
@@ -155,7 +155,7 @@ export function MyListingsPage({ listings, onStatusChange, onDeleteListing, onOp
             </>}
             {listing.status === 'HIDDEN' && <>
               <button className="row-action" disabled={deletingListingId === listing.id} onClick={() => onStatusChange(listing.id, 'ACTIVE')}>Hiển thị lại</button>
-              <button className="row-action" disabled={deletingListingId === listing.id} onClick={() => void deleteHiddenListing(listing)}><Trash2 size={12} />{deletingListingId === listing.id ? 'Đang xóa...' : 'Xóa'}</button>
+              <button className="row-action" disabled={deletingListingId === listing.id} onClick={() => void deleteHiddenListing(listing)}><Trash2 size={12} />{deletingListingId === listing.id ? 'Đang xóa...' : 'Xóa vĩnh viễn'}</button>
             </>}
             {listing.status === 'PENDING' && <span className="muted-status">Đang được kiểm duyệt</span>}
           </div>}

@@ -12,6 +12,10 @@ import com.example.demo.model.ListingReportStatus;
 public interface ListingReportRepository extends JpaRepository<ListingReport, Long> {
     boolean existsByReporterIdAndListingId(Long reporterId, Long listingId);
 
+    boolean existsByListingIdAndStatus(Long listingId, ListingReportStatus status);
+
+    void deleteAllByListingId(Long listingId);
+
     Page<ListingReport> findAllByOrderByCreatedAtDesc(Pageable pageable);
 
     Page<ListingReport> findAllByStatusOrderByCreatedAtDesc(ListingReportStatus status, Pageable pageable);

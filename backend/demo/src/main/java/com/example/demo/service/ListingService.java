@@ -23,9 +23,11 @@ import com.example.demo.dto.ListingResponse;
 import com.example.demo.dto.PhoneResponse;
 import com.example.demo.model.Listing;
 import com.example.demo.model.ListingCondition;
+import com.example.demo.model.ListingReportStatus;
 import com.example.demo.model.ListingStatus;
 import com.example.demo.model.UserAccount;
 import com.example.demo.repository.CategoryRepository;
+import com.example.demo.repository.ListingReportRepository;
 import com.example.demo.repository.ListingRepository;
 
 @Service
@@ -34,6 +36,7 @@ public class ListingService {
     private static final Pattern HTTPS_IMAGE_URL = Pattern.compile("^https://[^\\s]+$", Pattern.CASE_INSENSITIVE);
 
     private final ListingRepository listingRepository;
+    private final ListingReportRepository listingReportRepository;
     private final CategoryRepository categoryRepository;
     private final CurrentUserService currentUserService;
     private final ListingDraftService listingDraftService;
@@ -41,11 +44,13 @@ public class ListingService {
 
     public ListingService(
             ListingRepository listingRepository,
+            ListingReportRepository listingReportRepository,
             CategoryRepository categoryRepository,
             CurrentUserService currentUserService,
             ListingDraftService listingDraftService,
             UserNotificationService notificationService) {
         this.listingRepository = listingRepository;
+        this.listingReportRepository = listingReportRepository;
         this.categoryRepository = categoryRepository;
         this.currentUserService = currentUserService;
         this.listingDraftService = listingDraftService;
@@ -232,7 +237,12 @@ public class ListingService {
         if (listing.getStatus() != ListingStatus.HIDDEN) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Chỉ tin đã ẩn mới có thể xóa.");
         }
-        listing.changeStatus(ListingStatus.DELETED, null);
+        if (listingReportRepository.existsByListingIdAndStatus(id, ListingReportStatus.OPEN)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Tin có báo cáo đang xử lý nên chưa thể xóa.");
+        }
+        listingReportRepository.deleteAllByListingId(id);
+        listingReportRepository.flush();
+        listingRepository.delete(listing);
     }
 
     @Transactional(readOnly = true)
