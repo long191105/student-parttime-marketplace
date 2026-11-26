@@ -40,7 +40,7 @@ public class AuthService {
     private final PendingRegistrationRepository pendingRegistrationRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
-    private final OtpEmailService otpEmailService;
+    private final BrevoEmailService emailService;
     private final long expirationMinutes;
     private final long resendCooldownSeconds;
     private final int maxAttempts;
@@ -50,7 +50,7 @@ public class AuthService {
             PendingRegistrationRepository pendingRegistrationRepository,
             PasswordEncoder passwordEncoder,
             JwtService jwtService,
-            OtpEmailService otpEmailService,
+            BrevoEmailService emailService,
             @Value("${app.otp.expiration-minutes:10}") long expirationMinutes,
             @Value("${app.otp.resend-cooldown-seconds:60}") long resendCooldownSeconds,
             @Value("${app.otp.max-attempts:5}") int maxAttempts) {
@@ -58,7 +58,7 @@ public class AuthService {
         this.pendingRegistrationRepository = pendingRegistrationRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
-        this.otpEmailService = otpEmailService;
+        this.emailService = emailService;
         this.expirationMinutes = expirationMinutes;
         this.resendCooldownSeconds = resendCooldownSeconds;
         this.maxAttempts = maxAttempts;
@@ -93,7 +93,7 @@ public class AuthService {
         }
 
         pendingRegistrationRepository.save(pending);
-        otpEmailService.sendVerificationCode(email, code);
+        emailService.sendVerificationCode(email, code);
         return new MessageResponse("Mã xác minh đã được gửi đến email của bạn.");
     }
 
@@ -144,7 +144,7 @@ public class AuthService {
                 now.plus(Duration.ofMinutes(expirationMinutes)),
                 now);
         pendingRegistrationRepository.save(pending);
-        otpEmailService.sendVerificationCode(email, code);
+        emailService.sendVerificationCode(email, code);
         return new MessageResponse("Mã xác minh mới đã được gửi đến email của bạn.");
     }
 

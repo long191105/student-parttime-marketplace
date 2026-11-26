@@ -18,7 +18,9 @@ import org.springframework.test.web.client.MockRestServiceServer;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.server.ResponseStatusException;
 
-class OtpEmailServiceTest {
+import com.example.demo.model.ListingStatus;
+
+class BrevoEmailServiceTest {
 
     private static final String BREVO_URL = "https://api.brevo.com/v3/smtp/email";
 
@@ -66,8 +68,55 @@ class OtpEmailServiceTest {
         server.verify();
     }
 
-    private OtpEmailService service(String apiKey) {
-        return new OtpEmailService(
+    @Test
+    void sendsListingModerationUpdateToSeller() {
+        server.expect(requestTo(BREVO_URL))
+                .andExpect(method(HttpMethod.POST))
+                .andExpect(header("api-key", "brevo-api-key"))
+                .andExpect(content().json("""
+                        {
+                          "sender": {"email": "verified@example.com", "name": "Chợ Hời"},
+                          "to": [{"email": "person@gmail.com"}],
+                          "subject": "Cập nhật trạng thái tin đăng trên Chợ Hời",
+                          "textContent": "Xin chào Long,\\n\\nTin đăng \\"Máy ảnh\\" chưa được duyệt trên Chợ Hời.\\nLý do: Thiếu hình ảnh.\\n\\nBạn có thể đăng nhập Chợ Hời để xem chi tiết."
+                        }
+                        """))
+                .andRespond(withSuccess("{\"messageId\":\"test-message-id\"}", MediaType.APPLICATION_JSON));
+
+        service("brevo-api-key").sendListingModerationUpdate(
+                "person@gmail.com",
+                "Long",
+                "Máy ảnh",
+                ListingStatus.REJECTED,
+                "Thiếu hình ảnh.");
+
+        server.verify();
+    }
+
+    @Test
+    void sendsApprovalEmailWithoutRejectionReason() {
+        server.expect(requestTo(BREVO_URL))
+                .andExpect(content().json("""
+                        {
+                          "to": [{"email": "person@gmail.com"}],
+                          "subject": "Cập nhật trạng thái tin đăng trên Chợ Hời",
+                          "textContent": "Xin chào Long,\\n\\nTin đăng \\"Máy ảnh\\" đã được duyệt trên Chợ Hời.\\n\\nBạn có thể đăng nhập Chợ Hời để xem chi tiết."
+                        }
+                        """))
+                .andRespond(withSuccess("{\"messageId\":\"test-message-id\"}", MediaType.APPLICATION_JSON));
+
+        service("brevo-api-key").sendListingModerationUpdate(
+                "person@gmail.com",
+                "Long",
+                "Máy ảnh",
+                ListingStatus.ACTIVE,
+                null);
+
+        server.verify();
+    }
+
+    private BrevoEmailService service(String apiKey) {
+        return new BrevoEmailService(
                 restClientBuilder,
                 apiKey,
                 "verified@example.com",

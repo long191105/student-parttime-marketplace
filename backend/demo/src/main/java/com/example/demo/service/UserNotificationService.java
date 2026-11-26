@@ -3,6 +3,7 @@ package com.example.demo.service;
 import java.time.Instant;
 import java.util.List;
 
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -25,12 +26,15 @@ public class UserNotificationService {
 
     private final UserNotificationRepository notificationRepository;
     private final CurrentUserService currentUserService;
+    private final ApplicationEventPublisher eventPublisher;
 
     public UserNotificationService(
             UserNotificationRepository notificationRepository,
-            CurrentUserService currentUserService) {
+            CurrentUserService currentUserService,
+            ApplicationEventPublisher eventPublisher) {
         this.notificationRepository = notificationRepository;
         this.currentUserService = currentUserService;
+        this.eventPublisher = eventPublisher;
     }
 
     @Transactional(readOnly = true)
@@ -82,6 +86,13 @@ public class UserNotificationService {
             throw new IllegalArgumentException("Only moderation outcomes can create listing notifications.");
         }
         notificationRepository.save(new UserNotification(recipient, type, title, detail, listing.getId().toString()));
+        eventPublisher.publishEvent(new ListingModerationEmailEvent(
+                listing.getId(),
+                recipient.getEmail(),
+                recipient.getFullName(),
+                listing.getTitle(),
+                status,
+                reason));
     }
 
     @Transactional

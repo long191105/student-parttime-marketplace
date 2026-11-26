@@ -13,12 +13,14 @@ import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestClientResponseException;
 import org.springframework.web.server.ResponseStatusException;
 
+import com.example.demo.model.ListingStatus;
+
 import static org.springframework.http.HttpStatus.SERVICE_UNAVAILABLE;
 
 @Service
-public class OtpEmailService {
+public class BrevoEmailService {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(OtpEmailService.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(BrevoEmailService.class);
     private static final String BREVO_SEND_URL = "https://api.brevo.com/v3/smtp/email";
 
     private final RestClient restClient;
@@ -27,7 +29,7 @@ public class OtpEmailService {
     private final String senderName;
     private final long expirationMinutes;
 
-    public OtpEmailService(
+    public BrevoEmailService(
             RestClient.Builder restClientBuilder,
             @Value("${app.brevo.api-key:}") String apiKey,
             @Value("${app.brevo.from-email:}") String senderEmail,
@@ -41,6 +43,33 @@ public class OtpEmailService {
     }
 
     public void sendVerificationCode(String recipient, String code) {
+        String textContent = "Mã xác minh đăng ký Chợ Hời của bạn là: " + code
+                + "\nMã có hiệu lực trong " + expirationMinutes
+                + " phút. Không chia sẻ mã này với người khác.";
+        sendEmail(recipient, "Mã xác minh tài khoản Chợ Hời", textContent);
+    }
+
+    public void sendListingModerationUpdate(
+            String recipient,
+            String recipientName,
+            String listingTitle,
+            ListingStatus status,
+            String reason) {
+        String outcome = switch (status) {
+            case ACTIVE -> "đã được duyệt";
+            case REJECTED -> "chưa được duyệt";
+            default -> throw new IllegalArgumentException("Only moderation outcomes can be emailed.");
+        };
+        String textContent = "Xin chào " + recipientName + ",\n\n"
+                + "Tin đăng \"" + listingTitle + "\" " + outcome + " trên Chợ Hời."
+                + (status == ListingStatus.REJECTED && reason != null && !reason.isBlank()
+                        ? "\nLý do: " + reason.trim()
+                        : "")
+                + "\n\nBạn có thể đăng nhập Chợ Hời để xem chi tiết.";
+        sendEmail(recipient, "Cập nhật trạng thái tin đăng trên Chợ Hời", textContent);
+    }
+
+    private void sendEmail(String recipient, String subject, String textContent) {
         if (apiKey.isBlank() || senderEmail.isBlank()) {
             throw new ResponseStatusException(
                     SERVICE_UNAVAILABLE,
@@ -50,11 +79,8 @@ public class OtpEmailService {
         Map<String, Object> payload = Map.of(
                 "sender", Map.of("email", senderEmail, "name", senderName),
                 "to", List.of(Map.of("email", recipient)),
-                "subject", "Mã xác minh tài khoản Chợ Hời",
-                "textContent", "Mã xác minh đăng ký Chợ Hời của bạn là: " + code
-                        + "\nMã có hiệu lực trong " + expirationMinutes
-                        + " phút. Không chia sẻ mã này với người khác.");
-
+                "subject", subject,
+                "textContent", textContent);
         try {
             restClient.post()
                     .uri(BREVO_SEND_URL)
@@ -65,7 +91,7 @@ public class OtpEmailService {
                     .toBodilessEntity();
         } catch (RestClientResponseException exception) {
             String response = redact(exception.getResponseBodyAsString(), recipient);
-            LOGGER.error("Brevo returned HTTP {} while sending verification email: {}",
+            LOGGER.error("Brevo returned HTTP {} while sending email: {}",
                     exception.getStatusCode().value(), response);
             throw deliveryException(exception);
         } catch (RestClientException exception) {
@@ -73,7 +99,7 @@ public class OtpEmailService {
             while (rootCause.getCause() != null && rootCause.getCause() != rootCause) {
                 rootCause = rootCause.getCause();
             }
-            LOGGER.error("Brevo request failed: {}: {}",
+            LOGGER.error("Brevo request failed while sending email: {}: {}",
                     rootCause.getClass().getSimpleName(),
                     redact(rootCause.getMessage() == null ? "" : rootCause.getMessage(), recipient));
             throw deliveryException(exception);
@@ -83,7 +109,7 @@ public class OtpEmailService {
     private ResponseStatusException deliveryException(Exception cause) {
         return new ResponseStatusException(
                 SERVICE_UNAVAILABLE,
-                "Không gửi được email xác minh. Vui lòng thử lại sau.",
+                "Không gửi được email. Vui lòng thử lại sau.",
                 cause);
     }
 

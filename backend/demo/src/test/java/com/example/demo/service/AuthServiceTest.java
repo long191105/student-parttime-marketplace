@@ -49,7 +49,7 @@ class AuthServiceTest {
     private JwtService jwtService;
 
     @Mock
-    private OtpEmailService otpEmailService;
+    private BrevoEmailService emailService;
 
     private AuthService authService;
 
@@ -60,7 +60,7 @@ class AuthServiceTest {
                 pendingRegistrationRepository,
                 passwordEncoder,
                 jwtService,
-                otpEmailService,
+                emailService,
                 10,
                 60,
                 5);
@@ -73,7 +73,7 @@ class AuthServiceTest {
                 () -> authService.register(new RegisterRequest("Test User", "person@example.com", "password123", null)));
 
         assertEquals(HttpStatus.BAD_REQUEST, exception.getStatusCode());
-        verifyNoInteractions(userAccountRepository, pendingRegistrationRepository, otpEmailService);
+        verifyNoInteractions(userAccountRepository, pendingRegistrationRepository, emailService);
     }
 
     @Test
@@ -85,7 +85,7 @@ class AuthServiceTest {
                 () -> authService.register(new RegisterRequest("Test User", "person@gmail.com", "password123", null)));
 
         assertEquals(HttpStatus.CONFLICT, exception.getStatusCode());
-        verifyNoInteractions(pendingRegistrationRepository, passwordEncoder, otpEmailService);
+        verifyNoInteractions(pendingRegistrationRepository, passwordEncoder, emailService);
     }
 
     @Test
@@ -108,7 +108,7 @@ class AuthServiceTest {
 
         assertEquals(HttpStatus.TOO_MANY_REQUESTS, exception.getStatusCode());
         verify(pendingRegistrationRepository, never()).save(any(PendingRegistration.class));
-        verifyNoInteractions(passwordEncoder, otpEmailService);
+        verifyNoInteractions(passwordEncoder, emailService);
     }
 
     @Test
@@ -129,7 +129,7 @@ class AuthServiceTest {
         assertEquals("hashed:password123", pending.getPasswordHash());
         assertEquals(0, pending.getFailedAttempts());
         ArgumentCaptor<String> otpCaptor = ArgumentCaptor.forClass(String.class);
-        verify(otpEmailService).sendVerificationCode(org.mockito.ArgumentMatchers.eq("person@gmail.com"), otpCaptor.capture());
+        verify(emailService).sendVerificationCode(org.mockito.ArgumentMatchers.eq("person@gmail.com"), otpCaptor.capture());
         assertEquals(6, otpCaptor.getValue().length());
         verify(userAccountRepository, never()).save(any(UserAccount.class));
     }
@@ -226,7 +226,7 @@ class AuthServiceTest {
         authService.resendRegistrationCode("Person@gmail.com");
 
         ArgumentCaptor<String> otpCaptor = ArgumentCaptor.forClass(String.class);
-        verify(otpEmailService).sendVerificationCode(org.mockito.ArgumentMatchers.eq("person@gmail.com"), otpCaptor.capture());
+        verify(emailService).sendVerificationCode(org.mockito.ArgumentMatchers.eq("person@gmail.com"), otpCaptor.capture());
         assertEquals(6, otpCaptor.getValue().length());
         assertEquals("hashed:" + otpCaptor.getValue(), pending.getOtpHash());
         assertEquals(0, pending.getFailedAttempts());
