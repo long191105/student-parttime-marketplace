@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { ArrowLeft, ArrowRight, Check, ImagePlus, Info, Lightbulb, Megaphone, ShieldCheck, Star, X } from 'lucide-react'
 import { ListingDetailPreview } from '../components/ListingDetailPreview'
 import type { ListingData } from '../domain/Listing'
-import { categories, locations } from '../data/categories'
+import { locations, type CategoryOption } from '../data/categories'
 import { SellDropdown } from '../components/SellDropdown'
 import { getProvinceWards, type LocationOption } from '../services/AdministrativeLocationApi'
 import type { ListingFormDraft } from '../services/MarketplaceApi'
@@ -11,6 +11,7 @@ import { formatCurrencyAmount, handleCurrencyInputChange, normalizeCurrencyAmoun
 import { formatImageUrl } from '../services/ImageUrl'
 
 interface SellPageProps {
+  categories: CategoryOption[]
   restoreDraft: boolean
   onCancel: () => void
   onSubmit: (data: Omit<ListingData, 'id' | 'status' | 'views' | 'postedAt'> & { contactPhone: string }) => Promise<void> | void
@@ -32,7 +33,7 @@ const sellSteps = [
   { id: 4, title: 'Kiểm tra & hoàn tất', description: 'Xem trước tin đăng' },
 ]
 
-export function SellPage({ restoreDraft, onCancel, onSubmit, onLoadDraft, onSaveDraft, sellerName }: SellPageProps) {
+export function SellPage({ categories, restoreDraft, onCancel, onSubmit, onLoadDraft, onSaveDraft, sellerName }: SellPageProps) {
   const [title, setTitle] = useState('')
   const [category, setCategory] = useState('Điện tử')
   const [price, setPrice] = useState('')

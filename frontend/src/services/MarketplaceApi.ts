@@ -289,6 +289,10 @@ export class MarketplaceApi {
     return this.request<AdminCategory[]>('/admin/categories')
   }
 
+  async listCategories(): Promise<AdminCategory[]> {
+    return this.request<AdminCategory[]>('/categories')
+  }
+
   async createAdminCategory(name: string): Promise<AdminCategory> {
     return this.request<AdminCategory>('/admin/categories', {
       method: 'POST',
