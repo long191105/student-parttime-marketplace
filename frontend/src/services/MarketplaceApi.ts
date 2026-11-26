@@ -190,7 +190,8 @@ export interface ListingFormDraft {
   condition: 'NEW' | 'USED'
   location: string
   fullLocation?: string
-  districtCode: string
+  provinceCode?: string
+  districtCode?: string
   wardCode: string
   detailAddress: string
   phone: string

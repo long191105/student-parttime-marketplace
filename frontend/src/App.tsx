@@ -606,7 +606,7 @@ export function App() {
     if (draft.condition !== 'NEW' && draft.condition !== 'USED') throw new Error('Hãy chọn tình trạng sản phẩm trước khi gửi.')
     if (draft.description.trim().length < 20) throw new Error('Mô tả cần có ít nhất 20 ký tự. Hãy sửa bản nháp trước khi gửi.')
     if (!/^\d{10,11}$/.test(draft.phone.replace(/\D/g, ''))) throw new Error('Số điện thoại cần có 10 hoặc 11 chữ số.')
-    if (!draft.districtCode || !draft.wardCode) throw new Error('Hãy chọn quận/huyện và phường/xã trong bản nháp trước khi gửi.')
+    if (!draft.provinceCode || !draft.wardCode) throw new Error('Hãy chọn tỉnh/thành và phường/xã trong bản nháp trước khi gửi.')
     const fullLocation = draft.fullLocation?.trim()
     if (!fullLocation || fullLocation.length > 160) throw new Error('Hãy mở sửa nháp, chọn đầy đủ khu vực và lưu lại trước khi gửi.')
 
