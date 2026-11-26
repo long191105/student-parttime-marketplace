@@ -29,6 +29,8 @@ export function ListingDetailPage({ listing, related, saved, currentUserId, onBa
   const [isSubmittingReport, setIsSubmittingReport] = useState(false)
   const [activeImage, setActiveImage] = useState(0)
   const gallery = listing.images
+  const conditionSpec = listing.specs.find((spec) => spec === 'Hàng mới' || spec === 'Đã sử dụng')
+  const productSpecs = listing.specs.filter((spec) => spec !== conditionSpec)
 
   async function revealPhone() {
     if (phone) {
@@ -81,15 +83,17 @@ export function ListingDetailPage({ listing, related, saved, currentUserId, onBa
             {gallery.length > 1 && <div className="detail-thumbnails">{gallery.map((image, index) => <button key={`${index}-${image}`} type="button" className={index === activeImage ? 'thumbnail-active' : ''} aria-label={`Xem ảnh ${index + 1} của ${listing.title}`} aria-pressed={index === activeImage} onClick={() => setActiveImage(index)}><img src={formatImageUrl(image, 400)} alt="" /></button>)}</div>}
           </div>
           <div className="detail-info-card">
-            <div className="detail-category-row"><span>{listing.category}</span><span>{listing.conditionLabel}</span><span>Đăng {listing.postedAt}</span></div>
+            <div className="detail-category-row"><span>{listing.category}</span><span>{conditionSpec ?? listing.conditionLabel}</span><span>Đăng {listing.postedAt}</span></div>
             <h1>{listing.title}</h1>
             <div className="detail-price-row"><strong>{listing.priceLabel}</strong>{listing.giveaway ? <span className="giveaway-badge">Tặng miễn phí</span> : listing.negotiable && <span>Có thể thương lượng</span>}</div>
             <div className="detail-location-row"><MapPin size={16} />{listing.location}<span>·</span><span>{listing.views.toLocaleString('vi-VN')} lượt xem</span></div>
             <div className="detail-divider" />
             <h3>Mô tả chi tiết</h3>
             <p className="detail-description">{listing.description}</p>
-            <h3>Thông tin sản phẩm</h3>
-            <div className="specs-grid">{listing.specs.map((spec, index) => <div key={spec}><span>{['Thông tin', 'Chi tiết', 'Đặc điểm', 'Màu sắc'][index % 4]}</span><strong>{spec}</strong></div>)}</div>
+            {productSpecs.length > 0 && <>
+              <h3>Chi tiết sản phẩm</h3>
+              <div className="specs-grid">{productSpecs.map((spec, index) => <div key={spec}><span>{['Chi tiết', 'Đặc điểm', 'Màu sắc'][index % 3]}</span><strong>{spec}</strong></div>)}</div>
+            </>}
             <div className="detail-safe-note"><ShieldCheck size={18} /><span><strong>Giao dịch an toàn</strong> · Hẹn gặp nơi công cộng, kiểm tra kỹ món đồ trước khi thanh toán.</span></div>
           </div>
           <section className="related-section"><div className="section-title-row"><div><span className="section-eyebrow">CÓ THỂ BẠN CŨNG THÍCH</span><h2>Tin đăng tương tự</h2></div></div><div className="listing-grid">{related.slice(0, 4).map((item) => <ListingCard key={item.id} listing={item} saved={false} onOpen={onOpen} onToggleSaved={onToggleSaved} />)}</div></section>

@@ -81,7 +81,7 @@ export function SellPage({ onCancel, onSubmit, onLoadDraft, onSaveDraft, sellerN
       if (!active || !draft) return
       setTitle(draft.title ?? '')
       setCategory(draft.category ?? 'Điện tử')
-      setPrice(draft.price ?? '')
+      setPrice((draft.price ?? '').replace(/\D/g, ''))
       setCondition(draft.condition ?? 'USED')
       setDescription(draft.description ?? '')
       setLocation(draft.location ?? 'TP. Hồ Chí Minh')
@@ -160,6 +160,18 @@ export function SellPage({ onCancel, onSubmit, onLoadDraft, onSaveDraft, sellerN
   function navigateToStep(step: number) {
     setActiveStep(step)
     document.getElementById(`sell-step-${step}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
+
+  function handlePriceChange(event: React.ChangeEvent<HTMLInputElement>) {
+    const input = event.currentTarget
+    const cursorPosition = input.selectionStart ?? input.value.length
+    const digitsBeforeCursor = input.value.slice(0, cursorPosition).replace(/\D/g, '').length
+    const nextPrice = input.value.replace(/\D/g, '')
+    setPrice(nextPrice)
+    window.requestAnimationFrame(() => {
+      const nextCursor = findCursorAfterDigits(formatCurrencyAmount(nextPrice), digitsBeforeCursor)
+      input.setSelectionRange(nextCursor, nextCursor)
+    })
   }
 
   async function handlePhotoChange(event: React.ChangeEvent<HTMLInputElement>) {
@@ -336,7 +348,7 @@ export function SellPage({ onCancel, onSubmit, onLoadDraft, onSaveDraft, sellerN
             <div className="form-section-heading"><span className="form-step">1</span><div><h2>Thông tin cơ bản</h2><p>Giúp người mua nhận biết món đồ của bạn.</p></div></div>
             <div className="form-grid">
               <SellDropdown id="listing-category" label="Danh mục sản phẩm" value={category} options={categories.map((item) => ({ value: item.name, label: item.name }))} required onChange={setCategory} />
-              <label>Tiêu đề tin <input required minLength={10} maxLength={150} value={title} onChange={(event) => setTitle(event.target.value)} placeholder="Ví dụ: iPhone 13 128GB còn bảo hành" /><small>{title.length}/150 ký tự</small></label>
+              <label>Tiêu đề tin <input required minLength={10} maxLength={150} value={title} onChange={(event) => setTitle(event.target.value)} placeholder="Ví dụ: iPhone 13 128GB còn bảo hành" /><small>Nêu tên sản phẩm, thương hiệu hoặc mẫu mã; tối thiểu 10 ký tự.</small></label>
             </div>
             <div className="sell-field-block">
               <div className="sell-field-heading"><strong>Hình ảnh sản phẩm</strong><span>Tối đa 10 ảnh, 5 MB mỗi ảnh</span></div>
@@ -355,7 +367,7 @@ export function SellPage({ onCancel, onSubmit, onLoadDraft, onSaveDraft, sellerN
                 <small className="upload-photo-count">{photos.length}/10 ảnh · Nhấn ảnh nhỏ để chọn ảnh bìa</small>
               </div>
             </div>
-            <label className="form-full-label">Mô tả chi tiết <textarea required minLength={20} maxLength={2000} rows={5} value={description} onChange={(event) => setDescription(event.target.value)} placeholder="Mô tả tình trạng, đặc điểm nổi bật và lý do bạn muốn nhượng lại..." /><small>{description.length}/2000 ký tự</small></label>
+            <label className="form-full-label">Mô tả chi tiết <textarea required minLength={20} maxLength={2000} rows={5} value={description} onChange={(event) => setDescription(event.target.value)} placeholder="Mô tả tình trạng, đặc điểm nổi bật và lý do bạn muốn nhượng lại..." /><small>Ghi tình trạng, đặc điểm, phụ kiện đi kèm và lưu ý cho người mua; tối thiểu 20 ký tự.</small></label>
           </section>
           <section className="form-section sell-step-section" id="sell-step-2" data-sell-step="2">
             <div className="form-section-heading"><span className="form-step">2</span><div><h2>Chi tiết sản phẩm</h2><p>Thông tin rõ ràng giúp người mua dễ quyết định.</p></div></div>
@@ -364,7 +376,7 @@ export function SellPage({ onCancel, onSubmit, onLoadDraft, onSaveDraft, sellerN
               <button type="button" className={giveaway ? 'listing-type-choice-active' : ''} aria-pressed={giveaway} onClick={() => setGiveaway(true)}>Tặng miễn phí</button>
             </div>
             <div className="form-grid form-grid-two">
-              <label>Giá bán (đ) <input required={!giveaway} type="number" min="0" disabled={giveaway} value={giveaway ? '0' : price} onChange={(event) => setPrice(event.target.value)} placeholder={giveaway ? 'Món đồ sẽ được tặng miễn phí' : 'Nhập giá bạn mong muốn'} />{giveaway && <small>Món đồ được tặng, không thu phí.</small>}</label>
+              <label>Giá bán (đ) <input required={!giveaway} type="text" inputMode="numeric" disabled={giveaway} value={giveaway ? '0' : formatCurrencyAmount(price)} onChange={handlePriceChange} placeholder={giveaway ? 'Món đồ sẽ được tặng miễn phí' : 'Nhập giá bạn mong muốn'} /><small>{giveaway ? 'Đã chọn tặng miễn phí; không cần nhập giá.' : 'Nhập giá bằng số; dấu chấm phân cách hàng nghìn sẽ tự thêm.'}</small></label>
               <SellDropdown id="listing-condition" label="Tình trạng" value={condition} options={[{ value: 'USED', label: 'Đã sử dụng' }, { value: 'NEW', label: 'Mới' }]} required onChange={(value) => { if (value === 'USED' || value === 'NEW') setCondition(value) }} />
             </div>
             <label className="checkbox-label"><input type="checkbox" checked={negotiable} onChange={(event) => setNegotiable(event.target.checked)} /> Có thể thương lượng giá</label>
@@ -374,16 +386,16 @@ export function SellPage({ onCancel, onSubmit, onLoadDraft, onSaveDraft, sellerN
             <div className="form-grid form-grid-two">
               <SellDropdown id="listing-province" label="Tỉnh / thành phố" value={location} options={locations.filter((item) => item !== 'Toàn quốc').map((item) => ({ value: item, label: item }))} required onChange={(value) => { setLocation(value); setProvinceCode(''); setWards([]); setWardCode(''); setLocationError(''); setIsLoadingWards(true) }} />
               <SellDropdown id="listing-ward" label="Phường / xã" value={wardCode} options={wards.map((ward) => ({ value: String(ward.code), label: ward.name }))} placeholder={isLoadingWards ? 'Đang tải phường/xã...' : 'Chọn phường/xã'} disabled={isLoadingWards || wards.length === 0} required onChange={setWardCode} />
-              <label>Số điện thoại liên hệ <input required inputMode="tel" maxLength={50} value={phone} onChange={(event) => setPhone(event.target.value)} placeholder="09xx xxx xxx" /></label>
+              <label>Số điện thoại liên hệ <input required inputMode="tel" maxLength={50} value={phone} onChange={(event) => setPhone(event.target.value)} placeholder="09xx xxx xxx" /><small>Nhập số điện thoại có thể liên hệ, gồm 10–11 chữ số.</small></label>
             </div>
-            <label className="form-full-label">Địa chỉ chi tiết (không bắt buộc) <textarea rows={2} maxLength={maxDetailAddressLength} value={detailAddress} onChange={(event) => setDetailAddress(event.target.value)} placeholder="Tên đường, khu dân cư, tòa nhà..." /><small>{detailAddress.length}/{maxDetailAddressLength} ký tự · Không cần cung cấp số nhà nếu bạn không muốn chia sẻ.</small></label>
+            <label className="form-full-label">Địa chỉ chi tiết (không bắt buộc) <textarea rows={2} maxLength={maxDetailAddressLength} value={detailAddress} onChange={(event) => setDetailAddress(event.target.value)} placeholder="Tên đường, khu dân cư, tòa nhà..." /><small>Nhập tên đường, khu dân cư hoặc tòa nhà; phường/xã và tỉnh/thành đã được chọn riêng. Có thể bỏ trống.</small></label>
             {locationError && <p className="form-error" role="alert">{locationError}<button type="button" onClick={() => { setLocationError(''); setIsLoadingWards(true); setWardLoadAttempt((attempt) => attempt + 1) }}>Thử tải lại</button></p>}
           </section>
           <section className="form-section sell-step-section" id="sell-step-4" data-sell-step="4">
             <div className="form-section-heading"><span className="form-step">4</span><div><h2>Kiểm tra & hoàn tất</h2><p>Tin đăng sẽ được kiểm duyệt trước khi hiển thị công khai.</p></div></div>
             <div className="review-notice"><Info size={17} /><span>Hãy xem lại cách tin xuất hiện trước khi gửi. Tin đăng sẽ được kiểm duyệt trước khi hiển thị công khai.</span></div>
             <div className="listing-preview-panel">
-              <div className="listing-preview-heading"><div><strong>Bản xem trước chi tiết tin đăng</strong><span>Kiểm tra hình ảnh, mô tả, khu vực và thông tin liên hệ</span></div><span className="listing-preview-badge">XEM TRƯỚC</span></div>
+              <div className="listing-preview-heading"><div><strong>Bản xem trước chi tiết tin đăng</strong><span>Kiểm tra hình ảnh, mô tả, khu vực và thông tin liên hệ</span></div></div>
               <ListingDetailPreview
                 key={coverPhotoId ?? 'no-cover'}
                 title={title.trim() || 'Tiêu đề tin của bạn'}
@@ -431,4 +443,18 @@ export function SellPage({ onCancel, onSubmit, onLoadDraft, onSaveDraft, sellerN
 
 function isAbortError(error: unknown): boolean {
   return error instanceof DOMException && error.name === 'AbortError'
+}
+
+function formatCurrencyAmount(value: string): string {
+  return value.replace(/\B(?=(\d{3})+(?!\d))/g, '.')
+}
+
+function findCursorAfterDigits(value: string, digitCount: number): number {
+  if (digitCount === 0) return 0
+  let digitsFound = 0
+  for (let index = 0; index < value.length; index += 1) {
+    if (/\d/.test(value[index])) digitsFound += 1
+    if (digitsFound === digitCount) return index + 1
+  }
+  return value.length
 }
