@@ -158,7 +158,7 @@ export function MarketplaceLayout({
         {view === 'home' && <img className="home-banner-image" src="/banner.png" alt="" aria-hidden="true" />}
         <div className="header-main page-container">
           <button className="brand" type="button" onClick={() => navigate('home')} aria-label="Về trang chủ Chợ Hời">
-            <span className="brand-icon"><ShoppingBag size={21} strokeWidth={2.2} /></span>
+            <img className="brand-logo-image" src="/favicon.png" alt="" />
             <span className="brand-copy"><ChoHoiWordmark /><small>MUA BÁN QUANH BẠN</small></span>
           </button>
           <form className="header-search" onSubmit={(event) => { event.preventDefault(); onSearch() }}>
