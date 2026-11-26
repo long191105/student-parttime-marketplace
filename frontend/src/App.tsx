@@ -767,7 +767,7 @@ export function App() {
     if (user.role !== 'ADMIN') {
       return <div className="admin-route-message"><h1>Bạn không có quyền truy cập</h1><p>Trang quản trị chỉ dành cho tài khoản quản trị viên.</p><button className="button-primary" onClick={leaveAdminRoute}>Về trang chủ</button></div>
     }
-    return <AdminPage listings={listings} onStatusChange={changeStatus} onOpen={openListingFromAdmin} onExit={leaveAdminRoute} onLoadStats={loadAdminStats} onLoadUsers={loadAdminUsers} onUserStatusChange={updateAdminUserStatus} onLoadReports={loadAdminReports} onReportAction={processAdminReport} onLoadCategories={loadAdminCategories} onCreateCategory={createAdminCategory} />
+    return <AdminPage listings={listings} onStatusChange={changeStatus} onOpen={openListingFromAdmin} onExit={leaveAdminRoute} onHome={() => navigate('home', { historyMode: 'replace' })} onSignOut={signOut} onLoadStats={loadAdminStats} onLoadUsers={loadAdminUsers} onUserStatusChange={updateAdminUserStatus} onLoadReports={loadAdminReports} onReportAction={processAdminReport} onLoadCategories={loadAdminCategories} onCreateCategory={createAdminCategory} />
   }
 
   if (view === 'auth') {
