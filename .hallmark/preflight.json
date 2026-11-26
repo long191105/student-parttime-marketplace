@@ -1,0 +1,17 @@
+﻿{
+    "date":  "2026-11-26",
+    "target":  "frontend/src/pages/InboxPage.tsx",
+    "route":  "view=messages",
+    "kind":  "app screen",
+    "framework":  "React + Vite",
+    "stylesheet":  "frontend/src/styles.css",
+    "brand":  "Be Vietnam Pro; cream surface, green accent, existing project tokens",
+    "reference":  "User-provided inbox screenshot",
+    "preserved":  [
+                      "React state and derived state",
+                      "callbacks and event handlers",
+                      "forms, input fields, routes, message/call/review/location behavior"
+                  ],
+    "planned_change":  "CSS-only composition and responsive scroll sizing",
+    "runtime_note":  "Backend API at localhost:8080 unavailable during capture; reference image used as visual target"
+}
