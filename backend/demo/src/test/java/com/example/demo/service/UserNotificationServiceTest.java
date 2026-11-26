@@ -89,6 +89,18 @@ class UserNotificationServiceTest {
     }
 
     @Test
+    void publishesEmailEventWhenListingIsApproved() {
+        notificationService.notifyListingStatus(seller, listing, ListingStatus.ACTIVE, null);
+
+        ArgumentCaptor<ListingModerationEmailEvent> eventCaptor =
+                ArgumentCaptor.forClass(ListingModerationEmailEvent.class);
+        verify(eventPublisher).publishEvent(eventCaptor.capture());
+        ListingModerationEmailEvent event = eventCaptor.getValue();
+        assertEquals("long@gmail.com", event.recipientEmail());
+        assertEquals(ListingStatus.ACTIVE, event.status());
+    }
+
+    @Test
     void doesNotPublishEmailEventsForNewMessageNotifications() {
         UserAccount buyer = new UserAccount("Mai Tran", "mai@gmail.com", "hashed", null, UserRole.MEMBER);
         ReflectionTestUtils.setField(buyer, "id", 8L);

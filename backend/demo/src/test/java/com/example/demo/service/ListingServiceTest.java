@@ -132,6 +132,7 @@ class ListingServiceTest {
     @Test
     void moderationNotifiesSellerAboutApprovedListing() {
         pendingListing.changeStatus(ListingStatus.PENDING, null);
+        when(listingRepository.findById(41L)).thenReturn(java.util.Optional.of(pendingListing));
 
         listingService.moderate(41L, ListingStatus.ACTIVE, null);
 
@@ -140,6 +141,8 @@ class ListingServiceTest {
 
     @Test
     void moderationNotifiesSellerAboutRejectedListing() {
+        when(listingRepository.findById(41L)).thenReturn(java.util.Optional.of(pendingListing));
+
         listingService.moderate(41L, ListingStatus.REJECTED, "Thiếu hình ảnh rõ nét.");
 
         verify(notificationService).notifyListingStatus(
