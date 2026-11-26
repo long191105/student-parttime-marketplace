@@ -4,6 +4,7 @@ import { locations } from '../data/categories'
 import type { AuthUser, UserNotification } from '../services/MarketplaceApi'
 import { ChoHoiWordmark } from './ChoHoiWordmark'
 import { FloatingPromotions } from './FloatingPromotions'
+import { ScrollToTopButton } from './ScrollToTopButton'
 
 export type AppView = 'home' | 'search' | 'detail' | 'sell' | 'my-listings' | 'favorites' | 'messages' | 'notifications' | 'profile' | 'check-in' | 'auth'
 
@@ -353,6 +354,7 @@ export function MarketplaceLayout({
         <button className={view === 'profile' ? 'mobile-nav-active' : ''} onClick={() => navigate('profile')}><UserRound size={19} /><span>Tôi</span></button>
       </nav>
       <FloatingPromotions onNavigate={navigate} view={view} />
+      <ScrollToTopButton />
     </div>
   )
 }

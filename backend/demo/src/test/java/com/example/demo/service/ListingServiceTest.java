@@ -29,10 +29,12 @@ import com.example.demo.dto.ListingResponse;
 import com.example.demo.dto.PhoneResponse;
 import com.example.demo.model.Listing;
 import com.example.demo.model.ListingCondition;
+import com.example.demo.model.ListingReportStatus;
 import com.example.demo.model.ListingStatus;
 import com.example.demo.model.UserAccount;
 import com.example.demo.model.UserRole;
 import com.example.demo.repository.CategoryRepository;
+import com.example.demo.repository.ListingReportRepository;
 import com.example.demo.repository.ListingRepository;
 
 @ExtendWith(MockitoExtension.class)
@@ -43,6 +45,9 @@ class ListingServiceTest {
 
     @Mock
     private CategoryRepository categoryRepository;
+
+    @Mock
+    private ListingReportRepository listingReportRepository;
 
     @Mock
     private CurrentUserService currentUserService;
@@ -61,6 +66,7 @@ class ListingServiceTest {
     void setUp() {
         listingService = new ListingService(
                 listingRepository,
+                listingReportRepository,
                 categoryRepository,
                 currentUserService,
                 listingDraftService,
@@ -95,6 +101,51 @@ class ListingServiceTest {
 
         assertEquals(HttpStatus.CONFLICT, exception.getStatusCode());
         assertEquals(ListingStatus.PENDING, pendingListing.getStatus());
+    }
+
+    @Test
+    void memberCanDeleteOwnHiddenListing() {
+        pendingListing.changeStatus(ListingStatus.HIDDEN, null);
+        when(currentUserService.requireUser()).thenReturn(seller);
+        when(listingRepository.findByIdAndSellerId(41L, 7L)).thenReturn(java.util.Optional.of(pendingListing));
+        when(listingReportRepository.existsByListingIdAndStatus(41L, ListingReportStatus.OPEN)).thenReturn(false);
+
+        listingService.deleteHiddenListing(41L);
+
+        verify(listingReportRepository).deleteAllByListingId(41L);
+        verify(listingReportRepository).flush();
+        verify(listingRepository).delete(pendingListing);
+    }
+
+    @Test
+    void memberCannotDeleteListingThatIsNotHidden() {
+        pendingListing.changeStatus(ListingStatus.ACTIVE, null);
+        when(currentUserService.requireUser()).thenReturn(seller);
+        when(listingRepository.findByIdAndSellerId(41L, 7L)).thenReturn(java.util.Optional.of(pendingListing));
+
+        ResponseStatusException exception = assertThrows(
+                ResponseStatusException.class,
+                () -> listingService.deleteHiddenListing(41L));
+
+        assertEquals(HttpStatus.CONFLICT, exception.getStatusCode());
+        assertEquals(ListingStatus.ACTIVE, pendingListing.getStatus());
+        verifyNoInteractions(listingReportRepository);
+    }
+
+    @Test
+    void memberCannotDeleteListingWithAnOpenReport() {
+        pendingListing.changeStatus(ListingStatus.HIDDEN, null);
+        when(currentUserService.requireUser()).thenReturn(seller);
+        when(listingRepository.findByIdAndSellerId(41L, 7L)).thenReturn(java.util.Optional.of(pendingListing));
+        when(listingReportRepository.existsByListingIdAndStatus(41L, ListingReportStatus.OPEN)).thenReturn(true);
+
+        ResponseStatusException exception = assertThrows(
+                ResponseStatusException.class,
+                () -> listingService.deleteHiddenListing(41L));
+
+        assertEquals(HttpStatus.CONFLICT, exception.getStatusCode());
+        verify(listingReportRepository, org.mockito.Mockito.never()).deleteAllByListingId(41L);
+        verify(listingRepository, org.mockito.Mockito.never()).delete(pendingListing);
     }
 
     @Test

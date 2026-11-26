@@ -15,6 +15,7 @@ import { SellPage } from './pages/SellPage'
 import type { Listing, ListingData, ListingStatus } from './domain/Listing'
 import { MarketplaceApi, MarketplaceApiError, type AdminCategory, type AdminReport, type AdminReportAction, type AdminStats, type AdminUserStatus, type AuthSession, type AuthUser, type ListingFormDraft, type UserNotification } from './services/MarketplaceApi'
 import { MarketplaceService } from './services/MarketplaceService'
+import { categories, categoriesForNames } from './data/categories'
 
 const api = new MarketplaceApi()
 const authenticationRequiredViews: AppView[] = ['sell', 'my-listings', 'messages', 'notifications', 'check-in']
@@ -70,6 +71,7 @@ function withAppNavigationEntry(entry: AppNavigationEntry): Record<string, unkno
 
 export function App() {
   const [service] = useState(() => new MarketplaceService())
+  const [categoryOptions, setCategoryOptions] = useState(categories)
   const initialNavigationEntry = readAppNavigationEntry(window.history.state)
   const loadListingDraft = useCallback(() => api.getListingDraft(), [])
   const saveListingDraft = useCallback((draft: ListingFormDraft) => api.saveListingDraft(draft), [])
@@ -80,7 +82,11 @@ export function App() {
   const loadAdminReports = useCallback(() => api.listAdminReports(), [])
   const processAdminReport = useCallback((id: number, action: AdminReportAction): Promise<AdminReport> => api.processAdminReport(id, action), [])
   const loadAdminCategories = useCallback(() => api.listAdminCategories(), [])
-  const createAdminCategory = useCallback((name: string): Promise<AdminCategory> => api.createAdminCategory(name), [])
+  const createAdminCategory = useCallback(async (name: string): Promise<AdminCategory> => {
+    const createdCategory = await api.createAdminCategory(name)
+    setCategoryOptions((current) => categoriesForNames([...current.map((category) => category.name), createdCategory.name]))
+    return createdCategory
+  }, [])
   const submitListingReport = useCallback((listingId: string, reason: string) => api.submitListingReport(listingId, reason), [])
   const [listings, setListings] = useState<Listing[]>(() => service.getListings())
   const [savedIds, setSavedIds] = useState<string[]>(() => service.getFavorites())
@@ -136,6 +142,28 @@ export function App() {
     const timer = window.setTimeout(() => setNotice(''), 3500)
     return () => window.clearTimeout(timer)
   }, [notice])
+
+  useEffect(() => {
+    if (apiState !== 'connected') return
+
+    let active = true
+    async function refreshCategories() {
+      try {
+        const nextCategories = await api.listCategories()
+        if (active) setCategoryOptions(categoriesForNames(nextCategories.map((category) => category.name)))
+      } catch (error) {
+        if (!active) return
+        console.error('Không thể làm mới danh mục sản phẩm.', error)
+      }
+    }
+
+    void refreshCategories()
+    const interval = window.setInterval(() => void refreshCategories(), 30_000)
+    return () => {
+      active = false
+      window.clearInterval(interval)
+    }
+  }, [apiState])
 
   useEffect(() => {
     if (!authNotice) return
@@ -573,6 +601,20 @@ export function App() {
     }
   }
 
+  async function deleteHiddenListing(id: string): Promise<void> {
+    if (apiState === 'connected') {
+      if (!user) throw new Error('Vui lòng đăng nhập để xóa tin đăng.')
+      await api.deleteListing(id)
+    } else {
+      service.deleteHiddenListing(id)
+    }
+
+    setListings((current) => current.filter((listing) => listing.id !== id))
+    setFavoriteListings((current) => current.filter((listing) => listing.id !== id))
+    setSavedIds((current) => current.filter((listingId) => listingId !== id))
+    setNotice('Tin đã được xóa vĩnh viễn.')
+  }
+
   async function createListing(data: Omit<ListingData, 'id' | 'status' | 'views' | 'postedAt'> & { contactPhone: string }): Promise<void> {
     if (!user) {
       setNotice('Đăng nhập trước khi đăng tin.')
@@ -739,7 +781,7 @@ export function App() {
     if (user.role !== 'ADMIN') {
       return <div className="admin-route-message"><h1>Bạn không có quyền truy cập</h1><p>Trang quản trị chỉ dành cho tài khoản quản trị viên.</p><button className="button-primary" onClick={leaveAdminRoute}>Về trang chủ</button></div>
     }
-    return <AdminPage listings={listings} onStatusChange={changeStatus} onOpen={openListingFromAdmin} onExit={leaveAdminRoute} onLoadStats={loadAdminStats} onLoadUsers={loadAdminUsers} onUserStatusChange={updateAdminUserStatus} onLoadReports={loadAdminReports} onReportAction={processAdminReport} onLoadCategories={loadAdminCategories} onCreateCategory={createAdminCategory} />
+    return <AdminPage listings={listings} onStatusChange={changeStatus} onOpen={openListingFromAdmin} onExit={leaveAdminRoute} onHome={() => navigate('home', { historyMode: 'replace' })} onSignOut={signOut} onLoadStats={loadAdminStats} onLoadUsers={loadAdminUsers} onUserStatusChange={updateAdminUserStatus} onLoadReports={loadAdminReports} onReportAction={processAdminReport} onLoadCategories={loadAdminCategories} onCreateCategory={createAdminCategory} />
   }
 
   if (view === 'auth') {
@@ -771,8 +813,8 @@ export function App() {
       {apiState === 'offline' && <div className="api-status-banner" role="status"><span>DEMO · Chưa kết nối database; thao tác chỉ lưu trên trình duyệt.</span><button onClick={retryConnection}>Thử kết nối lại</button><small>{apiError}</small></div>}
       {apiState === 'connecting' && <div className="api-status-banner api-status-connecting" role="status"><span>Đang kết nối Chợ Hời API...</span></div>}
       {notice && <div className="toast-message" role="status">{notice}<button onClick={() => setNotice('')} aria-label="Đóng thông báo">×</button></div>}
-      {view === 'home' && <ExplorePage listings={activeListings} savedIds={savedIds} categoryCounts={activeCategoryCounts} onOpen={openListing} onToggleSaved={toggleSaved} onCategory={selectCategory} />}
-      {view === 'search' && <SearchPage listings={activeListings} savedIds={savedIds} query={query} category={category} location={location} onQueryChange={setQuery} onCategoryChange={setCategory} onLocationChange={setLocation} onOpen={openListing} onToggleSaved={toggleSaved} />}
+      {view === 'home' && <ExplorePage listings={activeListings} savedIds={savedIds} categoryCounts={activeCategoryCounts} categories={categoryOptions} onOpen={openListing} onToggleSaved={toggleSaved} onCategory={selectCategory} />}
+      {view === 'search' && <SearchPage listings={activeListings} savedIds={savedIds} query={query} categories={categoryOptions} category={category} location={location} onQueryChange={setQuery} onCategoryChange={setCategory} onLocationChange={setLocation} onOpen={openListing} onToggleSaved={toggleSaved} />}
       {view === 'detail' && selectedListing && <ListingDetailPage key={selectedListing.id} listing={selectedListing} related={relatedListings} saved={savedIds.includes(selectedListing.id)} currentUserId={user ? String(user.id) : null} onBack={() => goBack(previousView === 'detail' ? 'home' : previousView)} onToggleSaved={toggleSaved} onOpen={openListing} onContact={() => void openChat(selectedListing.id)} onSeller={() => navigate('profile')} onReport={submitListingReport} onRevealPhone={async (id) => {
         if (apiState !== 'connected') throw new Error('Backend chưa kết nối; không thể tải số điện thoại thật.')
         if (!user) {
@@ -783,8 +825,8 @@ export function App() {
         return api.getSellerPhone(id)
       }} />}
       {view === 'detail' && !selectedListing && <div className="empty-state"><h3>Không tìm thấy tin đăng</h3><button className="button-primary" onClick={() => navigate('home')}>Về trang chủ</button></div>}
-      {view === 'sell' && <SellPage key={sellFormInstance} restoreDraft={isEditingSavedDraft} onCancel={() => goBack(sellReturnView)} onSubmit={createListing} onLoadDraft={loadListingDraft} onSaveDraft={saveListingDraft} sellerName={user?.fullName ?? 'Người bán'} />}
-      {view === 'my-listings' && <MyListingsPage listings={listings} onStatusChange={changeStatus} onOpen={openListing} onSell={startNewListing} onEditDraft={editSavedDraft} sellerId={currentSellerId} onLoadDraft={loadListingDraft} onDeleteDraft={deleteListingDraft} onPublishDraft={publishSavedDraft} />}
+      {view === 'sell' && <SellPage key={sellFormInstance} categories={categoryOptions} restoreDraft={isEditingSavedDraft} onCancel={() => goBack(sellReturnView)} onSubmit={createListing} onLoadDraft={loadListingDraft} onSaveDraft={saveListingDraft} sellerName={user?.fullName ?? 'Người bán'} />}
+      {view === 'my-listings' && <MyListingsPage listings={listings} onStatusChange={changeStatus} onDeleteListing={deleteHiddenListing} onOpen={openListing} onSell={startNewListing} onEditDraft={editSavedDraft} sellerId={currentSellerId} onLoadDraft={loadListingDraft} onDeleteDraft={deleteListingDraft} onPublishDraft={publishSavedDraft} />}
       {view === 'favorites' && <FavoritesPage savedListings={activeFavoriteListings} onOpen={openListing} onToggleSaved={toggleSaved} />}
       {view === 'check-in' && <CheckInPage userId={user?.id ?? null} onBack={() => goBack('home')} />}
       {user && apiState === 'connected' && <div className={view === 'messages' ? '' : 'inbox-background-listener'} aria-hidden={view !== 'messages'}>

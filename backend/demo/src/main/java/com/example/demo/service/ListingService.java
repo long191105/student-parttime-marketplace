@@ -23,9 +23,11 @@ import com.example.demo.dto.ListingResponse;
 import com.example.demo.dto.PhoneResponse;
 import com.example.demo.model.Listing;
 import com.example.demo.model.ListingCondition;
+import com.example.demo.model.ListingReportStatus;
 import com.example.demo.model.ListingStatus;
 import com.example.demo.model.UserAccount;
 import com.example.demo.repository.CategoryRepository;
+import com.example.demo.repository.ListingReportRepository;
 import com.example.demo.repository.ListingRepository;
 
 @Service
@@ -34,6 +36,7 @@ public class ListingService {
     private static final Pattern HTTPS_IMAGE_URL = Pattern.compile("^https://[^\\s]+$", Pattern.CASE_INSENSITIVE);
 
     private final ListingRepository listingRepository;
+    private final ListingReportRepository listingReportRepository;
     private final CategoryRepository categoryRepository;
     private final CurrentUserService currentUserService;
     private final ListingDraftService listingDraftService;
@@ -41,11 +44,13 @@ public class ListingService {
 
     public ListingService(
             ListingRepository listingRepository,
+            ListingReportRepository listingReportRepository,
             CategoryRepository categoryRepository,
             CurrentUserService currentUserService,
             ListingDraftService listingDraftService,
             UserNotificationService notificationService) {
         this.listingRepository = listingRepository;
+        this.listingReportRepository = listingReportRepository;
         this.categoryRepository = categoryRepository;
         this.currentUserService = currentUserService;
         this.listingDraftService = listingDraftService;
@@ -119,7 +124,7 @@ public class ListingService {
 
     @Transactional(readOnly = true)
     public long countListingsBySeller(Long sellerId) {
-        return listingRepository.countBySellerId(sellerId);
+        return listingRepository.countBySellerIdAndStatusNot(sellerId, ListingStatus.DELETED);
     }
 
     @Transactional
@@ -151,9 +156,11 @@ public class ListingService {
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
         Page<Listing> result;
         if (status == null || status.isBlank()) {
-            result = listingRepository.findAllBySellerId(user.getId(), pageable);
+            result = listingRepository.findAllBySellerIdAndStatusNot(user.getId(), ListingStatus.DELETED, pageable);
         } else {
-            result = listingRepository.findAllBySellerIdAndStatus(user.getId(), parseStatus(status), pageable);
+            ListingStatus requestedStatus = parseStatus(status);
+            if (requestedStatus == ListingStatus.DELETED) return Page.empty(pageable);
+            result = listingRepository.findAllBySellerIdAndStatus(user.getId(), requestedStatus, pageable);
         }
         return result.map(ListingResponse::from);
     }
@@ -220,6 +227,22 @@ public class ListingService {
         }
         listing.changeStatus(requestedStatus, null);
         return ListingResponse.from(listing);
+    }
+
+    @Transactional
+    public void deleteHiddenListing(Long id) {
+        UserAccount user = currentUserService.requireUser();
+        Listing listing = listingRepository.findByIdAndSellerId(id, user.getId())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy tin đăng của bạn."));
+        if (listing.getStatus() != ListingStatus.HIDDEN) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Chỉ tin đã ẩn mới có thể xóa.");
+        }
+        if (listingReportRepository.existsByListingIdAndStatus(id, ListingReportStatus.OPEN)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Tin có báo cáo đang xử lý nên chưa thể xóa.");
+        }
+        listingReportRepository.deleteAllByListingId(id);
+        listingReportRepository.flush();
+        listingRepository.delete(listing);
     }
 
     @Transactional(readOnly = true)

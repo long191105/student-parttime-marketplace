@@ -289,6 +289,10 @@ export class MarketplaceApi {
     return this.request<AdminCategory[]>('/admin/categories')
   }
 
+  async listCategories(): Promise<AdminCategory[]> {
+    return this.request<AdminCategory[]>('/categories')
+  }
+
   async createAdminCategory(name: string): Promise<AdminCategory> {
     return this.request<AdminCategory>('/admin/categories', {
       method: 'POST',
@@ -346,6 +350,10 @@ export class MarketplaceApi {
       body: JSON.stringify({ status }),
     })
     return new Listing(response)
+  }
+
+  async deleteListing(id: string): Promise<void> {
+    await this.request<void>(`/listings/${encodeURIComponent(id)}`, { method: 'DELETE' }, false)
   }
 
   async getSellerPhone(id: string): Promise<string> {

@@ -20,6 +20,8 @@ public interface ListingRepository extends JpaRepository<Listing, Long>, JpaSpec
 
     Page<Listing> findAllBySellerId(Long sellerId, Pageable pageable);
 
+    Page<Listing> findAllBySellerIdAndStatusNot(Long sellerId, ListingStatus excludedStatus, Pageable pageable);
+
     Page<Listing> findAllBySellerIdAndStatus(Long sellerId, ListingStatus status, Pageable pageable);
 
     Page<Listing> findAllByStatus(ListingStatus status, Pageable pageable);
@@ -31,7 +33,7 @@ public interface ListingRepository extends JpaRepository<Listing, Long>, JpaSpec
     Optional<Listing> findByIdForUpdate(@Param("id") Long id);
 
     long countByStatus(ListingStatus status);
-    long countBySellerId(Long sellerId);
+    long countBySellerIdAndStatusNot(Long sellerId, ListingStatus excludedStatus);
 
     long countByStatusAndCreatedAtGreaterThanEqualAndCreatedAtLessThan(
             ListingStatus status, Instant from, Instant to);

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { ArrowDownUp, ChevronDown, RotateCcw, SlidersHorizontal, X } from 'lucide-react'
 import type { Listing } from '../domain/Listing'
-import { categories, locations } from '../data/categories'
+import { locations, type CategoryOption } from '../data/categories'
 import { ListingCard } from '../components/ListingCard'
 import { getProvinceWards, type LocationOption } from '../services/AdministrativeLocationApi'
 import { formatCurrencyAmount, handleCurrencyInputChange } from '../utils/CurrencyInput'
@@ -10,6 +10,7 @@ interface SearchPageProps {
   listings: Listing[]
   savedIds: string[]
   query: string
+  categories: CategoryOption[]
   category: string
   location: string
   onQueryChange: (value: string) => void
@@ -19,7 +20,7 @@ interface SearchPageProps {
   onToggleSaved: (id: string) => void
 }
 
-export function SearchPage({ listings, savedIds, query, category, location, onQueryChange, onCategoryChange, onLocationChange, onOpen, onToggleSaved }: SearchPageProps) {
+export function SearchPage({ listings, savedIds, query, categories, category, location, onQueryChange, onCategoryChange, onLocationChange, onOpen, onToggleSaved }: SearchPageProps) {
   const [condition, setCondition] = useState('Tất cả')
   const [minPrice, setMinPrice] = useState('')
   const [maxPrice, setMaxPrice] = useState('')

@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useState } from 'react'
-import { BarChart3, Check, ChevronDown, ChevronRight, CircleAlert, FolderTree, LayoutDashboard, List, LockKeyhole, Search, ShieldCheck, Users, X } from 'lucide-react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { BarChart3, Check, ChevronDown, ChevronRight, CircleAlert, FolderTree, LayoutDashboard, List, LockKeyhole, LogOut, Search, ShieldCheck, Users, X } from 'lucide-react'
 import { ChoHoiWordmark } from '../components/ChoHoiWordmark'
+import { ScrollToTopButton } from '../components/ScrollToTopButton'
 import type { Listing, ListingStatus } from '../domain/Listing'
 import { categories } from '../data/categories'
 import { formatImageUrl } from '../services/ImageUrl'
@@ -11,6 +12,8 @@ interface AdminPageProps {
   onStatusChange: (id: string, status: ListingStatus, reason?: string) => void
   onOpen: (listing: Listing) => void
   onExit: () => void
+  onHome: () => void
+  onSignOut: () => void
   onLoadStats: (from: string, to: string) => Promise<AdminStats>
   onLoadUsers: () => Promise<AdminUser[]>
   onUserStatusChange: (id: number, status: AdminUserStatus) => Promise<AdminUser>
@@ -110,8 +113,10 @@ const adminNavigation: { id: AdminTab; label: string; icon: typeof LayoutDashboa
   { id: 'users', label: 'Người dùng', icon: Users },
 ]
 
-export function AdminPage({ listings, onStatusChange, onOpen, onExit, onLoadStats, onLoadUsers, onUserStatusChange, onLoadReports, onReportAction, onLoadCategories, onCreateCategory }: AdminPageProps) {
+export function AdminPage({ listings, onStatusChange, onOpen, onExit, onHome, onSignOut, onLoadStats, onLoadUsers, onUserStatusChange, onLoadReports, onReportAction, onLoadCategories, onCreateCategory }: AdminPageProps) {
   const [activeTab, setActiveTab] = useState<AdminTab>('overview')
+  const [accountMenuOpen, setAccountMenuOpen] = useState(false)
+  const accountMenuRef = useRef<HTMLDivElement>(null)
   const [adminCategories, setAdminCategories] = useState<AdminCategory[]>([])
   const [selectedCategory, setSelectedCategory] = useState('')
   const [categorySearch, setCategorySearch] = useState('')
@@ -173,12 +178,34 @@ export function AdminPage({ listings, onStatusChange, onOpen, onExit, onLoadStat
   }, [customFrom, customTo, dateRange, today])
 
   useEffect(() => {
+    if (activeTab !== 'overview') return
     const timer = window.setInterval(() => setNow(new Date()), 1000)
     return () => window.clearInterval(timer)
-  }, [])
+  }, [activeTab])
 
   useEffect(() => {
-    if (!dateBounds) return
+    if (!accountMenuOpen) return
+
+    function handlePointerDown(event: PointerEvent) {
+      if (event.target instanceof Node && !accountMenuRef.current?.contains(event.target)) {
+        setAccountMenuOpen(false)
+      }
+    }
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === 'Escape') setAccountMenuOpen(false)
+    }
+
+    document.addEventListener('pointerdown', handlePointerDown)
+    document.addEventListener('keydown', handleKeyDown)
+    return () => {
+      document.removeEventListener('pointerdown', handlePointerDown)
+      document.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [accountMenuOpen])
+
+  useEffect(() => {
+    if (activeTab !== 'overview' || !dateBounds) return
     let active = true
     const refreshStats = async () => {
       try {
@@ -198,7 +225,7 @@ export function AdminPage({ listings, onStatusChange, onOpen, onExit, onLoadStat
       active = false
       window.clearInterval(timer)
     }
-  }, [dateBounds, onLoadStats, statsRetry])
+  }, [activeTab, dateBounds, onLoadStats, statsRetry])
 
   useEffect(() => {
     if (activeTab !== 'users') return
@@ -323,8 +350,9 @@ export function AdminPage({ listings, onStatusChange, onOpen, onExit, onLoadStat
   }
 
   return (
+    <>
     <div className="admin-app admin-app-standalone">
-      <aside className="admin-sidebar"><div className="admin-brand"><span className="brand-icon"><ShieldCheck size={19} /></span><span className="admin-brand-copy"><ChoHoiWordmark className="admin-wordmark" /><small>TRUNG TÂM QUẢN TRỊ</small></span></div><div className="admin-nav-label">KHÔNG GIAN LÀM VIỆC</div><nav>{adminNavigation.map(({ id, label, icon: Icon }) => <button key={id} className={activeTab === id ? 'admin-nav-active' : ''} onClick={() => setActiveTab(id)}><Icon size={17} />{label}{id === 'review' && pendingListings.length > 0 && <span className="admin-nav-count">{pendingListings.length}</span>}</button>)}</nav><div className="admin-sidebar-bottom"><span className="admin-avatar">AD</span><span><strong>Quản trị viên</strong><small>admin@chohoi.vn</small></span><ChevronDown size={15} /></div></aside>
+      <aside className="admin-sidebar"><button type="button" className="admin-brand" aria-label="Về trang chủ Chợ Hời" onClick={onHome}><span className="brand-icon"><ShieldCheck size={19} /></span><span className="admin-brand-copy"><ChoHoiWordmark className="admin-wordmark" /><small>TRUNG TÂM QUẢN TRỊ</small></span></button><div className="admin-nav-label">KHÔNG GIAN LÀM VIỆC</div><nav>{adminNavigation.map(({ id, label, icon: Icon }) => <button key={id} className={activeTab === id ? 'admin-nav-active' : ''} onClick={() => setActiveTab(id)}><Icon size={17} />{label}{id === 'review' && pendingListings.length > 0 && <span className="admin-nav-count">{pendingListings.length}</span>}</button>)}</nav><div className="admin-account-area" ref={accountMenuRef}><button type="button" className="admin-sidebar-bottom" aria-haspopup="menu" aria-expanded={accountMenuOpen} onClick={() => setAccountMenuOpen((open) => !open)}><span className="admin-avatar">AD</span><span><strong>Quản trị viên</strong><small>admin@chohoi.vn</small></span><ChevronDown size={15} /></button>{accountMenuOpen && <div className="admin-account-menu" role="menu"><button type="button" role="menuitem" onClick={onSignOut}><LogOut size={15} />Đăng xuất</button></div>}</div></aside>
       <section className="admin-content"><header className="admin-topbar"><div><button className="admin-home-link" onClick={onExit}>Chợ Hời</button><ChevronRight size={14} /><strong>{adminNavigation.find((item) => item.id === activeTab)?.label}</strong></div><div className="admin-topbar-profile"><span className="admin-status-dot" /> Hệ thống đang hoạt động <span className="admin-avatar admin-avatar-small">AD</span></div></header>
         <div className="admin-main">
           {activeTab === 'overview' && <>
@@ -478,5 +506,7 @@ export function AdminPage({ listings, onStatusChange, onOpen, onExit, onLoadStat
         </div>
       </section>
     </div>
+    <ScrollToTopButton />
+    </>
   )
 }

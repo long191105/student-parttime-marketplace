@@ -1,6 +1,7 @@
 import { useRef, useState, type FormEvent } from 'react'
 import { ArrowLeft, ArrowRight, BadgeCheck, Eye, EyeOff, Heart, LockKeyhole, Package, ShieldCheck, ShoppingBag, Sparkles } from 'lucide-react'
 import { ChoHoiWordmark } from '../components/ChoHoiWordmark'
+import { ScrollToTopButton } from '../components/ScrollToTopButton'
 import type { AuthSession } from '../services/MarketplaceApi'
 
 interface AuthPageProps {
@@ -88,6 +89,7 @@ export function AuthPage({ onBack, onAuthenticate, onVerify, onResend, onSuccess
   }
 
   return (
+    <>
     <div className="auth-page">
       <section className="auth-story">
         <button className="auth-back" onClick={onBack}><ArrowLeft size={16} /> Về trang chủ</button>
@@ -172,5 +174,7 @@ export function AuthPage({ onBack, onAuthenticate, onVerify, onResend, onSuccess
         </div>
       </section>
     </div>
+    <ScrollToTopButton />
+    </>
   )
 }

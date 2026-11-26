@@ -85,6 +85,16 @@ export class MarketplaceService {
     this.listings = nextListings
   }
 
+  deleteHiddenListing(id: string): void {
+    const listing = this.listings.find((item) => item.id === id)
+    if (!listing) throw new Error('Không tìm thấy tin đăng.')
+    if (listing.status !== 'HIDDEN') throw new Error('Chỉ có thể xóa tin đã ẩn.')
+
+    const nextListings = this.listings.filter((item) => item.id !== id)
+    this.persistListings(nextListings)
+    this.listings = nextListings
+  }
+
   private readListings(): Listing[] {
     const saved = this.readStorage(LISTINGS_KEY)
     if (!saved) return seedListings.map((item) => new Listing(item))

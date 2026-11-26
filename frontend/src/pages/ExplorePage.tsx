@@ -1,5 +1,5 @@
 import { ArrowRight, ArrowUpRight, BadgeCheck, HeartHandshake, ShieldCheck } from 'lucide-react'
-import { categories } from '../data/categories'
+import type { CategoryOption } from '../data/categories'
 import { ChoHoiWordmark } from '../components/ChoHoiWordmark'
 import type { Listing } from '../domain/Listing'
 import { ListingCard } from '../components/ListingCard'
@@ -8,12 +8,13 @@ interface ExplorePageProps {
   listings: Listing[]
   savedIds: string[]
   categoryCounts: Map<string, number>
+  categories: CategoryOption[]
   onOpen: (listing: Listing) => void
   onToggleSaved: (id: string) => void
   onCategory: (category: string) => void
 }
 
-export function ExplorePage({ listings, savedIds, categoryCounts, onOpen, onToggleSaved, onCategory }: ExplorePageProps) {
+export function ExplorePage({ listings, savedIds, categoryCounts, categories, onOpen, onToggleSaved, onCategory }: ExplorePageProps) {
   return (
     <div className="explore-page">
       <section className="trust-strip" aria-label="Cam kết của Chợ Hời">

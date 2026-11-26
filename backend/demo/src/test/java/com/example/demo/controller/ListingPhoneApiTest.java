@@ -26,6 +26,7 @@ import com.example.demo.model.ListingStatus;
 import com.example.demo.model.UserAccount;
 import com.example.demo.model.UserRole;
 import com.example.demo.repository.CategoryRepository;
+import com.example.demo.repository.ListingReportRepository;
 import com.example.demo.repository.ListingRepository;
 import com.example.demo.service.CurrentUserService;
 import com.example.demo.service.ListingDraftService;
@@ -66,6 +67,7 @@ class ListingPhoneApiTest {
         when(currentUserService.requireUser()).thenReturn(member);
         ListingService listingService = new ListingService(
                 listingRepository,
+                mock(ListingReportRepository.class),
                 mock(CategoryRepository.class),
                 currentUserService,
                 mock(ListingDraftService.class),

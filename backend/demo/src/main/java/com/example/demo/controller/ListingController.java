@@ -100,6 +100,12 @@ public class ListingController {
         return listingService.updateStatus(parseId(id), request.status());
     }
 
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteHiddenListing(@PathVariable String id) {
+        listingService.deleteHiddenListing(parseId(id));
+        return ResponseEntity.noContent().build();
+    }
+
     private static Long parseId(String id) {
         try {
             long parsed = Long.parseLong(id);

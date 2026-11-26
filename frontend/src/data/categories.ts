@@ -1,5 +1,11 @@
-import { Bike, Building2, Cat, Laptop, Shirt, Sofa, Sparkles } from 'lucide-react'
+import { Bike, Building2, Cat, Laptop, Shirt, Sofa, Sparkles, type LucideIcon } from 'lucide-react'
 import { seedListings } from './seedListings'
+
+export interface CategoryOption {
+  name: string
+  icon: LucideIcon
+  image?: string
+}
 
 const categoryImages = new Map<string, string>()
 for (const listing of seedListings) {
@@ -15,7 +21,7 @@ const featuredCategoryImages: Record<string, string> = {
   'Khác': 'https://images.unsplash.com/photo-1610832958506-aa56368176cf?auto=format&fit=crop&w=400&q=80',
 }
 
-export const categories = [
+export const categories: CategoryOption[] = [
   { name: 'Điện tử', icon: Laptop },
   { name: 'Xe cộ', icon: Bike },
   { name: 'Bất động sản', icon: Building2 },
@@ -27,6 +33,11 @@ export const categories = [
   ...category,
   image: featuredCategoryImages[category.name] ?? categoryImages.get(category.name),
 }))
+
+export function categoriesForNames(names: string[]): CategoryOption[] {
+  const knownCategories = new Map(categories.map((category) => [category.name, category]))
+  return names.map((name) => knownCategories.get(name) ?? { name, icon: Sparkles, image: undefined })
+}
 
 export const locations = [
   'Toàn quốc',
