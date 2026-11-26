@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { BarChart3, Check, ChevronDown, ChevronRight, CircleAlert, FolderTree, LayoutDashboard, List, LockKeyhole, LogOut, Search, ShieldCheck, Users, X } from 'lucide-react'
 import { ChoHoiWordmark } from '../components/ChoHoiWordmark'
+import { ScrollToTopButton } from '../components/ScrollToTopButton'
 import type { Listing, ListingStatus } from '../domain/Listing'
 import { categories } from '../data/categories'
 import { formatImageUrl } from '../services/ImageUrl'
@@ -349,6 +350,7 @@ export function AdminPage({ listings, onStatusChange, onOpen, onExit, onHome, on
   }
 
   return (
+    <>
     <div className="admin-app admin-app-standalone">
       <aside className="admin-sidebar"><button type="button" className="admin-brand" aria-label="Về trang chủ Chợ Hời" onClick={onHome}><span className="brand-icon"><ShieldCheck size={19} /></span><span className="admin-brand-copy"><ChoHoiWordmark className="admin-wordmark" /><small>TRUNG TÂM QUẢN TRỊ</small></span></button><div className="admin-nav-label">KHÔNG GIAN LÀM VIỆC</div><nav>{adminNavigation.map(({ id, label, icon: Icon }) => <button key={id} className={activeTab === id ? 'admin-nav-active' : ''} onClick={() => setActiveTab(id)}><Icon size={17} />{label}{id === 'review' && pendingListings.length > 0 && <span className="admin-nav-count">{pendingListings.length}</span>}</button>)}</nav><div className="admin-account-area" ref={accountMenuRef}><button type="button" className="admin-sidebar-bottom" aria-haspopup="menu" aria-expanded={accountMenuOpen} onClick={() => setAccountMenuOpen((open) => !open)}><span className="admin-avatar">AD</span><span><strong>Quản trị viên</strong><small>admin@chohoi.vn</small></span><ChevronDown size={15} /></button>{accountMenuOpen && <div className="admin-account-menu" role="menu"><button type="button" role="menuitem" onClick={onSignOut}><LogOut size={15} />Đăng xuất</button></div>}</div></aside>
       <section className="admin-content"><header className="admin-topbar"><div><button className="admin-home-link" onClick={onExit}>Chợ Hời</button><ChevronRight size={14} /><strong>{adminNavigation.find((item) => item.id === activeTab)?.label}</strong></div><div className="admin-topbar-profile"><span className="admin-status-dot" /> Hệ thống đang hoạt động <span className="admin-avatar admin-avatar-small">AD</span></div></header>
@@ -504,5 +506,7 @@ export function AdminPage({ listings, onStatusChange, onOpen, onExit, onHome, on
         </div>
       </section>
     </div>
+    <ScrollToTopButton />
+    </>
   )
 }

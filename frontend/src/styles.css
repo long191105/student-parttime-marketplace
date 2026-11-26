@@ -270,6 +270,8 @@ img { display: block; max-width: 100%; }
 .floating-promo-close { position: absolute; top: -3px; right: -2px; z-index: 1; display: grid; width: 20px; height: 20px; place-items: center; padding: 0; border: 2px solid #fff; border-radius: 50%; background: #53614f; color: #fff; line-height: 0; box-shadow: 0 2px 6px rgb(37 45 34 / 20%); pointer-events: auto; }
 .floating-promo-close svg { display: block; }
 .floating-promo-checkin .floating-promo-close { background: #a7653f; }
+.scroll-to-top { position: fixed; right: 118px; bottom: 74px; z-index: 61; display: grid; width: 42px; height: 42px; place-items: center; padding: 0; border: 1px solid #dfe8d8; border-radius: 50%; background: #fffefa; color: #527447; box-shadow: 0 5px 16px rgb(37 45 34 / 18%); transition: transform 160ms ease, box-shadow 160ms ease; }
+.scroll-to-top:hover { transform: translateY(-2px); box-shadow: 0 7px 20px rgb(37 45 34 / 24%); }
 .api-status-banner { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0 0 14px; padding: 9px 11px; border: 1px solid #d6e3d1; border-radius: 4px; background: #edf4e9; color: #285439; font-size: 11px; }
 .api-status-banner button { padding: 4px 7px; border: 1px solid #d6e3d1; border-radius: 3px; background: #fffefa; color: #285439; font-size: 10px; font-weight: 700; }
 .api-status-banner small { width: 100%; color: #5d7659; font-size: 9px; }
