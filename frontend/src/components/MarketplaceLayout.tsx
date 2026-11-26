@@ -221,6 +221,7 @@ export function MarketplaceLayout({
                 }}
               >
                 <Bell size={20} />
+                <span>Thông báo</span>
                 {user && headerNotificationCount > 0 && <b>{Math.min(headerNotificationCount, 99)}{headerNotificationCount > 99 ? '+' : ''}</b>}
               </button>
               {notificationsOpen && <section className="notification-dropdown" role="dialog" aria-label="Thông báo mới">
