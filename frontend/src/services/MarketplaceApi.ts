@@ -21,6 +21,14 @@ export interface AuthUser {
   role: 'MEMBER' | 'ADMIN'
 }
 
+export interface UserProfile {
+  id: number
+  fullName: string
+  followerCount: number
+  following: boolean
+  currentUser: boolean
+}
+
 export interface AuthSession {
   accessToken: string
   tokenType: string
@@ -420,6 +428,18 @@ export class MarketplaceApi {
 
   async getCurrentUser(): Promise<AuthUser> {
     return this.request<AuthUser>('/auth/me')
+  }
+
+  async getUserProfile(id: string): Promise<UserProfile> {
+    return this.request<UserProfile>(`/users/${encodeURIComponent(id)}/profile`)
+  }
+
+  async followUser(id: string): Promise<UserProfile> {
+    return this.request<UserProfile>(`/users/${encodeURIComponent(id)}/follow`, { method: 'PUT' })
+  }
+
+  async unfollowUser(id: string): Promise<UserProfile> {
+    return this.request<UserProfile>(`/users/${encodeURIComponent(id)}/follow`, { method: 'DELETE' })
   }
 
   async listChatConversations(): Promise<ChatConversation[]> {

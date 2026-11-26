@@ -50,6 +50,7 @@ public class SecurityConfig {
                         .requestMatchers("/ws/chat").permitAll()
                         .requestMatchers("/api/auth/me").authenticated()
                         .requestMatchers("/api/auth/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/users/*/profile").permitAll()
                         .requestMatchers("/api/listings/draft").authenticated()
                         .requestMatchers(HttpMethod.GET, "/api/listings/mine").authenticated()
                         .requestMatchers(HttpMethod.GET, "/api/listings", "/api/listings/*", "/api/categories").permitAll()

@@ -381,7 +381,9 @@ export function App() {
       : needsAuth ? nextView : previousView)
     const targetSellReturnView = options.sellReturnView
       ?? (nextView === 'sell' && view !== 'my-listings' ? 'home' : sellReturnView)
-    const targetSelectedId = options.selectedId === undefined ? selectedId : options.selectedId
+    const targetSelectedId = options.selectedId === undefined
+      ? nextView === 'profile' ? user ? String(user.id) : null : selectedId
+      : options.selectedId
     const targetConversationId = options.selectedConversationId === undefined ? selectedConversationId : options.selectedConversationId
     const historyMode = options.historyMode ?? 'push'
 
@@ -458,6 +460,10 @@ export function App() {
   function openListing(listing: Listing) {
     setSelectedListingSnapshot(listing)
     navigate('detail', { selectedId: listing.id, previousView: view === 'detail' ? previousView : view })
+  }
+
+  function openProfile(userId: string) {
+    navigate('profile', { selectedId: userId })
   }
 
   async function markNotificationRead(id: number) {
@@ -815,7 +821,7 @@ export function App() {
       {notice && <div className="toast-message" role="status">{notice}<button onClick={() => setNotice('')} aria-label="Đóng thông báo">×</button></div>}
       {view === 'home' && <ExplorePage listings={activeListings} savedIds={savedIds} categoryCounts={activeCategoryCounts} categories={categoryOptions} onOpen={openListing} onToggleSaved={toggleSaved} onCategory={selectCategory} />}
       {view === 'search' && <SearchPage listings={activeListings} savedIds={savedIds} query={query} categories={categoryOptions} category={category} location={location} onQueryChange={setQuery} onCategoryChange={setCategory} onLocationChange={setLocation} onOpen={openListing} onToggleSaved={toggleSaved} />}
-      {view === 'detail' && selectedListing && <ListingDetailPage key={selectedListing.id} listing={selectedListing} related={relatedListings} saved={savedIds.includes(selectedListing.id)} currentUserId={user ? String(user.id) : null} onBack={() => goBack(previousView === 'detail' ? 'home' : previousView)} onToggleSaved={toggleSaved} onOpen={openListing} onContact={() => void openChat(selectedListing.id)} onSeller={() => navigate('profile')} onReport={submitListingReport} onRevealPhone={async (id) => {
+      {view === 'detail' && selectedListing && <ListingDetailPage key={selectedListing.id} listing={selectedListing} related={relatedListings} saved={savedIds.includes(selectedListing.id)} currentUserId={user ? String(user.id) : null} onBack={() => goBack(previousView === 'detail' ? 'home' : previousView)} onToggleSaved={toggleSaved} onOpen={openListing} onContact={() => void openChat(selectedListing.id)} onSeller={() => openProfile(selectedListing.sellerId)} onReport={submitListingReport} onRevealPhone={async (id) => {
         if (apiState !== 'connected') throw new Error('Backend chưa kết nối; không thể tải số điện thoại thật.')
         if (!user) {
           setNotice('Đăng nhập để xem số điện thoại người bán.')
@@ -830,7 +836,7 @@ export function App() {
       {view === 'favorites' && <FavoritesPage savedListings={activeFavoriteListings} onOpen={openListing} onToggleSaved={toggleSaved} />}
       {view === 'check-in' && <CheckInPage userId={user?.id ?? null} onBack={() => goBack('home')} />}
       {user && apiState === 'connected' && <div className={view === 'messages' ? '' : 'inbox-background-listener'} aria-hidden={view !== 'messages'}>
-        <InboxPage api={api} user={user} initialConversationId={selectedConversationId} isVisible={view === 'messages'} onUnreadCountChange={updateUnreadMessageCount} onListingSold={(id) => setListings((current) => current.map((listing) => listing.id === id ? listing.withStatus('SOLD') : listing))} onOpenListing={(id) => {
+        <InboxPage api={api} user={user} initialConversationId={selectedConversationId} isVisible={view === 'messages'} onUnreadCountChange={updateUnreadMessageCount} onListingSold={(id) => setListings((current) => current.map((listing) => listing.id === id ? listing.withStatus('SOLD') : listing))} onOpenProfile={openProfile} onOpenListing={(id) => {
           const listing = listings.find((item) => item.id === id)
           if (listing) openListing(listing)
           else setNotice('Không tìm thấy tin đăng liên quan đến cuộc trò chuyện này.')
@@ -853,8 +859,8 @@ export function App() {
           setNotificationRetry((current) => current + 1)
         }}
       />}
-      {view === 'profile' && user && <ProfilePage listings={listings} onOpen={openListing} onToggleSaved={toggleSaved} onAuth={signOut} fullName={currentSellerName} sellerId={currentSellerId} api={api} />}
-      {view === 'profile' && !user && <div className="empty-state"><h3>Đăng nhập để xem hồ sơ của bạn</h3><button className="button-primary" onClick={() => navigate('auth')}>Đăng nhập</button></div>}
+      {view === 'profile' && (user || selectedId) && <ProfilePage listings={listings} onOpen={openListing} onToggleSaved={toggleSaved} onRequireAuth={() => navigate('auth')} onSignOut={signOut} fullName={user && (selectedId === null || selectedId === String(user.id)) ? currentSellerName : ''} sellerId={selectedId ?? currentSellerId} currentUserId={user ? String(user.id) : null} api={api} />}
+      {view === 'profile' && !user && !selectedId && <div className="empty-state"><h3>Đăng nhập để xem hồ sơ của bạn</h3><button className="button-primary" onClick={() => navigate('auth')}>Đăng nhập</button></div>}
     </MarketplaceLayout>
   )
 }
