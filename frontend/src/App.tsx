@@ -612,7 +612,7 @@ export function App() {
     setListings((current) => current.filter((listing) => listing.id !== id))
     setFavoriteListings((current) => current.filter((listing) => listing.id !== id))
     setSavedIds((current) => current.filter((listingId) => listingId !== id))
-    setNotice('Tin đã được xóa vĩnh viễn.')
+    setNotice('Tin đã được gỡ khỏi giao diện. Lịch sử trò chuyện và thông tin sản phẩm vẫn được lưu.')
   }
 
   async function createListing(data: Omit<ListingData, 'id' | 'status' | 'views' | 'postedAt'> & { contactPhone: string }): Promise<void> {

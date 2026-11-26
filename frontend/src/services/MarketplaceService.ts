@@ -24,7 +24,7 @@ export class MarketplaceService {
   }
 
   getListings(): Listing[] {
-    return [...this.listings]
+    return this.listings.filter((listing) => listing.status !== 'DELETED')
   }
 
   getFavorites(): string[] {
@@ -90,7 +90,7 @@ export class MarketplaceService {
     if (!listing) throw new Error('Không tìm thấy tin đăng.')
     if (listing.status !== 'HIDDEN') throw new Error('Chỉ có thể xóa tin đã ẩn.')
 
-    const nextListings = this.listings.filter((item) => item.id !== id)
+    const nextListings = this.listings.map((item) => item.id === id ? item.withStatus('DELETED') : item)
     this.persistListings(nextListings)
     this.listings = nextListings
   }
