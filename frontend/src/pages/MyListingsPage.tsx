@@ -44,7 +44,7 @@ export function MyListingsPage({ listings, onStatusChange, onDeleteListing, onOp
   const [isPublishingDraft, setIsPublishingDraft] = useState(false)
   const [deletingListingId, setDeletingListingId] = useState<string | null>(null)
   const [listingActionError, setListingActionError] = useState('')
-  const myListings = listings.filter((listing) => listing.sellerId === sellerId)
+  const myListings = listings.filter((listing) => listing.sellerId === sellerId && listing.status !== 'DELETED')
   const visibleListings = useMemo(() => activeTab === 'ALL' ? myListings : myListings.filter((item) => item.status === activeTab || (activeTab === 'SOLD' && item.status === 'HIDDEN')), [activeTab, myListings])
 
   useEffect(() => {
@@ -93,7 +93,7 @@ export function MyListingsPage({ listings, onStatusChange, onDeleteListing, onOp
   }
 
   async function deleteHiddenListing(listing: Listing) {
-    if (!await showConfirm(`Xóa vĩnh viễn tin “${listing.title}”? Lịch sử trò chuyện và báo cáo đã xử lý liên quan (nếu có) cũng sẽ bị xóa.`, 'Xóa tin đã ẩn', 'Xóa vĩnh viễn')) return
+    if (!await showConfirm(`Gỡ tin “${listing.title}” khỏi danh sách của bạn? Tin sẽ không còn hiển thị trong giao diện. Lịch sử trò chuyện và thông tin sản phẩm vẫn được lưu.`, 'Gỡ tin khỏi danh sách', 'Gỡ tin')) return
     setDeletingListingId(listing.id)
     setListingActionError('')
     try {
@@ -150,12 +150,11 @@ export function MyListingsPage({ listings, onStatusChange, onDeleteListing, onOp
           <div className="my-listing-content"><span className={`status-pill status-${listing.status.toLowerCase()}`}><i />{statusNames[listing.status]}</span><button className="my-listing-title" onClick={() => onOpen(listing)}>{listing.title}</button><strong>{listing.priceLabel}</strong><span className="my-listing-date">{listing.postedAt} <span>·</span> <Eye size={14} /> {listing.views} lượt xem</span>{listing.status === 'REJECTED' && <span className="reject-reason"><ShieldAlert size={14} /> {listing.reviewReason ?? 'Tin đăng chưa đạt tiêu chuẩn, vui lòng chỉnh sửa và gửi lại.'}</span>}</div>
           {(listing.status === 'ACTIVE' || listing.status === 'HIDDEN' || listing.status === 'PENDING') && <div className="my-listing-actions">
             {listing.status === 'ACTIVE' && <>
-              <span className="muted-status">Xác nhận đã bán cho người mua trong cuộc trò chuyện để mở đánh giá.</span>
               <button className="row-action" onClick={() => onStatusChange(listing.id, 'HIDDEN')}>Ẩn tin</button>
             </>}
             {listing.status === 'HIDDEN' && <>
               <button className="row-action" disabled={deletingListingId === listing.id} onClick={() => onStatusChange(listing.id, 'ACTIVE')}>Hiển thị lại</button>
-              <button className="row-action" disabled={deletingListingId === listing.id} onClick={() => void deleteHiddenListing(listing)}><Trash2 size={12} />{deletingListingId === listing.id ? 'Đang xóa...' : 'Xóa vĩnh viễn'}</button>
+              <button className="row-action" disabled={deletingListingId === listing.id} onClick={() => void deleteHiddenListing(listing)}><Trash2 size={12} />{deletingListingId === listing.id ? 'Đang gỡ...' : 'Xóa tin'}</button>
             </>}
             {listing.status === 'PENDING' && <span className="muted-status">Đang được kiểm duyệt</span>}
           </div>}

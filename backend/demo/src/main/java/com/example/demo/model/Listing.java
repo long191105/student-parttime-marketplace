@@ -87,6 +87,9 @@ public class Listing {
     @Column(nullable = false, columnDefinition = "boolean not null default false")
     private boolean giveaway;
 
+    @Column(name = "seller_removed", nullable = false, columnDefinition = "boolean not null default false")
+    private boolean sellerRemoved;
+
     @Column(name = "specs_text", nullable = false, columnDefinition = "text")
     private String specsText = "";
 
@@ -248,6 +251,10 @@ public class Listing {
         return giveaway;
     }
 
+    public boolean isSellerRemoved() {
+        return sellerRemoved;
+    }
+
     public String getSpecsText() {
         return specsText;
     }
@@ -267,5 +274,9 @@ public class Listing {
     public void changeStatus(ListingStatus status, String reviewReason) {
         this.status = status;
         this.reviewReason = reviewReason;
+    }
+
+    public void markRemovedBySeller() {
+        this.sellerRemoved = true;
     }
 }
