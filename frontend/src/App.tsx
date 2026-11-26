@@ -115,6 +115,12 @@ export function App() {
     ?? favoriteListings.find((listing) => listing.id === selectedId)
     ?? (selectedListingSnapshot?.id === selectedId ? selectedListingSnapshot : undefined)
   const activeFavoriteListings = favoriteListings.filter((listing) => listing.status === 'ACTIVE')
+  const activeCategoryCounts = new Map<string, number>()
+  for (const listing of listings) {
+    if (listing.status === 'ACTIVE') {
+      activeCategoryCounts.set(listing.category, (activeCategoryCounts.get(listing.category) ?? 0) + 1)
+    }
+  }
   const activeListings = listings.filter((listing) => {
     if (listing.status !== 'ACTIVE') return false
     if (category !== 'Tất cả' && listing.category !== category) return false
@@ -600,7 +606,7 @@ export function App() {
     if (draft.condition !== 'NEW' && draft.condition !== 'USED') throw new Error('Hãy chọn tình trạng sản phẩm trước khi gửi.')
     if (draft.description.trim().length < 20) throw new Error('Mô tả cần có ít nhất 20 ký tự. Hãy sửa bản nháp trước khi gửi.')
     if (!/^\d{10,11}$/.test(draft.phone.replace(/\D/g, ''))) throw new Error('Số điện thoại cần có 10 hoặc 11 chữ số.')
-    if (!draft.districtCode || !draft.wardCode) throw new Error('Hãy chọn quận/huyện và phường/xã trong bản nháp trước khi gửi.')
+    if (!draft.provinceCode || !draft.wardCode) throw new Error('Hãy chọn tỉnh/thành và phường/xã trong bản nháp trước khi gửi.')
     const fullLocation = draft.fullLocation?.trim()
     if (!fullLocation || fullLocation.length > 160) throw new Error('Hãy mở sửa nháp, chọn đầy đủ khu vực và lưu lại trước khi gửi.')
 
@@ -758,7 +764,7 @@ export function App() {
       {apiState === 'offline' && <div className="api-status-banner" role="status"><span>DEMO · Chưa kết nối database; thao tác chỉ lưu trên trình duyệt.</span><button onClick={retryConnection}>Thử kết nối lại</button><small>{apiError}</small></div>}
       {apiState === 'connecting' && <div className="api-status-banner api-status-connecting" role="status"><span>Đang kết nối Chợ Hời API...</span></div>}
       {notice && <div className="toast-message" role="status">{notice}<button onClick={() => setNotice('')} aria-label="Đóng thông báo">×</button></div>}
-      {view === 'home' && <ExplorePage listings={activeListings} savedIds={savedIds} onOpen={openListing} onToggleSaved={toggleSaved} onCategory={selectCategory} />}
+      {view === 'home' && <ExplorePage listings={activeListings} savedIds={savedIds} categoryCounts={activeCategoryCounts} onOpen={openListing} onToggleSaved={toggleSaved} onCategory={selectCategory} />}
       {view === 'search' && <SearchPage listings={activeListings} savedIds={savedIds} query={query} category={category} location={location} onQueryChange={setQuery} onCategoryChange={setCategory} onLocationChange={setLocation} onOpen={openListing} onToggleSaved={toggleSaved} />}
       {view === 'detail' && selectedListing && <ListingDetailPage key={selectedListing.id} listing={selectedListing} related={relatedListings} saved={savedIds.includes(selectedListing.id)} currentUserId={user ? String(user.id) : null} onBack={() => goBack(previousView === 'detail' ? 'home' : previousView)} onToggleSaved={toggleSaved} onOpen={openListing} onContact={() => void openChat(selectedListing.id)} onSeller={() => navigate('profile')} onReport={submitListingReport} onRevealPhone={async (id) => {
         if (apiState !== 'connected') throw new Error('Backend chưa kết nối; không thể tải số điện thoại thật.')

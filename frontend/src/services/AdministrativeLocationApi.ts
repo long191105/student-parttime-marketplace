@@ -4,18 +4,17 @@ export interface LocationOption {
 }
 
 interface ApiProvince extends LocationOption {
-  districts: LocationOption[]
-}
-
-interface ApiDistrict extends LocationOption {
   wards: LocationOption[]
 }
 
-const API_BASE_URL = 'https://provinces.open-api.vn/api/v1'
+const API_BASE_URL = 'https://provinces.open-api.vn/api/v2'
 
 let provinceCodeIndexPromise: Promise<Map<string, number>> | undefined
 
-export async function listLegacyDistricts(provinceName: string, signal: AbortSignal): Promise<LocationOption[]> {
+export async function getProvinceWards(
+  provinceName: string,
+  signal: AbortSignal,
+): Promise<{ province: LocationOption; wards: LocationOption[] }> {
   const provinceCodes = await getProvinceCodeIndex()
   const provinceCode = provinceCodes.get(normalizeProvinceName(provinceName))
   if (provinceCode === undefined) {
@@ -24,17 +23,9 @@ export async function listLegacyDistricts(provinceName: string, signal: AbortSig
 
   const province = await requestJson(`${API_BASE_URL}/p/${provinceCode}/?depth=2`, signal)
   if (!isApiProvince(province)) {
-    throw new Error('Danh mục quận/huyện trả về dữ liệu không hợp lệ.')
-  }
-  return province.districts
-}
-
-export async function listLegacyWards(districtCode: number, signal: AbortSignal): Promise<LocationOption[]> {
-  const district = await requestJson(`${API_BASE_URL}/d/${districtCode}/?depth=2`, signal)
-  if (!isApiDistrict(district)) {
     throw new Error('Danh mục phường/xã trả về dữ liệu không hợp lệ.')
   }
-  return district.wards
+  return { province: { code: province.code, name: province.name }, wards: province.wards }
 }
 
 async function getProvinceCodeIndex(): Promise<Map<string, number>> {
@@ -63,13 +54,6 @@ async function requestJson(url: string, signal?: AbortSignal): Promise<unknown> 
 }
 
 function isApiProvince(value: unknown): value is ApiProvince {
-  return isRecord(value)
-    && isLocationOption(value)
-    && Array.isArray(value.districts)
-    && value.districts.every(isLocationOption)
-}
-
-function isApiDistrict(value: unknown): value is ApiDistrict {
   return isRecord(value)
     && isLocationOption(value)
     && Array.isArray(value.wards)

@@ -4,7 +4,7 @@ import { ListingDetailPreview } from '../components/ListingDetailPreview'
 import type { ListingData } from '../domain/Listing'
 import { categories, locations } from '../data/categories'
 import { SellDropdown } from '../components/SellDropdown'
-import { listLegacyDistricts, listLegacyWards, type LocationOption } from '../services/LegacyLocationApi'
+import { getProvinceWards, type LocationOption } from '../services/AdministrativeLocationApi'
 import type { ListingFormDraft } from '../services/MarketplaceApi'
 import { uploadImagesToCloudinary } from '../services/CloudinaryUpload'
 import { formatImageUrl } from '../services/ImageUrl'
@@ -37,16 +37,12 @@ export function SellPage({ onCancel, onSubmit, onLoadDraft, onSaveDraft, sellerN
   const [condition, setCondition] = useState<'NEW' | 'USED'>('USED')
   const [description, setDescription] = useState('')
   const [location, setLocation] = useState('TP. Hồ Chí Minh')
-  const [districtCode, setDistrictCode] = useState('')
+  const [provinceCode, setProvinceCode] = useState('')
   const [wardCode, setWardCode] = useState('')
   const [detailAddress, setDetailAddress] = useState('')
-  const [districts, setDistricts] = useState<LocationOption[]>([])
   const [wards, setWards] = useState<LocationOption[]>([])
-  const [isLoadingDistricts, setIsLoadingDistricts] = useState(true)
-  const [isLoadingWards, setIsLoadingWards] = useState(false)
-  const [districtError, setDistrictError] = useState('')
-  const [wardError, setWardError] = useState('')
-  const [districtLoadAttempt, setDistrictLoadAttempt] = useState(0)
+  const [isLoadingWards, setIsLoadingWards] = useState(true)
+  const [locationError, setLocationError] = useState('')
   const [wardLoadAttempt, setWardLoadAttempt] = useState(0)
   const [phone, setPhone] = useState('')
   const [negotiable, setNegotiable] = useState(true)
@@ -64,10 +60,9 @@ export function SellPage({ onCancel, onSubmit, onLoadDraft, onSaveDraft, sellerN
   const [draftNotice, setDraftNotice] = useState('')
   const [draftSaveError, setDraftSaveError] = useState('')
   const hasResumedDraft = useRef(false)
-  const selectedDistrict = districts.find((district) => String(district.code) === districtCode)
   const selectedWard = wards.find((ward) => String(ward.code) === wardCode)
-  const baseLocation = selectedDistrict && selectedWard
-    ? `${selectedWard.name}, ${selectedDistrict.name}, ${location}`
+  const baseLocation = selectedWard
+    ? `${selectedWard.name}, ${location}`
     : ''
   const maxDetailAddressLength = Math.max(0, maxLocationLength - baseLocation.length - (baseLocation ? 2 : 0))
   const previewLocation = [detailAddress.trim(), baseLocation || location].filter(Boolean).join(', ')
@@ -90,8 +85,8 @@ export function SellPage({ onCancel, onSubmit, onLoadDraft, onSaveDraft, sellerN
       setCondition(draft.condition ?? 'USED')
       setDescription(draft.description ?? '')
       setLocation(draft.location ?? 'TP. Hồ Chí Minh')
-      setDistrictCode(draft.districtCode ?? '')
-      setWardCode(draft.wardCode ?? '')
+      setProvinceCode(draft.provinceCode ?? '')
+      setWardCode(draft.provinceCode ? draft.wardCode ?? '' : '')
       setDetailAddress(draft.detailAddress ?? '')
       setPhone(draft.phone ?? '')
       setNegotiable(draft.negotiable ?? true)
@@ -143,34 +138,15 @@ export function SellPage({ onCancel, onSubmit, onLoadDraft, onSaveDraft, sellerN
     const controller = new AbortController()
     let active = true
 
-    void listLegacyDistricts(location, controller.signal).then((nextDistricts) => {
-      if (active) setDistricts(nextDistricts)
-    }).catch((error: unknown) => {
-      if (!active || isAbortError(error)) return
-      console.error('Không thể tải danh sách quận/huyện.', error)
-      setDistrictError(error instanceof Error ? error.message : 'Không thể tải danh sách quận/huyện.')
-    }).finally(() => {
-      if (active) setIsLoadingDistricts(false)
-    })
-
-    return () => {
-      active = false
-      controller.abort()
-    }
-  }, [location, districtLoadAttempt])
-
-  useEffect(() => {
-    if (!districtCode) return
-
-    const controller = new AbortController()
-    let active = true
-
-    void listLegacyWards(Number(districtCode), controller.signal).then((nextWards) => {
-      if (active) setWards(nextWards)
+    void getProvinceWards(location, controller.signal).then(({ province, wards: nextWards }) => {
+      if (!active) return
+      setProvinceCode(String(province.code))
+      setWards(nextWards)
+      setWardCode((current) => nextWards.some((ward) => String(ward.code) === current) ? current : '')
     }).catch((error: unknown) => {
       if (!active || isAbortError(error)) return
       console.error('Không thể tải danh sách phường/xã.', error)
-      setWardError(error instanceof Error ? error.message : 'Không thể tải danh sách phường/xã.')
+      setLocationError(error instanceof Error ? error.message : 'Không thể tải danh sách phường/xã.')
     }).finally(() => {
       if (active) setIsLoadingWards(false)
     })
@@ -179,7 +155,7 @@ export function SellPage({ onCancel, onSubmit, onLoadDraft, onSaveDraft, sellerN
       active = false
       controller.abort()
     }
-  }, [districtCode, wardLoadAttempt])
+  }, [location, wardLoadAttempt])
 
   function navigateToStep(step: number) {
     setActiveStep(step)
@@ -253,7 +229,7 @@ export function SellPage({ onCancel, onSubmit, onLoadDraft, onSaveDraft, sellerN
         condition,
         location,
         fullLocation: previewLocation,
-        districtCode,
+        provinceCode,
         wardCode,
         detailAddress,
         phone,
@@ -295,8 +271,8 @@ export function SellPage({ onCancel, onSubmit, onLoadDraft, onSaveDraft, sellerN
       setErrorMessage('Số điện thoại cần có 10 hoặc 11 chữ số.')
       return
     }
-    if (!selectedDistrict || !selectedWard) {
-      setErrorMessage('Vui lòng chọn đầy đủ quận/huyện và phường/xã.')
+    if (!provinceCode || !selectedWard) {
+      setErrorMessage('Vui lòng chọn đầy đủ tỉnh/thành và phường/xã.')
       return
     }
     const fullLocation = [detailAddress.trim(), baseLocation].filter(Boolean).join(', ')
@@ -396,14 +372,12 @@ export function SellPage({ onCancel, onSubmit, onLoadDraft, onSaveDraft, sellerN
           <section className="form-section sell-step-section" id="sell-step-3" data-sell-step="3">
             <div className="form-section-heading"><span className="form-step">3</span><div><h2>Khu vực & liên hệ</h2><p>Chọn địa điểm để người mua gần bạn dễ tìm thấy tin đăng.</p></div></div>
             <div className="form-grid form-grid-two">
-              <SellDropdown id="listing-province" label="Tỉnh / thành phố" value={location} options={locations.filter((item) => item !== 'Toàn quốc').map((item) => ({ value: item, label: item }))} required onChange={(value) => { setLocation(value); setDistricts([]); setWards([]); setDistrictCode(''); setWardCode(''); setDistrictError(''); setWardError(''); setIsLoadingDistricts(true); setIsLoadingWards(false) }} />
-              <SellDropdown id="listing-district" label="Quận / huyện" value={districtCode} options={districts.map((district) => ({ value: String(district.code), label: district.name }))} placeholder={isLoadingDistricts ? 'Đang tải quận/huyện...' : 'Chọn quận/huyện'} disabled={isLoadingDistricts || districts.length === 0} required onChange={(value) => { setDistrictCode(value); setWards([]); setWardCode(''); setWardError(''); setIsLoadingWards(Boolean(value)) }} />
-              <SellDropdown id="listing-ward" label="Phường / xã" value={wardCode} options={wards.map((ward) => ({ value: String(ward.code), label: ward.name }))} placeholder={isLoadingWards ? 'Đang tải phường/xã...' : 'Chọn phường/xã'} disabled={!districtCode || isLoadingWards || wards.length === 0} required onChange={setWardCode} />
+              <SellDropdown id="listing-province" label="Tỉnh / thành phố" value={location} options={locations.filter((item) => item !== 'Toàn quốc').map((item) => ({ value: item, label: item }))} required onChange={(value) => { setLocation(value); setProvinceCode(''); setWards([]); setWardCode(''); setLocationError(''); setIsLoadingWards(true) }} />
+              <SellDropdown id="listing-ward" label="Phường / xã" value={wardCode} options={wards.map((ward) => ({ value: String(ward.code), label: ward.name }))} placeholder={isLoadingWards ? 'Đang tải phường/xã...' : 'Chọn phường/xã'} disabled={isLoadingWards || wards.length === 0} required onChange={setWardCode} />
               <label>Số điện thoại liên hệ <input required inputMode="tel" maxLength={50} value={phone} onChange={(event) => setPhone(event.target.value)} placeholder="09xx xxx xxx" /></label>
             </div>
             <label className="form-full-label">Địa chỉ chi tiết (không bắt buộc) <textarea rows={2} maxLength={maxDetailAddressLength} value={detailAddress} onChange={(event) => setDetailAddress(event.target.value)} placeholder="Tên đường, khu dân cư, tòa nhà..." /><small>{detailAddress.length}/{maxDetailAddressLength} ký tự · Không cần cung cấp số nhà nếu bạn không muốn chia sẻ.</small></label>
-            {districtError && <p className="form-error" role="alert">{districtError}<button type="button" onClick={() => { setDistrictError(''); setIsLoadingDistricts(true); setDistrictLoadAttempt((attempt) => attempt + 1) }}>Thử tải lại</button></p>}
-            {wardError && <p className="form-error" role="alert">{wardError}<button type="button" onClick={() => { setWardError(''); setIsLoadingWards(true); setWardLoadAttempt((attempt) => attempt + 1) }}>Thử tải lại</button></p>}
+            {locationError && <p className="form-error" role="alert">{locationError}<button type="button" onClick={() => { setLocationError(''); setIsLoadingWards(true); setWardLoadAttempt((attempt) => attempt + 1) }}>Thử tải lại</button></p>}
           </section>
           <section className="form-section sell-step-section" id="sell-step-4" data-sell-step="4">
             <div className="form-section-heading"><span className="form-step">4</span><div><h2>Kiểm tra & hoàn tất</h2><p>Tin đăng sẽ được kiểm duyệt trước khi hiển thị công khai.</p></div></div>

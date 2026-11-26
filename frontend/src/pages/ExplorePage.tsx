@@ -7,12 +7,13 @@ import { ListingCard } from '../components/ListingCard'
 interface ExplorePageProps {
   listings: Listing[]
   savedIds: string[]
+  categoryCounts: Map<string, number>
   onOpen: (listing: Listing) => void
   onToggleSaved: (id: string) => void
   onCategory: (category: string) => void
 }
 
-export function ExplorePage({ listings, savedIds, onOpen, onToggleSaved, onCategory }: ExplorePageProps) {
+export function ExplorePage({ listings, savedIds, categoryCounts, onOpen, onToggleSaved, onCategory }: ExplorePageProps) {
   return (
     <div className="explore-page">
       <section className="trust-strip" aria-label="Cam kết của Chợ Hời">
@@ -25,9 +26,9 @@ export function ExplorePage({ listings, savedIds, onOpen, onToggleSaved, onCateg
       <section className="category-section">
         <div className="section-title-row"><div><span className="section-eyebrow">CHOHOI · TÌM THEO DANH MỤC</span><h2>Có gì bạn đang tìm?</h2></div><button className="section-link" onClick={() => onCategory('Tất cả')}>Tất cả danh mục <ArrowRight size={15} /></button></div>
         <div className="category-grid">
-          {categories.map(({ name, icon: Icon, amount, image }, index) => (
+          {categories.map(({ name, icon: Icon, image }, index) => (
             <button className={`category-tile category-tone-${index + 1}`} key={name} onClick={() => onCategory(name)}>
-              <span className="category-icon">{image ? <img src={image} alt="" loading="lazy" /> : <Icon size={24} strokeWidth={1.7} />}</span><span className="category-name">{name}</span><small>{amount}</small>
+              <span className="category-icon">{image ? <img src={image} alt="" loading="lazy" /> : <Icon size={24} strokeWidth={1.7} />}</span><span className="category-name">{name}</span><small>{categoryCounts.get(name) ?? 0} tin</small>
             </button>
           ))}
         </div>
