@@ -16,13 +16,13 @@ const featuredCategoryImages: Record<string, string> = {
 }
 
 export const categories = [
-  { name: 'Điện tử', icon: Laptop, amount: '2.4k tin' },
-  { name: 'Xe cộ', icon: Bike, amount: '1.8k tin' },
-  { name: 'Bất động sản', icon: Building2, amount: '986 tin' },
-  { name: 'Thời trang', icon: Shirt, amount: '1.2k tin' },
-  { name: 'Đồ gia dụng', icon: Sofa, amount: '840 tin' },
-  { name: 'Thú cưng', icon: Cat, amount: '316 tin' },
-  { name: 'Khác', icon: Sparkles, amount: '560 tin' },
+  { name: 'Điện tử', icon: Laptop },
+  { name: 'Xe cộ', icon: Bike },
+  { name: 'Bất động sản', icon: Building2 },
+  { name: 'Thời trang', icon: Shirt },
+  { name: 'Đồ gia dụng', icon: Sofa },
+  { name: 'Thú cưng', icon: Cat },
+  { name: 'Khác', icon: Sparkles },
 ].map((category) => ({
   ...category,
   image: featuredCategoryImages[category.name] ?? categoryImages.get(category.name),
