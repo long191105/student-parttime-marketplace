@@ -1,11 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
-import { Bell, Bookmark, Check, ChevronDown, Heart, LogOut, MapPin, Menu, MessageCircle, Package, Plus, Search, ShieldCheck, ShoppingBag, UserRound, X } from 'lucide-react'
+import { Bell, Bookmark, Check, ChevronDown, Heart, LogOut, MapPin, Menu, MessageCircle, Package, Plus, Search, ShieldCheck, UserRound, X } from 'lucide-react'
 import { locations } from '../data/categories'
 import type { AuthUser, UserNotification } from '../services/MarketplaceApi'
 import { ChoHoiWordmark } from './ChoHoiWordmark'
 import { ScrollToTopButton } from './ScrollToTopButton'
 
-export type AppView = 'home' | 'search' | 'detail' | 'sell' | 'my-listings' | 'favorites' | 'messages' | 'notifications' | 'profile' | 'check-in' | 'auth'
+export type AppView = 'home' | 'search' | 'detail' | 'sell' | 'my-listings' | 'favorites' | 'messages' | 'notifications' | 'profile' | 'check-in' | 'buying-guide' | 'safety-policy' | 'auth'
 
 interface MarketplaceLayoutProps {
   children: React.ReactNode
@@ -16,6 +16,7 @@ interface MarketplaceLayoutProps {
   onLocationChange: (value: string) => void
   onNavigate: (view: AppView) => void
   onStartNewListing: () => void
+  onCategoryNavigate: (category: string) => void
   onAdminNavigate: () => void
   onSearch: () => void
   onSignOut: () => void
@@ -31,7 +32,7 @@ interface MarketplaceLayoutProps {
 }
 
 export function MarketplaceLayout({
-  children, view, query, location, onQueryChange, onLocationChange, onNavigate, onStartNewListing, onAdminNavigate, onSearch, onSignOut, favoritesCount, unreadCount, notificationUnreadCount, notifications, onOpenNotification, onMarkAllNotificationsRead, user, authNotice, onDismissAuthNotice,
+  children, view, query, location, onQueryChange, onLocationChange, onNavigate, onStartNewListing, onCategoryNavigate, onAdminNavigate, onSearch, onSignOut, favoritesCount, unreadCount, notificationUnreadCount, notifications, onOpenNotification, onMarkAllNotificationsRead, user, authNotice, onDismissAuthNotice,
 }: MarketplaceLayoutProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [accountMenuOpen, setAccountMenuOpen] = useState(false)
@@ -338,10 +339,30 @@ export function MarketplaceLayout({
       <main className="page-container page-content">{children}</main>
       <footer className="site-footer">
         <div className="page-container footer-inner">
-          <div className="footer-brand"><span className="brand-icon"><ShoppingBag size={19} /></span><ChoHoiWordmark className="footer-wordmark" /><p>Món đồ tốt, tìm thấy quanh bạn.</p></div>
-          <div><strong>Khám phá</strong><span>Đồ điện tử</span><span>Xe cộ</span><span>Đồ gia dụng</span></div>
-          <div><strong>Hỗ trợ</strong><span>Hướng dẫn mua bán</span><span>Chính sách an toàn</span><span>Liên hệ với chúng tôi</span></div>
-          <div className="footer-note">Mua bán gần nhà<br />Bắt đầu bằng một tin đăng tử tế.</div>
+          <div className="footer-brand"><img className="footer-brand-logo" src="/favicon.png" alt="Chợ Hời" /><ChoHoiWordmark className="footer-wordmark" /><p>Món đồ tốt, tìm thấy quanh bạn.</p></div>
+          <div>
+            <strong>Khám phá</strong>
+            <button type="button" onClick={() => onCategoryNavigate('Điện tử')}>Đồ điện tử</button>
+            <button type="button" onClick={() => onCategoryNavigate('Xe cộ')}>Xe cộ</button>
+            <button type="button" onClick={() => onCategoryNavigate('Đồ gia dụng')}>Đồ gia dụng</button>
+          </div>
+          <div>
+            <strong>Hỗ trợ</strong>
+            <button type="button" onClick={() => navigate('buying-guide')}>Hướng dẫn mua bán</button>
+            <button type="button" onClick={() => navigate('safety-policy')}>Chính sách an toàn</button>
+            <a href="mailto:nhom4@gmail.com">Liên hệ với chúng tôi</a>
+          </div>
+          <div className="footer-contact">
+            <strong>Liên hệ</strong>
+            <a href="mailto:nhom4@gmail.com">nhom4@gmail.com</a>
+            <a
+              href="https://www.google.com/maps/search/?api=1&query=69%2F68%20%C4%90%E1%BA%B7ng%20Th%C3%B9y%20Tr%C3%A2m%2C%20Ph%C6%B0%E1%BB%9Dng%20B%C3%ACnh%20L%E1%BB%A3i%2C%20TP.%20H%E1%BB%93%20Ch%C3%AD%20Minh"
+              target="_blank"
+              rel="noreferrer"
+            >
+              69/68 Đặng Thùy Trâm<br />Phường Bình Lợi, TP. Hồ Chí Minh
+            </a>
+          </div>
         </div>
         <div className="footer-bottom">© 2026 Chợ Hời · Mua bán gần nhà, an tâm hơn mỗi ngày</div>
       </footer>

@@ -94,7 +94,9 @@ export class MarketplaceService {
       this.listings = nextListings
       return
     }
-    if (listing.status !== 'HIDDEN') throw new Error('Chỉ có thể xóa tin đã ẩn hoặc bị từ chối.')
+    if (listing.status !== 'HIDDEN' && listing.status !== 'SOLD') {
+      throw new Error('Chỉ có thể xóa tin đã ẩn, đã bán hoặc bị từ chối.')
+    }
 
     const nextListings = this.listings.map((item) => item.id === id ? item.withStatus('DELETED') : item)
     this.persistListings(nextListings)

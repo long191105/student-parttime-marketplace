@@ -24,6 +24,7 @@ export interface AuthUser {
 export interface UserProfile {
   id: number
   fullName: string
+  avatarUrl: string | null
   followerCount: number
   following: boolean
   currentUser: boolean
@@ -432,6 +433,13 @@ export class MarketplaceApi {
 
   async getUserProfile(id: string): Promise<UserProfile> {
     return this.request<UserProfile>(`/users/${encodeURIComponent(id)}/profile`)
+  }
+
+  async updateUserAvatar(id: string, avatarUrl: string): Promise<UserProfile> {
+    return this.request<UserProfile>(`/users/${encodeURIComponent(id)}/avatar`, {
+      method: 'PUT',
+      body: JSON.stringify({ avatarUrl }),
+    })
   }
 
   async followUser(id: string): Promise<UserProfile> {

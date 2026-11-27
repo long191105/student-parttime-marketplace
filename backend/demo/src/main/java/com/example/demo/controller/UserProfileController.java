@@ -1,15 +1,19 @@
 package com.example.demo.controller;
 
+import jakarta.validation.Valid;
+
+import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
 
+import com.example.demo.dto.UpdateAvatarRequest;
 import com.example.demo.dto.UserProfileResponse;
 import com.example.demo.model.UserAccount;
 import com.example.demo.service.UserProfileService;
@@ -39,6 +43,13 @@ public class UserProfileController {
     @DeleteMapping("/{id}/follow")
     public UserProfileResponse unfollow(@PathVariable String id) {
         return userProfileService.unfollow(parseId(id));
+    }
+
+    @PutMapping("/{id}/avatar")
+    public UserProfileResponse updateAvatar(
+            @PathVariable String id,
+            @Valid @RequestBody UpdateAvatarRequest request) {
+        return userProfileService.updateAvatar(parseId(id), request.avatarUrl());
     }
 
     private static Long parseId(String value) {

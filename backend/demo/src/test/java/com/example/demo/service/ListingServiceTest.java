@@ -128,6 +128,20 @@ class ListingServiceTest {
     }
 
     @Test
+    void memberCanRemoveOwnSoldListingWithoutDeletingConversationData() {
+        pendingListing.changeStatus(ListingStatus.SOLD, null);
+        when(currentUserService.requireUser()).thenReturn(seller);
+        when(listingRepository.findByIdAndSellerId(41L, 7L)).thenReturn(java.util.Optional.of(pendingListing));
+
+        listingService.deleteOwnListing(41L);
+
+        assertEquals(ListingStatus.SOLD, pendingListing.getStatus());
+        assertTrue(pendingListing.isSellerRemoved());
+        verify(listingRepository, org.mockito.Mockito.never()).delete(pendingListing);
+        verifyNoInteractions(chatConversationRepository, userNotificationRepository);
+    }
+
+    @Test
     void memberCannotDeleteListingThatIsNotHidden() {
         pendingListing.changeStatus(ListingStatus.ACTIVE, null);
         when(currentUserService.requireUser()).thenReturn(seller);

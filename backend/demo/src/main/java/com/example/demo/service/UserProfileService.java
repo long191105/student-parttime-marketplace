@@ -1,5 +1,7 @@
 package com.example.demo.service;
 
+import java.net.URI;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -54,6 +56,22 @@ public class UserProfileService {
         return toResponse(followed, follower);
     }
 
+    @Transactional
+    public UserProfileResponse updateAvatar(Long userId, String avatarUrl) {
+        UserAccount currentUser = currentUserService.requireUser();
+        if (!currentUser.getId().equals(userId)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Bạn chỉ có thể thay đổi ảnh đại diện của mình.");
+        }
+        if (!isSecureImageUrl(avatarUrl)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Đường dẫn ảnh đại diện phải là URL HTTPS hợp lệ.");
+        }
+
+        UserAccount profileUser = findUser(userId);
+        profileUser.setAvatarUrl(avatarUrl);
+        userAccountRepository.save(profileUser);
+        return toResponse(profileUser, currentUser);
+    }
+
     private UserAccount findUser(Long userId) {
         return userAccountRepository.findById(userId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy hồ sơ người dùng."));
@@ -66,8 +84,21 @@ public class UserProfileService {
         return new UserProfileResponse(
                 profileUser.getId(),
                 profileUser.getFullName(),
+                profileUser.getAvatarUrl(),
                 userFollowRepository.countByFollowedId(profileUser.getId()),
                 following,
                 isCurrentUser);
+    }
+
+    private static boolean isSecureImageUrl(String value) {
+        if (value == null || value.length() > 2048) return false;
+        try {
+            URI uri = URI.create(value);
+            return "https".equalsIgnoreCase(uri.getScheme())
+                    && uri.getHost() != null
+                    && uri.getRawUserInfo() == null;
+        } catch (IllegalArgumentException exception) {
+            return false;
+        }
     }
 }

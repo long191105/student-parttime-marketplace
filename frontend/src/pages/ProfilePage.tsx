@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react'
-import { BadgeCheck, CalendarDays, MapPin, ShieldCheck, Star, Users } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+import { BadgeCheck, CalendarDays, Camera, MapPin, ShieldCheck, Star, Users } from 'lucide-react'
 import type { Listing } from '../domain/Listing'
 import { ListingCard } from '../components/ListingCard'
 import type { ChatReview, MarketplaceApi, UserProfile } from '../services/MarketplaceApi'
+import { uploadImageToCloudinary } from '../services/CloudinaryUpload'
 
 interface ProfilePageProps {
   listings: Listing[]
@@ -20,7 +21,10 @@ export function ProfilePage({ listings, onOpen, onToggleSaved, onRequireAuth, on
   const [profileState, setProfileState] = useState<{ userId: string; profile: UserProfile | null; error: string }>({ userId: '', profile: null, error: '' })
   const [followError, setFollowError] = useState('')
   const [isUpdatingFollow, setIsUpdatingFollow] = useState(false)
+  const [avatarError, setAvatarError] = useState('')
+  const [isUpdatingAvatar, setIsUpdatingAvatar] = useState(false)
   const [reviewState, setReviewState] = useState<{ userId: string; reviews: ChatReview[]; error: string }>({ userId: '', reviews: [], error: '' })
+  const avatarInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     let active = true
@@ -83,12 +87,30 @@ export function ProfilePage({ listings, onOpen, onToggleSaved, onRequireAuth, on
     }
   }
 
+  async function changeAvatar(file: File | undefined) {
+    if (!file || !isOwnProfile || isUpdatingAvatar) return
+    setIsUpdatingAvatar(true)
+    setAvatarError('')
+    try {
+      const avatarUrl = await uploadImageToCloudinary(file)
+      const updatedProfile = await api.updateUserAvatar(sellerId, avatarUrl)
+      setProfileState({ userId: sellerId, profile: updatedProfile, error: '' })
+    } catch (error) {
+      setAvatarError(error instanceof Error ? error.message : 'Không thể cập nhật ảnh đại diện. Vui lòng thử lại.')
+    } finally {
+      setIsUpdatingAvatar(false)
+      if (avatarInputRef.current) avatarInputRef.current.value = ''
+    }
+  }
+
   return (
     <div className="seller-profile-page">
       <div className="breadcrumbs"><span>Trang chủ</span><span>/</span><strong>Hồ sơ người bán</strong></div>
-      <section className="seller-profile-hero"><div className="seller-profile-avatar">{initials}<span><BadgeCheck size={18} fill="currentColor" /></span></div><div className="seller-profile-copy"><span className="section-eyebrow">HỒ SƠ NGƯỜI BÁN</span><h1>{profileName} <BadgeCheck size={20} /></h1><div className="profile-rating"><Star size={16} fill="currentColor" /><strong>{reviews.length ? averageRating.toFixed(1) : '—'}</strong><span>{reviews.length} đánh giá công khai</span><i /><span>Thành viên Chợ Hời</span></div><p><MapPin size={15} /> Quận 3, TP. Hồ Chí Minh</p></div><div className="profile-actions">{isOwnProfile ? <button className="profile-signout-button" onClick={onSignOut}>Đăng xuất</button> : <button className="profile-follow-button" type="button" aria-pressed={isFollowing} disabled={isUpdatingFollow || !profile} onClick={() => void toggleFollow()}><span>{isFollowing ? '✓' : '+'}</span>{isUpdatingFollow ? 'Đang cập nhật...' : isFollowing ? 'Đang theo dõi' : 'Theo dõi'}</button>}</div></section>
+      <section className="seller-profile-hero"><div className="seller-profile-avatar">{profile?.avatarUrl ? <img className="seller-profile-avatar-image" src={profile.avatarUrl} alt={`Ảnh đại diện của ${profileName}`} /> : initials}{isOwnProfile && <><input ref={avatarInputRef} className="seller-profile-avatar-input" type="file" accept="image/jpeg,image/png,image/webp" aria-label="Chọn ảnh đại diện" onChange={(event) => void changeAvatar(event.currentTarget.files?.[0])} /><button className="seller-profile-avatar-edit" type="button" aria-label="Thay đổi ảnh đại diện" title={isUpdatingAvatar ? 'Đang tải ảnh...' : 'Thay đổi ảnh đại diện'} disabled={isUpdatingAvatar} onClick={() => avatarInputRef.current?.click()}><Camera size={14} /></button></>}<span><BadgeCheck size={18} fill="currentColor" /></span></div><div className="seller-profile-copy"><span className="section-eyebrow">HỒ SƠ NGƯỜI BÁN</span><h1>{profileName} <BadgeCheck size={20} /></h1><div className="profile-rating"><Star size={16} fill="currentColor" /><strong>{reviews.length ? averageRating.toFixed(1) : '—'}</strong><span>{reviews.length} đánh giá công khai</span><i /><span>Thành viên Chợ Hời</span></div><p><MapPin size={15} /> Quận 3, TP. Hồ Chí Minh</p></div><div className="profile-actions">{isOwnProfile ? <button className="profile-signout-button" onClick={onSignOut}>Đăng xuất</button> : <button className="profile-follow-button" type="button" aria-pressed={isFollowing} disabled={isUpdatingFollow || !profile} onClick={() => void toggleFollow()}><span>{isFollowing ? '✓' : '+'}</span>{isUpdatingFollow ? 'Đang cập nhật...' : isFollowing ? 'Đang theo dõi' : 'Theo dõi'}</button>}</div></section>
+      {isUpdatingAvatar && <p className="profile-review-empty" role="status">Đang cập nhật ảnh đại diện...</p>}
       {profileState.userId === sellerId && profileState.error && <p className="profile-review-error" role="alert">{profileState.error}</p>}
       {followError && <p className="profile-review-error" role="alert">{followError}</p>}
+      {avatarError && <p className="profile-review-error" role="alert">{avatarError}</p>}
       <div className="profile-trust-row"><span><ShieldCheck size={19} /><strong>Email đã xác thực</strong></span><span><BadgeCheck size={19} /><strong>{reviews.length} đánh giá công khai</strong></span><span><Users size={19} /><strong>{profile ? `${profile.followerCount.toLocaleString('vi-VN')} người theo dõi` : 'Đang tải người theo dõi...'}</strong></span><span><CalendarDays size={19} /><strong>Phản hồi trong ngày</strong></span></div>
       <section className="profile-listings"><div className="section-title-row"><div><span className="section-eyebrow">ĐANG TÌM CHỦ MỚI</span><h2>Tin đăng của {profileName} <small>{myListings.length}</small></h2></div></div><div className="listing-grid">{myListings.map((listing) => <ListingCard key={listing.id} listing={listing} saved={false} onOpen={onOpen} onToggleSaved={onToggleSaved} />)}</div></section>
       <section className="reviews-section"><div className="section-title-row"><div><span className="section-eyebrow">CỘNG ĐỒNG NÓI GÌ</span><h2>Đánh giá gần đây</h2></div><span className="review-summary"><Star size={16} fill="currentColor" /> {reviews.length ? `${averageRating.toFixed(1)} / 5` : 'Chưa có đánh giá'}</span></div>
