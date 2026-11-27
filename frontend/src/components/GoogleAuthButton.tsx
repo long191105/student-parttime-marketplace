@@ -17,7 +17,6 @@ export function GoogleAuthButton({ onAuthenticate, onError }: GoogleAuthButtonPr
           onAuthenticate(response.credential)
         }}
         onError={() => onError('Không thể mở hoặc hoàn tất đăng nhập Google. Vui lòng thử lại.')}
-        useOneTap
         text="continue_with"
         theme="outline"
         shape="rectangular"
