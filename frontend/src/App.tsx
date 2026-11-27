@@ -20,6 +20,10 @@ import { MarketplaceService } from './services/MarketplaceService'
 import { categories, categoriesForNames } from './data/categories'
 
 const api = new MarketplaceApi()
+async function authenticateWithGoogle(idToken: string) {
+  return api.loginWithGoogle(idToken)
+}
+
 const authenticationRequiredViews: AppView[] = ['sell', 'my-listings', 'messages', 'notifications', 'check-in']
 const appNavigationKey = 'chohoiNavigation'
 
@@ -785,7 +789,7 @@ export function App() {
       return <div className="admin-route-message"><h1>Không thể kết nối hệ thống quản trị</h1><p>{apiError}</p><button className="button-primary" onClick={retryConnection}>Thử kết nối lại</button><button className="button-secondary" onClick={leaveAdminRoute}>Về trang chủ</button></div>
     }
     if (!user) {
-      return <AuthPage onBack={leaveAdminRoute} onAuthenticate={authenticate} onVerify={api.verifyRegistration.bind(api)} onResend={api.resendRegistrationCode.bind(api)} onSuccess={authenticationSucceeded} />
+      return <AuthPage onBack={leaveAdminRoute} onAuthenticate={authenticate} onVerify={api.verifyRegistration.bind(api)} onResend={api.resendRegistrationCode.bind(api)} onGoogleAuthenticate={authenticateWithGoogle} onSuccess={authenticationSucceeded} />
     }
     if (user.role !== 'ADMIN') {
       return <div className="admin-route-message"><h1>Bạn không có quyền truy cập</h1><p>Trang quản trị chỉ dành cho tài khoản quản trị viên.</p><button className="button-primary" onClick={leaveAdminRoute}>Về trang chủ</button></div>
@@ -794,7 +798,7 @@ export function App() {
   }
 
   if (view === 'auth') {
-    return <AuthPage onBack={() => goBack(previousView === 'auth' || authenticationRequiredViews.includes(previousView) ? 'home' : previousView)} onAuthenticate={authenticate} onVerify={api.verifyRegistration.bind(api)} onResend={api.resendRegistrationCode.bind(api)} onSuccess={authenticationSucceeded} />
+    return <AuthPage onBack={() => goBack(previousView === 'auth' || authenticationRequiredViews.includes(previousView) ? 'home' : previousView)} onAuthenticate={authenticate} onVerify={api.verifyRegistration.bind(api)} onResend={api.resendRegistrationCode.bind(api)} onGoogleAuthenticate={authenticateWithGoogle} onSuccess={authenticationSucceeded} />
   }
 
   return (

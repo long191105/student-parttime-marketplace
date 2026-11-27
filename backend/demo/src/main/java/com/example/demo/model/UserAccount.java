@@ -7,6 +7,7 @@ import java.util.List;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
+import org.hibernate.annotations.ColumnDefault;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -19,7 +20,10 @@ import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 
 @Entity
-@Table(name = "user_accounts", uniqueConstraints = @UniqueConstraint(name = "uk_user_accounts_email", columnNames = "email"))
+@Table(name = "user_accounts", uniqueConstraints = {
+        @UniqueConstraint(name = "uk_user_accounts_email", columnNames = "email"),
+        @UniqueConstraint(name = "uk_user_accounts_google_id", columnNames = "google_id")
+})
 public class UserAccount implements UserDetails {
 
     @Id
@@ -32,14 +36,25 @@ public class UserAccount implements UserDetails {
     @Column(nullable = false, length = 254)
     private String email;
 
-    @Column(name = "password_hash", nullable = false, length = 100)
+    @Column(name = "password_hash", length = 100)
     private String passwordHash;
+
+    @Column(name = "google_id", length = 255)
+    private String googleId;
 
     @Column(length = 20)
     private String phone;
 
     @Column(name = "avatar_url", length = 2048)
     private String avatarUrl;
+
+    @Column(name = "auth_provider", nullable = false, length = 20)
+    @ColumnDefault("'local'")
+    private String authProvider = "local";
+
+    @Column(name = "email_verified", nullable = false)
+    @ColumnDefault("true")
+    private boolean emailVerified = true;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
@@ -68,6 +83,16 @@ public class UserAccount implements UserDetails {
         this.createdAt = Instant.now();
     }
 
+    public static UserAccount googleAccount(
+            String fullName, String email, String googleId, String avatarUrl, UserRole role) {
+        UserAccount user = new UserAccount(fullName, email, null, null, role);
+        user.googleId = googleId;
+        user.avatarUrl = avatarUrl;
+        user.authProvider = "google";
+        user.emailVerified = true;
+        return user;
+    }
+
     public Long getId() {
         return id;
     }
@@ -80,12 +105,24 @@ public class UserAccount implements UserDetails {
         return email;
     }
 
+    public String getGoogleId() {
+        return googleId;
+    }
+
     public String getPhone() {
         return phone;
     }
 
     public String getAvatarUrl() {
         return avatarUrl;
+    }
+
+    public String getAuthProvider() {
+        return authProvider;
+    }
+
+    public boolean isEmailVerified() {
+        return emailVerified;
     }
 
     public UserRole getRole() {
@@ -116,8 +153,16 @@ public class UserAccount implements UserDetails {
         this.passwordHash = passwordHash;
     }
 
+    public void setGoogleId(String googleId) {
+        this.googleId = googleId;
+    }
+
     public void setAvatarUrl(String avatarUrl) {
         this.avatarUrl = avatarUrl;
+    }
+
+    public void setEmailVerified(boolean emailVerified) {
+        this.emailVerified = emailVerified;
     }
 
     public void setLastActiveAt(Instant lastActiveAt) {
