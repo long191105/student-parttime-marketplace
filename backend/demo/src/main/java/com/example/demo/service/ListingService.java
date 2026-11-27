@@ -251,9 +251,9 @@ public class ListingService {
             deleteRejectedListingAndRelatedData(listing);
             return;
         }
-        if (listing.getStatus() != ListingStatus.HIDDEN) {
+        if (listing.getStatus() != ListingStatus.HIDDEN && listing.getStatus() != ListingStatus.SOLD) {
             throw new ResponseStatusException(
-                    HttpStatus.CONFLICT, "Chỉ tin đã ẩn hoặc bị từ chối mới có thể xóa.");
+                    HttpStatus.CONFLICT, "Chỉ tin đã ẩn, đã bán hoặc bị từ chối mới có thể xóa.");
         }
         listing.markRemovedBySeller();
     }

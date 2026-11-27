@@ -12,6 +12,8 @@ import { NotificationsPage } from './pages/NotificationsPage'
 import { ProfilePage } from './pages/ProfilePage'
 import { SearchPage } from './pages/SearchPage'
 import { SellPage } from './pages/SellPage'
+import { BuyingGuidePage } from './pages/BuyingGuidePage'
+import { SafetyPolicyPage } from './pages/SafetyPolicyPage'
 import type { Listing, ListingData, ListingStatus } from './domain/Listing'
 import { MarketplaceApi, MarketplaceApiError, type AdminCategory, type AdminReport, type AdminReportAction, type AdminStats, type AdminUserStatus, type AuthSession, type AuthUser, type ListingFormDraft, type UserNotification } from './services/MarketplaceApi'
 import { MarketplaceService } from './services/MarketplaceService'
@@ -41,7 +43,8 @@ interface NavigationOptions {
 function isAppView(value: unknown): value is AppView {
   return value === 'home' || value === 'search' || value === 'detail' || value === 'sell'
     || value === 'my-listings' || value === 'favorites' || value === 'messages'
-    || value === 'notifications' || value === 'profile' || value === 'check-in' || value === 'auth'
+    || value === 'notifications' || value === 'profile' || value === 'check-in'
+    || value === 'buying-guide' || value === 'safety-policy' || value === 'auth'
 }
 
 function readAppNavigationEntry(state: unknown): AppNavigationEntry | null {
@@ -803,6 +806,7 @@ export function App() {
       onLocationChange={setLocation}
       onNavigate={navigate}
       onStartNewListing={startNewListing}
+      onCategoryNavigate={selectCategory}
       onAdminNavigate={openAdminRoute}
       onSearch={submitSearch}
       onSignOut={signOut}
@@ -835,6 +839,8 @@ export function App() {
       {view === 'my-listings' && <MyListingsPage listings={listings} onStatusChange={changeStatus} onDeleteListing={deleteListingFromMyListings} onOpen={openListing} onSell={startNewListing} onEditDraft={editSavedDraft} sellerId={currentSellerId} onLoadDraft={loadListingDraft} onDeleteDraft={deleteListingDraft} onPublishDraft={publishSavedDraft} />}
       {view === 'favorites' && <FavoritesPage savedListings={activeFavoriteListings} onOpen={openListing} onToggleSaved={toggleSaved} />}
       {view === 'check-in' && <CheckInPage userId={user?.id ?? null} onBack={() => goBack('home')} />}
+      {view === 'buying-guide' && <BuyingGuidePage onBack={() => goBack('home')} onExplore={() => navigate('search')} onStartSelling={startNewListing} />}
+      {view === 'safety-policy' && <SafetyPolicyPage onBack={() => goBack('home')} />}
       {user && apiState === 'connected' && <div className={view === 'messages' ? '' : 'inbox-background-listener'} aria-hidden={view !== 'messages'}>
         <InboxPage api={api} user={user} initialConversationId={selectedConversationId} isVisible={view === 'messages'} onUnreadCountChange={updateUnreadMessageCount} onListingSold={(id) => setListings((current) => current.map((listing) => listing.id === id ? listing.withStatus('SOLD') : listing))} onOpenProfile={openProfile} onOpenListing={(id) => {
           const listing = listings.find((item) => item.id === id)

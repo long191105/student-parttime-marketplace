@@ -38,6 +38,9 @@ public class UserAccount implements UserDetails {
     @Column(length = 20)
     private String phone;
 
+    @Column(name = "avatar_url", length = 2048)
+    private String avatarUrl;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     private UserRole role = UserRole.MEMBER;
@@ -81,6 +84,10 @@ public class UserAccount implements UserDetails {
         return phone;
     }
 
+    public String getAvatarUrl() {
+        return avatarUrl;
+    }
+
     public UserRole getRole() {
         return role;
     }
@@ -107,6 +114,10 @@ public class UserAccount implements UserDetails {
 
     public void setPasswordHash(String passwordHash) {
         this.passwordHash = passwordHash;
+    }
+
+    public void setAvatarUrl(String avatarUrl) {
+        this.avatarUrl = avatarUrl;
     }
 
     public void setLastActiveAt(Instant lastActiveAt) {

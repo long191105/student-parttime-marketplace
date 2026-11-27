@@ -101,6 +101,44 @@ class UserProfileServiceTest {
         verify(userFollowRepository, never()).save(any(UserFollow.class));
     }
 
+    @Test
+    void updatingOwnAvatarSavesSecureUrlAndReturnsItInProfile() {
+        when(currentUserService.requireUser()).thenReturn(follower);
+        when(userAccountRepository.findById(7L)).thenReturn(Optional.of(follower));
+        when(userFollowRepository.countByFollowedId(7L)).thenReturn(3L);
+        String avatarUrl = "https://res.cloudinary.com/example/image/upload/avatar.jpg";
+
+        UserProfileResponse response = service.updateAvatar(7L, avatarUrl);
+
+        verify(userAccountRepository).save(follower);
+        assertEquals(avatarUrl, response.avatarUrl());
+        assertTrue(response.currentUser());
+    }
+
+    @Test
+    void updatingAnotherUsersAvatarIsForbidden() {
+        when(currentUserService.requireUser()).thenReturn(follower);
+
+        ResponseStatusException exception = assertThrows(
+                ResponseStatusException.class,
+                () -> service.updateAvatar(8L, "https://example.com/avatar.jpg"));
+
+        assertEquals(HttpStatus.FORBIDDEN, exception.getStatusCode());
+        verify(userAccountRepository, never()).save(any(UserAccount.class));
+    }
+
+    @Test
+    void updatingAvatarRejectsNonHttpsUrl() {
+        when(currentUserService.requireUser()).thenReturn(follower);
+
+        ResponseStatusException exception = assertThrows(
+                ResponseStatusException.class,
+                () -> service.updateAvatar(7L, "http://example.com/avatar.jpg"));
+
+        assertEquals(HttpStatus.BAD_REQUEST, exception.getStatusCode());
+        verify(userAccountRepository, never()).save(any(UserAccount.class));
+    }
+
     private static UserAccount user(String name, long id) {
         UserAccount user = new UserAccount(name, name.toLowerCase() + "@example.com", "hashed", null, UserRole.MEMBER);
         ReflectionTestUtils.setField(user, "id", id);
