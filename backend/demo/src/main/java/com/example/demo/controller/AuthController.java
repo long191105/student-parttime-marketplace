@@ -11,6 +11,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import com.example.demo.dto.AuthResponse;
 import com.example.demo.dto.EmailRequest;
+import com.example.demo.dto.GoogleLoginRequest;
 import com.example.demo.dto.LoginRequest;
 import com.example.demo.dto.MessageResponse;
 import com.example.demo.dto.RegisterRequest;
@@ -29,6 +30,11 @@ public class AuthController {
 
     public AuthController(AuthService authService) {
         this.authService = authService;
+    }
+
+    @PostMapping("/google")
+    public AuthResponse loginWithGoogle(@Valid @RequestBody GoogleLoginRequest request) {
+        return authService.loginWithGoogle(request.credential());
     }
 
     @PostMapping("/register")

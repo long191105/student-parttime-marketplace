@@ -23,6 +23,8 @@ import com.example.demo.model.UserAccount;
 import com.example.demo.model.UserRole;
 import com.example.demo.repository.PendingRegistrationRepository;
 import com.example.demo.repository.UserAccountRepository;
+import com.example.demo.security.GoogleIdentity;
+import com.example.demo.security.GoogleIdentityTokenVerifier;
 import com.example.demo.security.JwtService;
 
 import static org.springframework.http.HttpStatus.BAD_REQUEST;
@@ -40,6 +42,7 @@ public class AuthService {
     private final PendingRegistrationRepository pendingRegistrationRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
+    private final GoogleIdentityTokenVerifier googleIdentityTokenVerifier;
     private final BrevoEmailService emailService;
     private final long expirationMinutes;
     private final long resendCooldownSeconds;
@@ -50,6 +53,7 @@ public class AuthService {
             PendingRegistrationRepository pendingRegistrationRepository,
             PasswordEncoder passwordEncoder,
             JwtService jwtService,
+            GoogleIdentityTokenVerifier googleIdentityTokenVerifier,
             BrevoEmailService emailService,
             @Value("${app.otp.expiration-minutes:10}") long expirationMinutes,
             @Value("${app.otp.resend-cooldown-seconds:60}") long resendCooldownSeconds,
@@ -58,6 +62,7 @@ public class AuthService {
         this.pendingRegistrationRepository = pendingRegistrationRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
+        this.googleIdentityTokenVerifier = googleIdentityTokenVerifier;
         this.emailService = emailService;
         this.expirationMinutes = expirationMinutes;
         this.resendCooldownSeconds = resendCooldownSeconds;
@@ -157,9 +162,51 @@ public class AuthService {
     @Transactional(readOnly = true)
     public AuthResponse login(LoginRequest request) {
         UserAccount user = userAccountRepository.findByEmailIgnoreCase(request.email().trim())
-                .filter(account -> passwordEncoder.matches(request.password(), account.getPassword()))
+                .filter(account -> account.getPassword() != null
+                        && passwordEncoder.matches(request.password(), account.getPassword()))
                 .filter(UserAccount::isEnabled)
                 .orElseThrow(() -> new BadCredentialsException("Email hoặc mật khẩu không chính xác."));
+        return response(user);
+    }
+
+    @Transactional
+    public AuthResponse loginWithGoogle(String credential) {
+        GoogleIdentity identity = googleIdentityTokenVerifier.verify(credential);
+        String email = normalizeEmail(identity.email());
+        UserAccount accountByGoogleId = userAccountRepository.findByGoogleId(identity.googleId()).orElse(null);
+        if (accountByGoogleId != null && !accountByGoogleId.getEmail().equalsIgnoreCase(email)) {
+            throw new BadCredentialsException("Tài khoản Google này đã được liên kết với một email khác.");
+        }
+
+        UserAccount user = userAccountRepository.findByEmailIgnoreCase(email).orElse(null);
+        if (user == null) {
+            String fullName = identity.name() == null || identity.name().isBlank()
+                    ? email.substring(0, email.indexOf('@'))
+                    : identity.name().trim();
+            if (fullName.length() > 120) {
+                fullName = fullName.substring(0, 120);
+            }
+            user = UserAccount.googleAccount(fullName, email, identity.googleId(), identity.avatarUrl(), UserRole.MEMBER);
+            pendingRegistrationRepository.findByEmailIgnoreCase(email).ifPresent(pendingRegistrationRepository::delete);
+        } else {
+            if (!user.isEnabled()) {
+                throw new BadCredentialsException("Tài khoản này đang bị khóa.");
+            }
+            if (user.getGoogleId() != null && !user.getGoogleId().equals(identity.googleId())) {
+                throw new BadCredentialsException("Email này đã được liên kết với một tài khoản Google khác.");
+            }
+            if (accountByGoogleId != null && !accountByGoogleId.getId().equals(user.getId())) {
+                throw new BadCredentialsException("Tài khoản Google này đã được liên kết với một email khác.");
+            }
+            if (user.getGoogleId() == null) {
+                user.setGoogleId(identity.googleId());
+            }
+            if (user.getAvatarUrl() == null || user.getAvatarUrl().isBlank()) {
+                user.setAvatarUrl(identity.avatarUrl());
+            }
+            user.setEmailVerified(true);
+        }
+        userAccountRepository.save(user);
         return response(user);
     }
 

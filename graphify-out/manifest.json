@@ -13,10 +13,10 @@
     "semantic_hash": "ab50dd89da7da2346b28003352eeeeeb"
   },
   "backend/demo/pom.xml": {
-    "mtime": 1795589938.5436852,
-    "seen": 1795602377.6651897,
-    "ast_hash": "a579f7fa2f20d6af7654f86a282a9745",
-    "semantic_hash": "a579f7fa2f20d6af7654f86a282a9745"
+    "mtime": 1795776354.078951,
+    "seen": 1795776490.6085215,
+    "ast_hash": "144941b0bd52c08da2f02a07a54c31ed",
+    "semantic_hash": ""
   },
   "backend/demo/src/main/java/com/example/demo/DemoApplication.java": {
     "mtime": 1795589938.5446959,
@@ -55,10 +55,10 @@
     "semantic_hash": "822c79d5a41aa24a1239134d89500e88"
   },
   "backend/demo/src/main/java/com/example/demo/controller/AuthController.java": {
-    "mtime": 1795415281.640721,
-    "seen": 1795602377.6651897,
-    "ast_hash": "a822166d6fd372b0b8bd02b8db3b930f",
-    "semantic_hash": "a822166d6fd372b0b8bd02b8db3b930f"
+    "mtime": 1795777358.0263033,
+    "seen": 1795777637.5797703,
+    "ast_hash": "01d3920ef9d9d944752e8c3578437030",
+    "semantic_hash": ""
   },
   "backend/demo/src/main/java/com/example/demo/controller/CategoryController.java": {
     "mtime": 1793777823.6886399,
@@ -343,10 +343,10 @@
     "semantic_hash": "c26136d69fe776ac7538a484be970d51"
   },
   "backend/demo/src/main/java/com/example/demo/model/UserAccount.java": {
-    "mtime": 1795589938.548633,
-    "seen": 1795602377.6651897,
-    "ast_hash": "5f1c9fcdf04a8543fa79ac1b5c73394c",
-    "semantic_hash": "5f1c9fcdf04a8543fa79ac1b5c73394c"
+    "mtime": 1795777536.351998,
+    "seen": 1795777637.5842788,
+    "ast_hash": "0e5130d9e2f6bcafb1c7485474cdf2af",
+    "semantic_hash": ""
   },
   "backend/demo/src/main/java/com/example/demo/model/UserNotification.java": {
     "mtime": 1795589967.3724287,
@@ -421,10 +421,10 @@
     "semantic_hash": "1c2c45a761bcc88ea30d7bbbd28e2db4"
   },
   "backend/demo/src/main/java/com/example/demo/repository/UserAccountRepository.java": {
-    "mtime": 1795589967.3737097,
-    "seen": 1795602377.6651897,
-    "ast_hash": "cb0fbc51fa8ea7a991627f84ce67ff4f",
-    "semantic_hash": "cb0fbc51fa8ea7a991627f84ce67ff4f"
+    "mtime": 1795777357.9917364,
+    "seen": 1795777637.5852926,
+    "ast_hash": "3114abf6af1d9c1344356641cd9ed306",
+    "semantic_hash": ""
   },
   "backend/demo/src/main/java/com/example/demo/repository/UserNotificationRepository.java": {
     "mtime": 1795708015.5010464,
@@ -433,10 +433,10 @@
     "semantic_hash": ""
   },
   "backend/demo/src/main/java/com/example/demo/security/AdminAccountInitializer.java": {
-    "mtime": 1795589938.548633,
-    "seen": 1795602377.6651897,
-    "ast_hash": "7ff1144f53c57c5ecf195fa1dacead89",
-    "semantic_hash": "7ff1144f53c57c5ecf195fa1dacead89"
+    "mtime": 1795777358.0022604,
+    "seen": 1795777637.5852926,
+    "ast_hash": "9fc5ec8cd8fd2e6b3eb7af7d78b39011",
+    "semantic_hash": ""
   },
   "backend/demo/src/main/java/com/example/demo/security/JwtAuthenticationFilter.java": {
     "mtime": 1793777823.7079768,
@@ -463,9 +463,9 @@
     "semantic_hash": ""
   },
   "backend/demo/src/main/java/com/example/demo/service/AuthService.java": {
-    "mtime": 1795672866.5825682,
-    "seen": 1795714888.9187088,
-    "ast_hash": "9a628ff457e985efcda51fac6554dac4",
+    "mtime": 1795777536.3757458,
+    "seen": 1795777637.5852926,
+    "ast_hash": "90850d9628e2a10ed27da76f64c266b8",
     "semantic_hash": ""
   },
   "backend/demo/src/main/java/com/example/demo/service/CallIceServerService.java": {
@@ -511,9 +511,9 @@
     "semantic_hash": ""
   },
   "backend/demo/src/main/java/com/example/demo/service/ListingService.java": {
-    "mtime": 1795708635.5130131,
-    "seen": 1795714888.9197142,
-    "ast_hash": "4aa1d27512b39ab8ad9737ffc812cd85",
+    "mtime": 1795765799.0164812,
+    "seen": 1795776490.615526,
+    "ast_hash": "4b52ff0297c747edd88893d154673e31",
     "semantic_hash": ""
   },
   "backend/demo/src/main/java/com/example/demo/service/UserNotificationService.java": {
@@ -523,10 +523,10 @@
     "semantic_hash": ""
   },
   "backend/demo/src/test/java/com/example/demo/controller/AuthControllerTest.java": {
-    "mtime": 1795415281.6427243,
-    "seen": 1795602377.6798766,
+    "mtime": 1795777358.2012973,
+    "seen": 1795777637.5872858,
     "ast_hash": "553727913221517a750f3d51d37da3b8",
-    "semantic_hash": "553727913221517a750f3d51d37da3b8"
+    "semantic_hash": ""
   },
   "backend/demo/src/test/java/com/example/demo/controller/ListingPhoneApiTest.java": {
     "mtime": 1795708100.9634206,
@@ -541,9 +541,9 @@
     "semantic_hash": "3ff8b2647ef7ce7486ad2a89a1750713"
   },
   "backend/demo/src/test/java/com/example/demo/service/AuthServiceTest.java": {
-    "mtime": 1795672866.5825682,
-    "seen": 1795714888.9197142,
-    "ast_hash": "b37137c2a59ba4ccd62e301cd9950fab",
+    "mtime": 1795777466.8084602,
+    "seen": 1795777637.5882852,
+    "ast_hash": "52baf96a57861896dd24d0df4980c4b5",
     "semantic_hash": ""
   },
   "backend/demo/src/test/java/com/example/demo/service/CallIceServerServiceTest.java": {
@@ -571,9 +571,9 @@
     "semantic_hash": ""
   },
   "backend/demo/src/test/java/com/example/demo/service/ListingServiceTest.java": {
-    "mtime": 1795708635.5562959,
-    "seen": 1795714888.9197142,
-    "ast_hash": "4544e0b555873429ab6590839140dd75",
+    "mtime": 1795765799.0469236,
+    "seen": 1795776490.6170356,
+    "ast_hash": "2c93b0ddce88b2edfc318b4ba1f5fc76",
     "semantic_hash": ""
   },
   "frontend/eslint.config.js": {
@@ -583,15 +583,15 @@
     "semantic_hash": "0355276bc79439afe3c53e3a2470ca1e"
   },
   "frontend/package.json": {
-    "mtime": 1793777823.7234607,
-    "seen": 1795602377.6798766,
-    "ast_hash": "dbfce6628b3cda3e777865cbcdc883ac",
-    "semantic_hash": "dbfce6628b3cda3e777865cbcdc883ac"
+    "mtime": 1795777272.0332272,
+    "seen": 1795777637.5892866,
+    "ast_hash": "371f2908aa5736eb7f44b2d5fe0d5920",
+    "semantic_hash": ""
   },
   "frontend/src/App.tsx": {
-    "mtime": 1795709245.8049889,
-    "seen": 1795714888.9197142,
-    "ast_hash": "e03c4da6ee32d3bf9193931e2e86859b",
+    "mtime": 1795777388.691159,
+    "seen": 1795777637.5892866,
+    "ast_hash": "4ea232f1b26a1fb2d9304a558bfa50d7",
     "semantic_hash": ""
   },
   "frontend/src/components/AppDialogContext.ts": {
@@ -625,9 +625,9 @@
     "semantic_hash": ""
   },
   "frontend/src/components/MarketplaceLayout.tsx": {
-    "mtime": 1795713316.010461,
-    "seen": 1795714888.9207098,
-    "ast_hash": "edc465e837524fdc596128517b4d991d",
+    "mtime": 1795761619.4842012,
+    "seen": 1795776490.618043,
+    "ast_hash": "a797a2a64f697ba45590a5ec59073652",
     "semantic_hash": ""
   },
   "frontend/src/components/SellDropdown.tsx": {
@@ -655,10 +655,10 @@
     "semantic_hash": ""
   },
   "frontend/src/main.tsx": {
-    "mtime": 1795085309.1771464,
-    "seen": 1795602377.6819556,
-    "ast_hash": "d1eda919c404c1e263c5af010d8612bd",
-    "semantic_hash": "d1eda919c404c1e263c5af010d8612bd"
+    "mtime": 1795777388.5492525,
+    "seen": 1795777637.590793,
+    "ast_hash": "4a742fb2ffb26ebe029f29acaee0d97d",
+    "semantic_hash": ""
   },
   "frontend/src/pages/AdminPage.tsx": {
     "mtime": 1795684765.9043448,
@@ -667,9 +667,9 @@
     "semantic_hash": ""
   },
   "frontend/src/pages/AuthPage.tsx": {
-    "mtime": 1795684765.9053442,
-    "seen": 1795714888.9207098,
-    "ast_hash": "b21b10daac0ae9364067f5222f552dcb",
+    "mtime": 1795777492.1240659,
+    "seen": 1795777637.590793,
+    "ast_hash": "d10f2285cc646e45382f966771b232a0",
     "semantic_hash": ""
   },
   "frontend/src/pages/CheckInPage.tsx": {
@@ -679,9 +679,9 @@
     "semantic_hash": "2001cbc373a8fd67013134778c067ea0"
   },
   "frontend/src/pages/ExplorePage.tsx": {
-    "mtime": 1795713816.808659,
-    "seen": 1795714888.9207098,
-    "ast_hash": "1d567cda8a73f5a29c2dd83374ca76ef",
+    "mtime": 1795762043.8221314,
+    "seen": 1795776490.618043,
+    "ast_hash": "4f0ecd6dc51669ac33960afa1fd50113",
     "semantic_hash": ""
   },
   "frontend/src/pages/FavoritesPage.tsx": {
@@ -703,9 +703,9 @@
     "semantic_hash": ""
   },
   "frontend/src/pages/MyListingsPage.tsx": {
-    "mtime": 1795708643.2440693,
-    "seen": 1795714888.9207098,
-    "ast_hash": "964187ca3eb6bb47a10e8c51183d115f",
+    "mtime": 1795765799.0685172,
+    "seen": 1795776490.6190546,
+    "ast_hash": "c94ebe2ad148418e822605a216f0fec5",
     "semantic_hash": ""
   },
   "frontend/src/pages/NotificationsPage.tsx": {
@@ -715,9 +715,9 @@
     "semantic_hash": "76be9987ab0c8d24abc70677e44f4829"
   },
   "frontend/src/pages/ProfilePage.tsx": {
-    "mtime": 1795709271.7680118,
-    "seen": 1795714888.9207098,
-    "ast_hash": "3bbf7854bf166413940a6e9effed6d1e",
+    "mtime": 1795765331.210996,
+    "seen": 1795776490.6190546,
+    "ast_hash": "9ab21bee67b08960fb10f19c03a36d1a",
     "semantic_hash": ""
   },
   "frontend/src/pages/SearchPage.tsx": {
@@ -745,15 +745,15 @@
     "semantic_hash": "696df991200a209b18398cb79e67ef64"
   },
   "frontend/src/services/MarketplaceApi.ts": {
-    "mtime": 1795709231.4005735,
-    "seen": 1795714888.9207098,
-    "ast_hash": "7adeffb0dfe4ac25dd8a1d9cc92156d4",
+    "mtime": 1795777388.6710687,
+    "seen": 1795777637.5928023,
+    "ast_hash": "86df7a28a182d2b9c2985c8a285bcca0",
     "semantic_hash": ""
   },
   "frontend/src/services/MarketplaceService.ts": {
-    "mtime": 1795708674.3875618,
-    "seen": 1795714888.9207098,
-    "ast_hash": "a0e9336f9c0a15f3d1789c97c242a02f",
+    "mtime": 1795765799.0841029,
+    "seen": 1795776490.6190546,
+    "ast_hash": "115d5cabff38538f0597edd64793a126",
     "semantic_hash": ""
   },
   "frontend/tsconfig.app.json": {
@@ -775,10 +775,10 @@
     "semantic_hash": "f9cb81ddcea69ffdab672fc8c48dca66"
   },
   "frontend/vite.config.ts": {
-    "mtime": 1790423129.1554995,
-    "seen": 1795602377.6819556,
-    "ast_hash": "5d54447744c19ccd28638a5c668d15ea",
-    "semantic_hash": "5d54447744c19ccd28638a5c668d15ea"
+    "mtime": 1795777388.5632846,
+    "seen": 1795777637.5928023,
+    "ast_hash": "2aee213a9103f46380ec26bf5c587e3b",
+    "semantic_hash": ""
   },
   ".agents/skills/hallmark/agents/openai.yaml": {
     "mtime": 1795672854.8562844,
@@ -2023,15 +2023,15 @@
     "semantic_hash": ""
   },
   "backend/demo/src/main/java/com/example/demo/controller/UserProfileController.java": {
-    "mtime": 1795709209.4726098,
-    "seen": 1795714888.9151907,
-    "ast_hash": "f1337c88ed2f9168822d2dbffeb51109",
+    "mtime": 1795765331.1967432,
+    "seen": 1795776490.609525,
+    "ast_hash": "0762c9754124aa23ff50a445688758d9",
     "semantic_hash": ""
   },
   "backend/demo/src/main/java/com/example/demo/dto/UserProfileResponse.java": {
-    "mtime": 1795709209.2244277,
-    "seen": 1795714888.917196,
-    "ast_hash": "be38cd4f92af92778601a0ad967ad760",
+    "mtime": 1795765200.636513,
+    "seen": 1795776490.611523,
+    "ast_hash": "e1135aac702f1b600063f05d6705cd70",
     "semantic_hash": ""
   },
   "backend/demo/src/main/java/com/example/demo/model/UserFollow.java": {
@@ -2065,9 +2065,9 @@
     "semantic_hash": ""
   },
   "backend/demo/src/main/java/com/example/demo/service/UserProfileService.java": {
-    "mtime": 1795709528.5710068,
-    "seen": 1795714888.9197142,
-    "ast_hash": "34e339e8e1796914f08963dabf86db26",
+    "mtime": 1795765200.7544012,
+    "seen": 1795776490.615526,
+    "ast_hash": "e4aedf3bfb0180ab03814c655ac9012c",
     "semantic_hash": ""
   },
   "backend/demo/src/test/java/com/example/demo/security/SecurityConfigTest.java": {
@@ -2095,9 +2095,9 @@
     "semantic_hash": ""
   },
   "backend/demo/src/test/java/com/example/demo/service/UserProfileServiceTest.java": {
-    "mtime": 1795709561.9938037,
-    "seen": 1795714888.9197142,
-    "ast_hash": "fdd03dac48e1d98c2b77643ca2ad395e",
+    "mtime": 1795765245.46106,
+    "seen": 1795776490.6170356,
+    "ast_hash": "788b271e26f82e26fbb9765810ee20ad",
     "semantic_hash": ""
   },
   "frontend/src/components/ScrollToTopButton.tsx": {
@@ -2112,10 +2112,58 @@
     "ast_hash": "301423cba13ddc45b8b10e7ef7d7967e",
     "semantic_hash": ""
   },
+  "backend/demo/src/main/java/com/example/demo/dto/GoogleLoginRequest.java": {
+    "mtime": 1795777358.0378234,
+    "seen": 1795777637.5811703,
+    "ast_hash": "00c046702ea49dc55e03071ed0d4bd43",
+    "semantic_hash": ""
+  },
+  "backend/demo/src/main/java/com/example/demo/dto/UpdateAvatarRequest.java": {
+    "mtime": 1795765200.725669,
+    "seen": 1795776490.611523,
+    "ast_hash": "7c1c0255aa07bb304e80b2a42a596a60",
+    "semantic_hash": ""
+  },
+  "backend/demo/src/main/java/com/example/demo/security/GoogleIdentityTokenVerifier.java": {
+    "mtime": 1795777536.3642392,
+    "seen": 1795777637.5852926,
+    "ast_hash": "306d7b6dd9db09a3e4cd71dbfecdb6f1",
+    "semantic_hash": ""
+  },
+  "frontend/src/pages/BuyingGuidePage.tsx": {
+    "mtime": 1795764340.581885,
+    "seen": 1795776490.618043,
+    "ast_hash": "76cb70b55dae1e753dc4865480dbf3ce",
+    "semantic_hash": ""
+  },
+  "frontend/src/pages/SafetyPolicyPage.tsx": {
+    "mtime": 1795761254.1755426,
+    "seen": 1795776490.6190546,
+    "ast_hash": "b39af630100972cca0f75a53302db724",
+    "semantic_hash": ""
+  },
+  "frontend/public/bannerhuongdan.png": {
+    "mtime": 1795764135.2831342,
+    "seen": 1795776490.635583,
+    "ast_hash": "e765d0dd4ad1cb49e257c98dd81f3433",
+    "semantic_hash": ""
+  },
+  "backend/demo/src/main/java/com/example/demo/security/GoogleIdentity.java": {
+    "mtime": 1795777358.113518,
+    "seen": 1795777637.5852926,
+    "ast_hash": "fd8af5f929132af68e6ad093f915af64",
+    "semantic_hash": ""
+  },
+  "frontend/src/components/GoogleAuthButton.tsx": {
+    "mtime": 1795777460.5028603,
+    "seen": 1795777637.5892866,
+    "ast_hash": "25611574afaf40f372618f7e855246c0",
+    "semantic_hash": ""
+  },
   "frontend/package-lock.json": {
-    "mtime": 1793859620.8204117,
-    "seen": 1795666179.2708476,
-    "ast_hash": "ccf3966beed1271b94024d5b0516cc0c",
+    "mtime": 1795777272.0752857,
+    "seen": 1795777637.614834,
+    "ast_hash": "b4ce7fbb9a03e11547c49595914a6f94",
     "semantic_hash": ""
   }
 }

@@ -406,6 +406,13 @@ export class MarketplaceApi {
     })
   }
 
+  async loginWithGoogle(credential: string): Promise<AuthSession> {
+    return this.request<AuthSession>('/auth/google', {
+      method: 'POST',
+      body: JSON.stringify({ credential }),
+    })
+  }
+
   async register(fullName: string, email: string, password: string, phone: string): Promise<void> {
     await this.request<{ message: string }>('/auth/register', {
       method: 'POST',

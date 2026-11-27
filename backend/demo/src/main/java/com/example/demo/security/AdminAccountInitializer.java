@@ -43,7 +43,7 @@ public class AdminAccountInitializer implements ApplicationRunner {
             UserAccount user = existingAdmin.get();
             user.setRole(UserRole.ADMIN);
             user.setStatus(com.example.demo.model.AccountStatus.ACTIVE);
-            if (!passwordEncoder.matches(adminPassword, user.getPassword())) {
+            if (user.getPassword() == null || !passwordEncoder.matches(adminPassword, user.getPassword())) {
                 user.setPasswordHash(passwordEncoder.encode(adminPassword));
             }
             userAccountRepository.save(user);

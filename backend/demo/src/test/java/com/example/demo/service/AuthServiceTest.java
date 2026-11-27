@@ -1,6 +1,7 @@
 package com.example.demo.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -31,6 +32,8 @@ import com.example.demo.model.PendingRegistration;
 import com.example.demo.model.UserAccount;
 import com.example.demo.repository.PendingRegistrationRepository;
 import com.example.demo.repository.UserAccountRepository;
+import com.example.demo.security.GoogleIdentity;
+import com.example.demo.security.GoogleIdentityTokenVerifier;
 import com.example.demo.security.JwtService;
 
 @ExtendWith(MockitoExtension.class)
@@ -49,6 +52,9 @@ class AuthServiceTest {
     private JwtService jwtService;
 
     @Mock
+    private GoogleIdentityTokenVerifier googleIdentityTokenVerifier;
+
+    @Mock
     private BrevoEmailService emailService;
 
     private AuthService authService;
@@ -60,10 +66,125 @@ class AuthServiceTest {
                 pendingRegistrationRepository,
                 passwordEncoder,
                 jwtService,
+                googleIdentityTokenVerifier,
                 emailService,
                 10,
                 60,
                 5);
+    }
+
+    @Test
+    void googleLoginLinksAnExistingAccountAndPreservesItsProfileAndPassword() {
+        UserAccount user = new UserAccount(
+                "Test User", "person@gmail.com", "hashed-password", null,
+                com.example.demo.model.UserRole.MEMBER);
+        user.setAvatarUrl("https://existing.example/avatar.png");
+        when(googleIdentityTokenVerifier.verify("google-id-token"))
+                .thenReturn(new GoogleIdentity("google-sub", "person@gmail.com", "Google Name", "https://google.example/avatar.png"));
+        when(userAccountRepository.findByGoogleId("google-sub")).thenReturn(Optional.empty());
+        when(userAccountRepository.findByEmailIgnoreCase("person@gmail.com")).thenReturn(Optional.of(user));
+        when(userAccountRepository.save(user)).thenReturn(user);
+        when(jwtService.issueToken(user)).thenReturn("jwt");
+        when(jwtService.getExpirationSeconds()).thenReturn(3600L);
+
+        AuthResponse response = authService.loginWithGoogle("google-id-token");
+
+        assertEquals("jwt", response.accessToken());
+        assertEquals("person@gmail.com", response.user().email());
+        assertEquals("google-sub", user.getGoogleId());
+        assertEquals("local", user.getAuthProvider());
+        assertEquals("Test User", user.getFullName());
+        assertEquals("hashed-password", user.getPassword());
+        assertEquals("https://existing.example/avatar.png", user.getAvatarUrl());
+        assertTrue(user.isEmailVerified());
+        verify(userAccountRepository).save(user);
+    }
+
+    @Test
+    void googleLoginCreatesAVerifiedGoogleAccountWhenEmailIsNew() {
+        GoogleIdentity identity = new GoogleIdentity(
+                "google-sub", "newperson@gmail.com", "New Person", "https://google.example/avatar.png");
+        PendingRegistration pending = new PendingRegistration(
+                "newperson@gmail.com",
+                "Pending Person",
+                "hashed-password",
+                null,
+                "hashed-otp",
+                Instant.now().plusSeconds(600),
+                Instant.now());
+        when(googleIdentityTokenVerifier.verify("google-id-token")).thenReturn(identity);
+        when(userAccountRepository.findByGoogleId("google-sub")).thenReturn(Optional.empty());
+        when(userAccountRepository.findByEmailIgnoreCase("newperson@gmail.com")).thenReturn(Optional.empty());
+        when(pendingRegistrationRepository.findByEmailIgnoreCase("newperson@gmail.com"))
+                .thenReturn(Optional.of(pending));
+        when(userAccountRepository.save(any(UserAccount.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+        when(jwtService.issueToken(any(UserAccount.class))).thenReturn("jwt");
+        when(jwtService.getExpirationSeconds()).thenReturn(3600L);
+
+        AuthResponse response = authService.loginWithGoogle("google-id-token");
+
+        ArgumentCaptor<UserAccount> accountCaptor = ArgumentCaptor.forClass(UserAccount.class);
+        verify(userAccountRepository).save(accountCaptor.capture());
+        UserAccount created = accountCaptor.getValue();
+        assertNull(created.getPassword());
+        assertEquals("google-sub", created.getGoogleId());
+        assertEquals("google", created.getAuthProvider());
+        assertTrue(created.isEmailVerified());
+        assertEquals("https://google.example/avatar.png", created.getAvatarUrl());
+        assertEquals("jwt", response.accessToken());
+        verify(pendingRegistrationRepository).delete(pending);
+    }
+
+    @Test
+    void googleLoginRejectsALockedExistingAccount() {
+        UserAccount user = new UserAccount(
+                "Test User", "person@gmail.com", "hashed-password", null,
+                com.example.demo.model.UserRole.MEMBER);
+        user.setStatus(com.example.demo.model.AccountStatus.LOCKED);
+        when(googleIdentityTokenVerifier.verify("google-id-token"))
+                .thenReturn(new GoogleIdentity("google-sub", "person@gmail.com", "Google Name", null));
+        when(userAccountRepository.findByGoogleId("google-sub")).thenReturn(Optional.empty());
+        when(userAccountRepository.findByEmailIgnoreCase("person@gmail.com")).thenReturn(Optional.of(user));
+
+        assertThrows(
+                org.springframework.security.authentication.BadCredentialsException.class,
+                () -> authService.loginWithGoogle("google-id-token"));
+
+        verifyNoInteractions(jwtService);
+    }
+
+    @Test
+    void googleLoginRejectsLinkingAnEmailAlreadyBoundToAnotherGoogleAccount() {
+        UserAccount user = new UserAccount(
+                "Test User", "person@gmail.com", "hashed-password", null,
+                com.example.demo.model.UserRole.MEMBER);
+        user.setGoogleId("different-google-sub");
+        when(googleIdentityTokenVerifier.verify("google-id-token"))
+                .thenReturn(new GoogleIdentity("google-sub", "person@gmail.com", "Google Name", null));
+        when(userAccountRepository.findByGoogleId("google-sub")).thenReturn(Optional.empty());
+        when(userAccountRepository.findByEmailIgnoreCase("person@gmail.com")).thenReturn(Optional.of(user));
+
+        assertThrows(
+                org.springframework.security.authentication.BadCredentialsException.class,
+                () -> authService.loginWithGoogle("google-id-token"));
+
+        verify(userAccountRepository, never()).save(any(UserAccount.class));
+        verifyNoInteractions(jwtService);
+    }
+
+    @Test
+    void passwordLoginRejectsGoogleOnlyAccountWithoutCallingPasswordEncoder() {
+        UserAccount user = UserAccount.googleAccount(
+                "Google User", "person@gmail.com", "google-sub", null,
+                com.example.demo.model.UserRole.MEMBER);
+        when(userAccountRepository.findByEmailIgnoreCase("person@gmail.com")).thenReturn(Optional.of(user));
+
+        assertThrows(
+                org.springframework.security.authentication.BadCredentialsException.class,
+                () -> authService.login(new com.example.demo.dto.LoginRequest("person@gmail.com", "password")));
+
+        verifyNoInteractions(passwordEncoder, jwtService);
     }
 
     @Test
