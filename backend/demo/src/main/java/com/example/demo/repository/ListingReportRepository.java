@@ -24,4 +24,7 @@ public interface ListingReportRepository extends JpaRepository<ListingReport, Lo
 
     long countByStatusAndCreatedAtGreaterThanEqualAndCreatedAtLessThan(
             ListingReportStatus status, Instant from, Instant to);
+
+    long countByReporter_IdAndCreatedAtGreaterThanEqualAndCreatedAtLessThan(
+            Long reporterId, Instant from, Instant to);
 }

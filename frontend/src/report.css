@@ -1,0 +1,118 @@
+.report-button {
+  display: inline-flex;
+  min-height: 34px;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 0 11px;
+  border: 1px solid #e6e8df;
+  border-radius: 6px;
+  background: #fffefa;
+  color: #777f73;
+  font-size: 11px;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.report-button:hover:not(:disabled), .profile-report-button:hover:not(:disabled) {
+  border-color: #d7b4ad;
+  background: #fff8f6;
+  color: #9a5145;
+}
+
+.report-button:disabled, .profile-report-button:disabled { cursor: default; opacity: .65; }
+
+.report-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 220;
+  display: grid;
+  place-items: center;
+  overflow: auto;
+  padding: 18px;
+  background: rgb(24 30 25 / 55%);
+  backdrop-filter: blur(2px);
+}
+
+.report-modal {
+  width: min(100%, 510px);
+  max-height: min(90vh, 760px);
+  overflow-y: auto;
+  padding: 22px;
+  border: 1px solid #e8ebe4;
+  border-radius: 12px;
+  background: #fffefa;
+  box-shadow: 0 24px 70px rgb(16 24 17 / 27%);
+}
+
+.report-modal-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; }
+.report-modal-heading h2 { margin: 4px 0 0; color: #303c32; font-family: var(--display); font-size: 20px; }
+.report-modal-heading > button { display: grid; width: 30px; height: 30px; place-items: center; border: 0; border-radius: 6px; background: transparent; color: #818a7e; cursor: pointer; }
+.report-modal-heading > button:hover { background: #f0f2ec; }
+.report-modal-heading > button:disabled { cursor: wait; opacity: .5; }
+.report-context-badge { margin: 15px 0; padding: 9px 11px; border: 1px solid #e8ecdf; border-radius: 6px; background: #f5f7f0; color: #68755e; font-size: 11px; font-weight: 650; }
+.report-field { display: grid; gap: 7px; margin: 14px 0; color: #465044; font-size: 12px; font-weight: 650; }
+.report-field > span b { color: #b45143; }
+.report-field select, .report-field textarea { width: 100%; padding: 10px 11px; border: 1px solid #dfe4dc; border-radius: 6px; background: #fff; color: #344033; font: inherit; font-size: 12px; }
+.report-field textarea { min-height: 100px; resize: vertical; line-height: 1.55; }
+.report-field select:focus, .report-field textarea:focus { border-color: #7b9272; outline: 0; box-shadow: 0 0 0 3px rgb(101 139 83 / 12%); }
+.report-field > small { color: #899184; font-size: 10px; font-weight: 450; text-align: right; }
+.report-evidence-picker { position: relative; display: inline-flex; width: fit-content; min-height: 34px; align-items: center; gap: 7px; padding: 0 10px; border: 1px dashed #cbd4c5; border-radius: 6px; color: #64755b; font-size: 11px; cursor: pointer; }
+.report-evidence-picker input { position: absolute; width: 1px; height: 1px; overflow: hidden; opacity: 0; }
+.report-evidence-picker:has(input:disabled) { cursor: not-allowed; opacity: .55; }
+.report-evidence-list { display: flex; flex-wrap: wrap; gap: 8px; }
+.report-evidence-list > span { position: relative; display: block; width: 58px; height: 58px; }
+.report-evidence-list img { width: 100%; height: 100%; border-radius: 5px; object-fit: cover; }
+.report-evidence-list button { position: absolute; top: -5px; right: -5px; display: grid; width: 19px; height: 19px; place-items: center; padding: 0; border: 1px solid #fff; border-radius: 50%; background: #7d4d40; color: #fff; cursor: pointer; }
+.report-evidence-list button:disabled { cursor: wait; opacity: .6; }
+.report-form-error { margin: 10px 0; color: #a74437; font-size: 11px; line-height: 1.5; }
+.report-modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 20px; }
+.report-modal-actions button { min-height: 37px; padding: 0 14px; border: 1px solid #e2e6dd; border-radius: 6px; font-size: 11px; font-weight: 700; cursor: pointer; }
+.report-cancel-button { background: #f7f8f4; color: #687365; }
+.report-submit-button { border-color: #54754c !important; background: #54754c; color: #fff; }
+.report-modal-actions button:disabled { cursor: wait; opacity: .6; }
+.report-toast { position: fixed; right: 22px; bottom: 22px; z-index: 230; max-width: min(400px, calc(100vw - 32px)); padding: 13px 16px; border: 1px solid #d6e5d0; border-radius: 8px; background: #f2f8ee; box-shadow: 0 8px 28px rgb(16 24 17 / 14%); color: #496644; font-size: 12px; line-height: 1.5; }
+.report-toast-error { border-color: #e8c6c0; background: #fff4f1; color: #99493d; }
+.profile-report-button { display: inline-flex; min-height: 33px; align-items: center; justify-content: center; gap: 6px; padding: 0 10px; border: 1px solid #e6e8df; border-radius: 5px; background: #fffefa; color: #777f73; font-size: 10px; cursor: pointer; }
+.chat-header-actions .chat-report-button { display: flex; width: auto; min-width: 76px; height: 32px; align-items: center; gap: 5px; padding: 0 9px; border: 1px solid #e6e8df; border-radius: 6px; background: #fffefa; color: #777f73; font-size: 10px; }
+.chat-header-actions .chat-report-button:hover:not(:disabled) { background: #fff8f6; color: #9a5145; }
+.user-table-heading, .user-table-row { grid-template-columns: 1.2fr 1.3fr .8fr .9fr .5fr 1fr 1fr; min-width: 850px; }
+.user-flagged-badge { display: inline-block; padding: 4px 7px; border-radius: 4px; background: #fff1e9; color: #a65c31; font-size: 10px; font-weight: 700; }
+.admin-user-report-section { display: grid; gap: 12px; margin-bottom: 28px; }
+.admin-user-report-section > .section-title-row { margin: 0; }
+.admin-user-report-section .section-title-row h2, .admin-legacy-report-heading h2 { margin: 3px 0 0; color: #3e493e; font-family: var(--display); font-size: 17px; }
+.admin-user-report-card { display: grid; gap: 14px; padding: 17px 18px; border: 1px solid #e8e9e1; border-radius: 8px; background: #fffefa; }
+.admin-user-report-card-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; }
+.admin-user-report-card-heading > div { display: grid; gap: 5px; }
+.admin-user-report-card-heading strong { color: #3c493d; font-size: 13px; }
+.admin-user-report-card-heading small { color: #899184; font-size: 10px; }
+.user-report-status { flex: 0 0 auto; padding: 5px 8px; border-radius: 4px; font-size: 10px; font-weight: 700; }
+.user-report-status-pending { background: #fff3e5; color: #a2612e; }
+.user-report-status-reviewed { background: #edf2fb; color: #526e9a; }
+.user-report-status-resolved { background: #edf5e9; color: #4c7544; }
+.user-report-status-rejected { background: #f3f1ef; color: #77736f; }
+.admin-user-report-parties { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.admin-user-report-parties > span { display: grid; gap: 4px; padding: 10px; border-radius: 6px; background: #f7f8f4; }
+.admin-user-report-parties small { color: #818a7e; font-size: 9px; }
+.admin-user-report-parties strong { color: #465044; font-size: 12px; }
+.admin-user-report-parties > span > small:last-child { color: #9a5d35; }
+.admin-user-report-description { margin: 0; color: #5e685d; font-size: 12px; line-height: 1.65; white-space: pre-wrap; overflow-wrap: anywhere; }
+.admin-user-report-evidence { display: flex; flex-wrap: wrap; gap: 8px; }
+.admin-user-report-evidence img { display: block; width: 76px; height: 76px; border: 1px solid #e4e6de; border-radius: 5px; object-fit: cover; }
+.admin-user-report-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 7px; }
+.admin-user-report-actions button { min-height: 32px; padding: 0 10px; border: 1px solid #e1e5dc; border-radius: 5px; background: #f8f9f5; color: #616d5e; font-size: 10px; font-weight: 700; cursor: pointer; }
+.admin-user-report-actions button:hover:not(:disabled) { background: #eef2e9; }
+.admin-user-report-actions .user-report-resolve { border-color: #6b8d61; background: #6b8d61; color: #fff; }
+.admin-user-report-actions .user-report-reject { border-color: #ead4cf; background: #fff6f4; color: #9a5145; }
+.admin-user-report-actions button:disabled { cursor: wait; opacity: .6; }
+.admin-legacy-report-heading { margin: 25px 0 10px; }
+
+@media (max-width: 600px) {
+  .report-modal { padding: 17px 15px; }
+  .report-modal-heading h2 { font-size: 18px; }
+  .report-toast { right: 12px; bottom: 12px; }
+  .chat-header-actions .chat-report-button { min-width: 29px; width: 29px; padding: 0; justify-content: center; font-size: 0; }
+  .admin-user-report-card { padding: 13px; }
+  .admin-user-report-parties { grid-template-columns: 1fr; }
+  .admin-user-report-card-heading { flex-direction: column; }
+}

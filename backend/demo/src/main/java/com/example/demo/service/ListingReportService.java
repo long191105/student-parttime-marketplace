@@ -1,5 +1,9 @@
 package com.example.demo.service;
 
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneId;
+
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -19,29 +23,56 @@ import com.example.demo.model.ListingStatus;
 import com.example.demo.model.UserRole;
 import com.example.demo.repository.ListingReportRepository;
 import com.example.demo.repository.ListingRepository;
+import com.example.demo.repository.UserAccountRepository;
+import com.example.demo.repository.UserReportRepository;
 
 @Service
 public class ListingReportService {
 
+    private static final ZoneId MARKETPLACE_ZONE = ZoneId.of("Asia/Ho_Chi_Minh");
+    private static final int DAILY_REPORT_LIMIT = 5;
+
     private final ListingReportRepository reportRepository;
     private final ListingRepository listingRepository;
+    private final UserAccountRepository userAccountRepository;
+    private final UserReportRepository userReportRepository;
     private final CurrentUserService currentUserService;
     private final ListingService listingService;
 
     public ListingReportService(
             ListingReportRepository reportRepository,
             ListingRepository listingRepository,
+            UserAccountRepository userAccountRepository,
+            UserReportRepository userReportRepository,
             CurrentUserService currentUserService,
             ListingService listingService) {
         this.reportRepository = reportRepository;
         this.listingRepository = listingRepository;
+        this.userAccountRepository = userAccountRepository;
+        this.userReportRepository = userReportRepository;
         this.currentUserService = currentUserService;
         this.listingService = listingService;
     }
 
     @Transactional
     public ListingReport submit(Long listingId, String reason) {
-        var reporter = currentUserService.requireUser();
+        var authenticatedReporter = currentUserService.requireUser();
+        var reporter = userAccountRepository.findByIdForUpdate(authenticatedReporter.getId())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy người dùng."));
+        if (reporter.getStatus() != AccountStatus.ACTIVE) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Tài khoản của bạn không ở trạng thái hoạt động.");
+        }
+        Instant now = Instant.now();
+        LocalDate today = now.atZone(MARKETPLACE_ZONE).toLocalDate();
+        Instant startOfDay = today.atStartOfDay(MARKETPLACE_ZONE).toInstant();
+        Instant startOfTomorrow = today.plusDays(1).atStartOfDay(MARKETPLACE_ZONE).toInstant();
+        long reportsToday = reportRepository.countByReporter_IdAndCreatedAtGreaterThanEqualAndCreatedAtLessThan(
+                reporter.getId(), startOfDay, startOfTomorrow)
+                + userReportRepository.countByReporter_IdAndCreatedAtGreaterThanEqualAndCreatedAtLessThan(
+                        reporter.getId(), startOfDay, startOfTomorrow);
+        if (reportsToday >= DAILY_REPORT_LIMIT) {
+            throw new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS, "Bạn chỉ có thể gửi tối đa 5 báo cáo mỗi ngày.");
+        }
         Listing listing = listingRepository.findById(listingId)
                 .filter(item -> item.getStatus() == ListingStatus.ACTIVE)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy tin đang hiển thị."));
@@ -97,13 +128,16 @@ public class ListingReportService {
 
     @Transactional(readOnly = true)
     public long countOpenReports() {
-        return reportRepository.countByStatus(ListingReportStatus.OPEN);
+        return reportRepository.countByStatus(ListingReportStatus.OPEN)
+                + userReportRepository.countByStatus(com.example.demo.model.UserReportStatus.PENDING);
     }
 
     @Transactional(readOnly = true)
     public long countOpenReportsCreatedBetween(java.time.Instant from, java.time.Instant to) {
         return reportRepository.countByStatusAndCreatedAtGreaterThanEqualAndCreatedAtLessThan(
-                ListingReportStatus.OPEN, from, to);
+                ListingReportStatus.OPEN, from, to)
+                + userReportRepository.countByStatusAndCreatedAtGreaterThanEqualAndCreatedAtLessThan(
+                        com.example.demo.model.UserReportStatus.PENDING, from, to);
     }
 
     private static void validatePaging(int page, int size) {

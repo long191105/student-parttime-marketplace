@@ -64,6 +64,9 @@ public class UserAccount implements UserDetails {
     @Column(nullable = false, length = 20)
     private AccountStatus status = AccountStatus.ACTIVE;
 
+    @Column(name = "is_flagged", nullable = false, columnDefinition = "boolean not null default false")
+    private boolean flagged;
+
     @Column(name = "created_at", nullable = false)
     private Instant createdAt = Instant.now();
 
@@ -133,6 +136,10 @@ public class UserAccount implements UserDetails {
         return status;
     }
 
+    public boolean isFlagged() {
+        return flagged;
+    }
+
     public Instant getCreatedAt() {
         return createdAt;
     }
@@ -147,6 +154,10 @@ public class UserAccount implements UserDetails {
 
     public void setStatus(AccountStatus status) {
         this.status = status;
+    }
+
+    public void setFlagged(boolean flagged) {
+        this.flagged = flagged;
     }
 
     public void setPasswordHash(String passwordHash) {

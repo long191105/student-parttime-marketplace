@@ -22,6 +22,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import com.example.demo.dto.AdminStatsResponse;
 import com.example.demo.dto.AdminReportResponse;
+import com.example.demo.dto.AdminUserReportResponse;
 import com.example.demo.dto.AdminUserResponse;
 import com.example.demo.dto.CategoryResponse;
 import com.example.demo.dto.ListingResponse;
@@ -31,11 +32,13 @@ import com.example.demo.model.AdminReportAction;
 import com.example.demo.model.ListingReportStatus;
 import com.example.demo.model.ListingStatus;
 import com.example.demo.model.UserAccount;
+import com.example.demo.model.UserReportStatus;
 import com.example.demo.model.UserRole;
 import com.example.demo.repository.UserAccountRepository;
 import com.example.demo.service.CategoryService;
 import com.example.demo.service.ListingService;
 import com.example.demo.service.ListingReportService;
+import com.example.demo.service.UserReportService;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
@@ -51,16 +54,19 @@ public class AdminController {
 
     private final ListingService listingService;
     private final ListingReportService listingReportService;
+    private final UserReportService userReportService;
     private final CategoryService categoryService;
     private final UserAccountRepository userAccountRepository;
 
     public AdminController(
             ListingService listingService,
             ListingReportService listingReportService,
+            UserReportService userReportService,
             CategoryService categoryService,
             UserAccountRepository userAccountRepository) {
         this.listingService = listingService;
         this.listingReportService = listingReportService;
+        this.userReportService = userReportService;
         this.categoryService = categoryService;
         this.userAccountRepository = userAccountRepository;
     }
@@ -79,7 +85,8 @@ public class AdminController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "100") int size) {
         validatePaging(page, size);
-        PageRequest pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
+        PageRequest pageable = PageRequest.of(page, size,
+                Sort.by(Sort.Direction.DESC, "flagged").and(Sort.by(Sort.Direction.DESC, "createdAt")));
         Page<UserAccount> users = keyword == null || keyword.isBlank()
                 ? userAccountRepository.findAll(pageable)
                 : userAccountRepository.findByFullNameContainingIgnoreCaseOrEmailContainingIgnoreCase(
@@ -114,6 +121,21 @@ public class AdminController {
             @PathVariable Long id,
             @Valid @RequestBody ProcessReportRequest request) {
         return listingReportService.process(id, request.action());
+    }
+
+    @GetMapping("/user-reports")
+    public Page<AdminUserReportResponse> userReports(
+            @RequestParam(required = false) UserReportStatus status,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "100") int size) {
+        return userReportService.searchAdmin(status, page, size);
+    }
+
+    @PatchMapping("/user-reports/{id}")
+    public AdminUserReportResponse updateUserReport(
+            @PathVariable Long id,
+            @Valid @RequestBody UpdateUserReportStatusRequest request) {
+        return userReportService.updateAdminStatus(id, request.status());
     }
 
     @PostMapping("/listings/{id}/approve")
@@ -182,6 +204,9 @@ public class AdminController {
     }
 
     public record ProcessReportRequest(@NotNull AdminReportAction action) {
+    }
+
+    public record UpdateUserReportStatusRequest(@NotNull UserReportStatus status) {
     }
 
     public record CreateCategoryRequest(@NotBlank @Size(max = 80) String name) {

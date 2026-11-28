@@ -1,0 +1,70 @@
+<mxfile host="Electron" agent="Codex">
+  <diagram id="business-flows" name="Business Flows">
+    <mxGraphModel dx="2188" dy="1245" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1600" pageHeight="1100" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="start" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#EAF2F8;strokeColor=#2F5597;fontSize=15;fontColor=#17365D;" value="Người bán đăng tin" vertex="1">
+          <mxGeometry height="80" width="210" x="60" y="90" as="geometry" />
+        </mxCell>
+        <mxCell id="pending" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#EAF2F8;strokeColor=#2F5597;fontSize=15;fontColor=#17365D;" value="PENDING&#xa;Không public" vertex="1">
+          <mxGeometry height="80" width="210" x="360" y="90" as="geometry" />
+        </mxCell>
+        <mxCell id="admin" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFF2CC;strokeColor=#BF9000;fontSize=14;" value="ADMIN kiểm duyệt" vertex="1">
+          <mxGeometry height="80" width="210" x="660" y="90" as="geometry" />
+        </mxCell>
+        <mxCell id="active" parent="1" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;fillColor=#E2F0D9;strokeColor=#548235;fontSize=14;" value="ACTIVE&#xa;Xuất hiện tìm kiếm" vertex="1">
+          <mxGeometry height="90" width="220" x="960" y="40" as="geometry" />
+        </mxCell>
+        <mxCell id="reject" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#EAF2F8;strokeColor=#2F5597;fontSize=15;fontColor=#17365D;" value="REJECTED&#xa;Thông báo lý do" vertex="1">
+          <mxGeometry height="90" width="220" x="960" y="160" as="geometry" />
+        </mxCell>
+        <mxCell id="buyer" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#EAF2F8;strokeColor=#2F5597;fontSize=15;fontColor=#17365D;" value="Người mua mở tin" vertex="1">
+          <mxGeometry height="80" width="210" x="20" y="370" as="geometry" />
+        </mxCell>
+        <mxCell id="conv" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#EAF2F8;strokeColor=#2F5597;fontSize=15;fontColor=#17365D;" value="Tạo/tái sử dụng&#xa;conversation" vertex="1">
+          <mxGeometry height="90" width="230" x="345" y="370" as="geometry" />
+        </mxCell>
+        <mxCell id="chat" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#EAF2F8;strokeColor=#2F5597;fontSize=15;fontColor=#17365D;" value="WS message&#xa;TEXT/LOCATION/MEDIA" vertex="1">
+          <mxGeometry height="100" width="250" x="660" y="520" as="geometry" />
+        </mxCell>
+        <mxCell id="call" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFF2CC;strokeColor=#BF9000;fontSize=14;" value="WS signaling +&#xa;WebRTC P2P media" vertex="1">
+          <mxGeometry height="100" width="250" x="1030" y="350" as="geometry" />
+        </mxCell>
+        <mxCell id="sale" parent="1" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;fillColor=#E2F0D9;strokeColor=#548235;fontSize=14;" value="Seller xác nhận bán&#xa;Review sau bán" vertex="1">
+          <mxGeometry height="90" width="200" x="1370" y="355" as="geometry" />
+        </mxCell>
+        <mxCell id="report" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#EAF2F8;strokeColor=#2F5597;fontSize=15;fontColor=#17365D;" value="Member báo cáo&#xa;ADMIN dismiss/remove/lock" vertex="1">
+          <mxGeometry height="100" width="300" x="150" y="720" as="geometry" />
+        </mxCell>
+        <mxCell id="a1" edge="1" parent="1" source="start" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;strokeColor=#4472C4;fontSize=12;" target="pending" value="Gửi">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="a2" edge="1" parent="1" source="pending" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;strokeColor=#4472C4;fontSize=12;" target="admin" value="Queue">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="a3" edge="1" parent="1" source="admin" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;strokeColor=#4472C4;fontSize=12;" target="active" value="Duyệt">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="a4" edge="1" parent="1" source="admin" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;strokeColor=#4472C4;fontSize=12;" target="reject" value="Từ chối">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="b1" edge="1" parent="1" source="buyer" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;strokeColor=#4472C4;fontSize=12;" target="conv" value="Chọn ACTIVE tin">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="b2" edge="1" parent="1" source="conv" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;strokeColor=#4472C4;fontSize=12;" target="chat" value="Realtime + persist">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="b3" edge="1" parent="1" source="chat" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;strokeColor=#4472C4;fontSize=12;" target="call" value="Cuộc gọi tùy chọn">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="b4" edge="1" parent="1" source="call" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;strokeColor=#4472C4;fontSize=12;" target="sale" value="Kết thúc">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="r1" edge="1" parent="1" source="buyer" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;strokeColor=#4472C4;fontSize=12;" target="report" value="Abuse flow">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

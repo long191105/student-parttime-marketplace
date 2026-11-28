@@ -58,6 +58,26 @@ export interface AdminReport {
   createdAt: string
 }
 
+export type AdminUserReportStatus = 'PENDING' | 'REVIEWED' | 'RESOLVED' | 'REJECTED'
+
+export interface AdminUserReport {
+  id: number
+  reporterId: number
+  reporterName: string
+  reportedUserId: number
+  reportedUserName: string
+  reportedUserFlagged: boolean
+  sourceType: UserReportSourceType
+  postId: number | null
+  postTitle: string | null
+  chatRoomId: number | null
+  reason: UserReportReason
+  description: string
+  evidenceUrls: string[]
+  status: AdminUserReportStatus
+  createdAt: string
+}
+
 export type AdminUserStatus = 'ACTIVE' | 'LOCKED'
 
 export interface AdminUser {
@@ -67,7 +87,21 @@ export interface AdminUser {
   role: 'MEMBER' | 'ADMIN'
   status: AdminUserStatus
   listingCount: number
+  isFlagged: boolean
   createdAt: string
+}
+
+export type UserReportReason = 'SCAM' | 'PROHIBITED_ITEM' | 'HARASSMENT' | 'SPAM' | 'OTHER'
+export type UserReportSourceType = 'CHAT' | 'PROFILE' | 'POST'
+
+export interface CreateUserReportRequest {
+  reportedUserId: number
+  sourceType: UserReportSourceType
+  postId?: number
+  chatRoomId?: number
+  reason: UserReportReason
+  description: string
+  evidenceUrls: string[]
 }
 
 export interface AdminCategory {
@@ -282,11 +316,37 @@ export class MarketplaceApi {
     })
   }
 
+  async listAdminUserReports(): Promise<AdminUserReport[]> {
+    const reports: AdminUserReport[] = []
+    let totalPages = 1
+    for (let page = 0; page < totalPages; page += 1) {
+      const params = new URLSearchParams({ page: String(page), size: '100' })
+      const response = await this.request<PageResponse<AdminUserReport>>(`/admin/user-reports?${params.toString()}`)
+      reports.push(...response.content)
+      totalPages = response.totalPages
+    }
+    return reports
+  }
+
+  async updateAdminUserReportStatus(id: number, status: AdminUserReportStatus): Promise<AdminUserReport> {
+    return this.request<AdminUserReport>(`/admin/user-reports/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ status }),
+    })
+  }
+
   async submitListingReport(listingId: string, reason: string): Promise<void> {
     await this.request<void>('/reports', {
       method: 'POST',
       body: JSON.stringify({ listingId: Number(listingId), reason }),
     })
+  }
+
+  async submitUserReport(report: CreateUserReportRequest): Promise<void> {
+    await this.request<void>('/reports', {
+      method: 'POST',
+      body: JSON.stringify(report),
+    }, false)
   }
 
   async getAdminStats(from: string, to: string): Promise<AdminStats> {
