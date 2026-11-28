@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { ArrowLeft, ExternalLink, ImagePlus, Map, MapPin, MessageCircle, Mic, MicOff, Phone, PhoneOff, Search, Send, Star, Video, VideoOff, X } from 'lucide-react'
 import type { AuthUser, CallType, ChatConversation, ChatMessage, ChatReviewStatus, ChatSocketEvent, MarketplaceApi } from '../services/MarketplaceApi'
-import { uploadImagesToCloudinary } from '../services/CloudinaryUpload'
+import { uploadChatMediaToCloudinary, uploadImagesToCloudinary } from '../services/CloudinaryUpload'
 import { useAppDialog } from '../components/AppDialogContext'
 
 interface InboxPageProps {
@@ -39,6 +39,8 @@ export function InboxPage({ api, user, initialConversationId, isVisible, onOpenL
   const [isSharingLocation, setIsSharingLocation] = useState(false)
   const [isPinningLocation, setIsPinningLocation] = useState(false)
   const [locationError, setLocationError] = useState('')
+  const [mediaError, setMediaError] = useState('')
+  const [isUploadingMedia, setIsUploadingMedia] = useState(false)
   const [error, setError] = useState('')
   const [callState, setCallState] = useState<CallState>({ status: 'idle' })
   const [callElapsedSeconds, setCallElapsedSeconds] = useState(0)
@@ -653,6 +655,27 @@ export function InboxPage({ api, user, initialConversationId, isVisible, onOpenL
     if (sendChatPayload(activeChat.id, { content, messageType: 'TEXT' })) setMessage('')
   }
 
+  async function sendMediaFile(file: File | undefined) {
+    if (!file || !activeChat) return
+    setMediaError('')
+    setIsUploadingMedia(true)
+    try {
+      const media = await uploadChatMediaToCloudinary(file)
+      if (!sendChatPayload(activeChat.id, {
+        content: media.mediaType === 'IMAGE' ? 'Đã gửi ảnh' : 'Đã gửi video',
+        messageType: media.mediaType,
+        mediaUrl: media.url,
+      })) {
+        setMediaError('Không thể gửi media. Vui lòng thử lại.')
+      }
+    } catch (uploadError) {
+      console.error('Không thể tải media lên Cloudinary.', uploadError)
+      setMediaError(uploadError instanceof Error ? uploadError.message : 'Không thể tải media lên.')
+    } finally {
+      setIsUploadingMedia(false)
+    }
+  }
+
   function sendChatPayload(conversationId: string, payload: Record<string, unknown>): boolean {
     const socket = socketRef.current
     if (!socket || socket.readyState !== WebSocket.OPEN || connectionRef.current !== 'connected') {
@@ -1120,6 +1143,18 @@ export function InboxPage({ api, user, initialConversationId, isVisible, onOpenL
                 {messages.map((chatMessage) => (
                   chatMessage.messageType === 'LOCATION'
                     ? <LocationMessage key={chatMessage.id} message={chatMessage} isOwnMessage={chatMessage.senderId === String(user.id)} />
+                    : chatMessage.messageType === 'IMAGE'
+                      ? <div className={`message-bubble chat-media-bubble ${chatMessage.senderId === String(user.id) ? 'message-outgoing' : 'message-incoming'}`} key={chatMessage.id}>
+                          <a href={chatMessage.mapUrl ?? undefined} target="_blank" rel="noreferrer" aria-label="Mở ảnh">
+                            <img src={chatMessage.mapUrl ?? undefined} alt="Ảnh trao đổi trong cuộc trò chuyện" />
+                          </a>
+                          <small>{formatTime(chatMessage.sentAt)}</small>
+                        </div>
+                    : chatMessage.messageType === 'VIDEO'
+                      ? <div className={`message-bubble chat-media-bubble ${chatMessage.senderId === String(user.id) ? 'message-outgoing' : 'message-incoming'}`} key={chatMessage.id}>
+                          <video src={chatMessage.mapUrl ?? undefined} controls preload="metadata" aria-label="Video trao đổi trong cuộc trò chuyện" />
+                          <small>{formatTime(chatMessage.sentAt)}</small>
+                        </div>
                     : isCallHistoryMessage(chatMessage)
                       ? <CallHistoryMessage
                           key={chatMessage.id}
@@ -1142,8 +1177,22 @@ export function InboxPage({ api, user, initialConversationId, isVisible, onOpenL
                 </div>
               )}
               {locationError && <p className="location-share-error" role="alert">{locationError}</p>}
+              {mediaError && <p className="location-share-error" role="alert">{mediaError}</p>}
               <form className="chat-compose" onSubmit={sendMessage}>
                 <div className="chat-compose-tools">
+                  <label className="chat-media-upload" title="Gửi ảnh hoặc video" aria-label="Gửi ảnh hoặc video">
+                    <ImagePlus size={18} />
+                    <input
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp,video/mp4,video/webm,video/quicktime"
+                      disabled={isUploadingMedia || connection !== 'connected'}
+                      onChange={(event) => {
+                        const file = event.currentTarget.files?.[0]
+                        event.currentTarget.value = ''
+                        void sendMediaFile(file)
+                      }}
+                    />
+                  </label>
                   <button type="button" aria-label="Chia sẻ vị trí hiện tại" title="Chia sẻ vị trí hiện tại" onClick={shareCurrentLocation} disabled={connection !== 'connected' || isSharingLocation}>
                     <MapPin size={18} />
                   </button>
