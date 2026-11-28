@@ -4,6 +4,8 @@ import java.io.IOException;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -45,7 +47,15 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             try {
                 String email = jwtService.extractSubject(token);
                 UserAccount user = (UserAccount) userDetailsService.loadUserByUsername(email);
-                if (user.isEnabled() && jwtService.isValid(token, user.getEmail())) {
+                if (jwtService.isValid(token, user.getEmail())) {
+                    if (!user.isEnabled() && !isAllowedForLockedUser(request)) {
+                        response.setStatus(HttpStatus.LOCKED.value());
+                        response.setContentType("application/json");
+                        response.setCharacterEncoding("UTF-8");
+                        response.getWriter().write(
+                                "{\"message\":\"Tài khoản đang bị khóa. Bạn chỉ có thể xem nội dung công khai và thông báo.\"}");
+                        return;
+                    }
                     UsernamePasswordAuthenticationToken authentication =
                             new UsernamePasswordAuthenticationToken(user, null, user.getAuthorities());
                     authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
@@ -56,5 +66,25 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             }
         }
         filterChain.doFilter(request, response);
+    }
+
+    static boolean isAllowedForLockedUser(HttpServletRequest request) {
+        String method = request.getMethod();
+        String path = request.getServletPath();
+        if ("OPTIONS".equals(method)) return true;
+        if (HttpMethod.GET.matches(method)
+                && ("/api/auth/me".equals(path)
+                        || "/api/health".equals(path)
+                        || "/api/categories".equals(path)
+                        || "/api/listings".equals(path)
+                        || path.matches("^/api/listings/[^/]+$")
+                                && !"/api/listings/mine".equals(path)
+                                && !"/api/listings/draft".equals(path)
+                        || path.matches("^/api/users/\\d+/profile$"))) {
+            return true;
+        }
+        return "/api/notifications".equals(path) && HttpMethod.GET.matches(method)
+                || "/api/notifications/read-all".equals(path) && HttpMethod.PATCH.matches(method)
+                || path.matches("^/api/notifications/\\d+/read$") && HttpMethod.PATCH.matches(method);
     }
 }

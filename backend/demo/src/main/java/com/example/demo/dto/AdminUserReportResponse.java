@@ -20,6 +20,7 @@ public record AdminUserReportResponse(
         String description,
         List<String> evidenceUrls,
         String status,
+        String resolutionReason,
         Instant createdAt) {
 
     public static AdminUserReportResponse from(UserReport report) {
@@ -38,6 +39,7 @@ public record AdminUserReportResponse(
                 report.getDescription(),
                 report.getEvidenceUrls(),
                 report.getStatus().name(),
+                report.getResolutionReason(),
                 report.getCreatedAt());
     }
 }

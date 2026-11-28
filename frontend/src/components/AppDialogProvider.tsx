@@ -4,7 +4,7 @@ import { AppDialogContext } from './AppDialogContext'
 
 type DialogRequest =
   | { kind: 'alert'; title: string; message: string; resolve: () => void }
-  | { kind: 'confirm'; title: string; message: string; confirmLabel: string; resolve: (confirmed: boolean) => void }
+  | { kind: 'confirm'; title: string; message: string; confirmLabel: string; cancelLabel: string; resolve: (confirmed: boolean) => void }
   | { kind: 'prompt'; title: string; message: string; placeholder: string; resolve: (value: string | null) => void }
 
 export function AppDialogProvider({ children }: { children: ReactNode }) {
@@ -32,8 +32,8 @@ export function AppDialogProvider({ children }: { children: ReactNode }) {
     enqueue({ kind: 'alert', title, message, resolve })
   }), [enqueue])
 
-  const showConfirm = useCallback((message: string, title = 'Xác nhận', confirmLabel = 'Đồng ý') => new Promise<boolean>((resolve) => {
-    enqueue({ kind: 'confirm', title, message, confirmLabel, resolve })
+  const showConfirm = useCallback((message: string, title = 'Xác nhận', confirmLabel = 'Đồng ý', cancelLabel = 'Hủy') => new Promise<boolean>((resolve) => {
+    enqueue({ kind: 'confirm', title, message, confirmLabel, cancelLabel, resolve })
   }), [enqueue])
 
   const showPrompt = useCallback((message: string, title = 'Nhập thông tin', placeholder = '') => new Promise<string | null>((resolve) => {
@@ -88,7 +88,7 @@ export function AppDialogProvider({ children }: { children: ReactNode }) {
               </div>
             </form>}
             {activeDialog.kind === 'confirm' && <div className="app-dialog-actions">
-              <button type="button" className="app-dialog-button app-dialog-button-secondary" onClick={() => closeActive(false)}>Hủy</button>
+              <button type="button" className="app-dialog-button app-dialog-button-secondary" onClick={() => closeActive(false)}>{activeDialog.cancelLabel}</button>
               <button type="button" className="app-dialog-button app-dialog-button-primary" onClick={() => closeActive(true)}>{activeDialog.confirmLabel}</button>
             </div>}
             {activeDialog.kind === 'alert' && <div className="app-dialog-actions">

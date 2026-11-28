@@ -63,6 +63,9 @@ public class UserReport {
     @Column(nullable = false, length = 16)
     private UserReportStatus status = UserReportStatus.PENDING;
 
+    @Column(name = "resolution_reason", columnDefinition = "text")
+    private String resolutionReason;
+
     @Column(name = "created_at", nullable = false)
     private Instant createdAt = Instant.now();
 
@@ -140,7 +143,15 @@ public class UserReport {
         return createdAt;
     }
 
+    public String getResolutionReason() {
+        return resolutionReason;
+    }
+
     public void setStatus(UserReportStatus status) {
         this.status = status;
+    }
+
+    public void setResolutionReason(String resolutionReason) {
+        this.resolutionReason = resolutionReason;
     }
 }

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { BarChart3, Check, ChevronDown, ChevronRight, CircleAlert, FolderTree, LayoutDashboard, List, LockKeyhole, LogOut, Search, ShieldCheck, Users, X } from 'lucide-react'
 import { ChoHoiWordmark } from '../components/ChoHoiWordmark'
+import { useAppDialog } from '../components/AppDialogContext'
 import { ScrollToTopButton } from '../components/ScrollToTopButton'
 import type { Listing, ListingStatus } from '../domain/Listing'
 import { categories } from '../data/categories'
@@ -20,13 +21,14 @@ interface AdminPageProps {
   onLoadReports: () => Promise<AdminReport[]>
   onReportAction: (id: number, action: AdminReportAction) => Promise<AdminReport>
   onLoadUserReports: () => Promise<AdminUserReport[]>
-  onUserReportStatusChange: (id: number, status: AdminUserReportStatus) => Promise<AdminUserReport>
+  onUserReportStatusChange: (id: number, status: AdminUserReportStatus, reason?: string) => Promise<AdminUserReport>
   onLoadCategories: () => Promise<AdminCategory[]>
   onCreateCategory: (name: string) => Promise<AdminCategory>
 }
 
 type AdminTab = 'overview' | 'listings' | 'review' | 'categories' | 'reports' | 'users'
 type DateRange = 'today' | '7days' | '30days' | '90days' | 'custom'
+type UserReportQueue = 'pending' | 'processing' | 'processed'
 type AttributeType = 'Lựa chọn' | 'Văn bản' | 'Số' | 'Có/Không'
 
 interface CategoryAttribute {
@@ -107,9 +109,12 @@ function reportStatusLabel(status: AdminReportStatus): string {
 }
 
 function userReportStatusLabel(status: AdminUserReportStatus): string {
-  if (status === 'PENDING') return 'Chờ xử lý'
+  if (status === 'PENDING') return 'Chưa xử lý'
   if (status === 'REVIEWED') return 'Đang xem xét'
-  return status === 'RESOLVED' ? 'Đã giải quyết' : 'Đã từ chối'
+  if (status === 'INVESTIGATING') return 'Đang điều tra · Tạm khóa'
+  if (status === 'RESOLVED') return 'Đã khóa vĩnh viễn'
+  if (status === 'CLEARED') return 'Đã mở khóa'
+  return 'Đã từ chối'
 }
 
 function userReportReasonLabel(reason: AdminUserReport['reason']): string {
@@ -139,6 +144,7 @@ const adminNavigation: { id: AdminTab; label: string; icon: typeof LayoutDashboa
 ]
 
 export function AdminPage({ listings, onStatusChange, onOpen, onExit, onHome, onSignOut, onLoadStats, onLoadUsers, onUserStatusChange, onLoadReports, onReportAction, onLoadUserReports, onUserReportStatusChange, onLoadCategories, onCreateCategory }: AdminPageProps) {
+  const { showConfirm, showPrompt, showAlert } = useAppDialog()
   const [activeTab, setActiveTab] = useState<AdminTab>('overview')
   const [accountMenuOpen, setAccountMenuOpen] = useState(false)
   const accountMenuRef = useRef<HTMLDivElement>(null)
@@ -165,6 +171,7 @@ export function AdminPage({ listings, onStatusChange, onOpen, onExit, onHome, on
   const [reportActionError, setReportActionError] = useState('')
   const [reportActionId, setReportActionId] = useState<number | null>(null)
   const [userReportActionId, setUserReportActionId] = useState<number | null>(null)
+  const [userReportQueue, setUserReportQueue] = useState<UserReportQueue>('pending')
   const [reportsReload, setReportsReload] = useState(0)
   const [now, setNow] = useState(() => new Date())
   const [dateRange, setDateRange] = useState<DateRange>('30days')
@@ -188,6 +195,12 @@ export function AdminPage({ listings, onStatusChange, onOpen, onExit, onHome, on
   const selectedCategoryListings = listings.filter((listing) => listing.category === selectedCategory)
   const selectedCategoryActiveCount = selectedCategoryListings.filter((listing) => listing.status === 'ACTIVE').length
   const selectedCategoryPendingCount = selectedCategoryListings.filter((listing) => listing.status === 'PENDING').length
+  const userReportsByQueue = useMemo(() => ({
+    pending: adminUserReports.filter((report) => report.status === 'PENDING'),
+    processing: adminUserReports.filter((report) => report.status === 'REVIEWED' || report.status === 'INVESTIGATING'),
+    processed: adminUserReports.filter((report) => report.status === 'RESOLVED' || report.status === 'REJECTED' || report.status === 'CLEARED'),
+  }), [adminUserReports])
+  const currentUserReports = userReportsByQueue[userReportQueue]
   const today = formatDateInput(now)
   const dateBounds = useMemo(() => {
     if (dateRange === 'custom') {
@@ -365,17 +378,67 @@ export function AdminPage({ listings, onStatusChange, onOpen, onExit, onHome, on
     }
   }
 
-  async function applyUserReportStatus(reportId: number, status: AdminUserReportStatus) {
+  async function applyUserReportStatus(reportId: number, status: AdminUserReportStatus, reason?: string) {
     setUserReportActionId(reportId)
     setReportActionError('')
     try {
-      const updatedReport = await onUserReportStatusChange(reportId, status)
+      const updatedReport = await onUserReportStatusChange(reportId, status, reason)
       setAdminUserReports((current) => current.map((report) => report.id === reportId ? updatedReport : report))
     } catch (error) {
       setReportActionError(error instanceof Error ? error.message : 'Không thể cập nhật trạng thái báo cáo.')
     } finally {
       setUserReportActionId(null)
     }
+  }
+
+  async function acceptUserReport(reportId: number) {
+    const confirmed = await showConfirm(
+      'Tiếp nhận báo cáo để bắt đầu xem xét? Người báo cáo sẽ được cập nhật khi có kết quả.',
+      'Tiếp nhận báo cáo',
+      'Xác nhận',
+      'Bỏ qua',
+    )
+    if (confirmed) await applyUserReportStatus(reportId, 'REVIEWED')
+  }
+
+  async function rejectUserReport(reportId: number) {
+    const reason = await showPrompt('Vui lòng nhập lý do từ chối báo cáo (tối đa 500 ký tự).', 'Từ chối báo cáo', 'Lý do từ chối')
+    if (reason === null) return
+    const normalizedReason = reason.trim()
+    if (!normalizedReason || normalizedReason.length > 500) {
+      await showAlert('Lý do từ chối phải có từ 1 đến 500 ký tự.', 'Lý do chưa hợp lệ')
+      return
+    }
+    const confirmed = await showConfirm(
+      `Xác nhận từ chối báo cáo với lý do: “${normalizedReason}”?`,
+      'Xác nhận từ chối',
+      'Xác nhận',
+      'Bỏ qua',
+    )
+    if (confirmed) await applyUserReportStatus(reportId, 'REJECTED', normalizedReason)
+  }
+
+  async function confirmViolation(reportId: number) {
+    const confirmed = await showConfirm(
+      'Xác nhận có dấu hiệu vi phạm? Tài khoản bị báo cáo sẽ bị khóa trong thời gian điều tra (dự kiến tối đa 24 giờ) và tiếp tục bị hạn chế cho đến khi admin đưa ra kết luận.',
+      'Bắt đầu điều tra vi phạm',
+      'Xác nhận',
+      'Bỏ qua',
+    )
+    if (confirmed) await applyUserReportStatus(reportId, 'INVESTIGATING')
+  }
+
+  async function finishInvestigation(reportId: number, status: 'RESOLVED' | 'CLEARED') {
+    const permanentlyLocked = status === 'RESOLVED'
+    const confirmed = await showConfirm(
+      permanentlyLocked
+        ? 'Xác nhận khóa vĩnh viễn tài khoản này? Người bị báo cáo sẽ được thông báo kết quả điều tra.'
+        : 'Xác nhận kết luận không có vi phạm và mở khóa tài khoản? Người bị báo cáo sẽ được thông báo kết quả điều tra.',
+      permanentlyLocked ? 'Khóa tài khoản vĩnh viễn' : 'Mở khóa tài khoản',
+      'Xác nhận',
+      'Bỏ qua',
+    )
+    if (confirmed) await applyUserReportStatus(reportId, status)
   }
 
   async function changeUserStatus(user: AdminUser) {
@@ -517,8 +580,26 @@ export function AdminPage({ listings, onStatusChange, onOpen, onExit, onHome, on
             {reportActionError && <div className="admin-stats-error" role="alert">{reportActionError}</div>}
             <section className="admin-user-report-section">
               <div className="section-title-row"><div><span className="section-eyebrow">BÁO CÁO TÀI KHOẢN</span><h2>Báo cáo người dùng</h2></div><span className="pending-count">{adminUserReports.filter((report) => report.status === 'PENDING').length} đang chờ</span></div>
+              <div className="admin-user-report-tabs" role="tablist" aria-label="Nhóm báo cáo vi phạm">
+                {([
+                  ['pending', 'Chưa xử lý'],
+                  ['processing', 'Đang xử lý'],
+                  ['processed', 'Đã xử lý'],
+                ] as const).map(([queue, label]) => (
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-selected={userReportQueue === queue}
+                    className={userReportQueue === queue ? 'admin-user-report-tab admin-user-report-tab-active' : 'admin-user-report-tab'}
+                    key={queue}
+                    onClick={() => setUserReportQueue(queue)}
+                  >
+                    {label}<span>{userReportsByQueue[queue].length}</span>
+                  </button>
+                ))}
+              </div>
               {reportsLoading && <div className="empty-state"><p>Đang tải báo cáo người dùng...</p></div>}
-              {!reportsLoading && !reportsError && adminUserReports.map((report) => <article className="admin-user-report-card" key={`user-report-${report.id}`}>
+              {!reportsLoading && !reportsError && currentUserReports.map((report) => <article className="admin-user-report-card" key={`user-report-${report.id}`}>
                 <header className="admin-user-report-card-heading">
                   <div><strong>#{report.id} · {userReportReasonLabel(report.reason)}</strong><small>{new Date(report.createdAt).toLocaleString('vi-VN')} · {userReportSourceLabel(report)}</small></div>
                   <span className={`user-report-status user-report-status-${report.status.toLowerCase()}`}>{userReportStatusLabel(report.status)}</span>
@@ -528,22 +609,25 @@ export function AdminPage({ listings, onStatusChange, onOpen, onExit, onHome, on
                   <span><small>NGƯỜI BỊ BÁO CÁO</small><strong>{report.reportedUserName}</strong><small>ID #{report.reportedUserId}{report.reportedUserFlagged ? ' · Ưu tiên kiểm tra' : ''}</small></span>
                 </div>
                 <p className="admin-user-report-description">{report.description}</p>
+                {report.status === 'REJECTED' && report.resolutionReason && <p className="admin-user-report-resolution"><strong>Lý do từ chối:</strong> {report.resolutionReason}</p>}
                 {report.evidenceUrls.length > 0 && <div className="admin-user-report-evidence">
                   {report.evidenceUrls.map((url, index) => <a href={url} key={url} target="_blank" rel="noreferrer" aria-label={`Mở bằng chứng ${index + 1} của báo cáo #${report.id}`}><img src={url} alt={`Bằng chứng ${index + 1}`} loading="lazy" /></a>)}
                 </div>}
                 <footer className="admin-user-report-actions">
                   {report.status === 'PENDING' && <>
-                    <button disabled={userReportActionId !== null} onClick={() => void applyUserReportStatus(report.id, 'REVIEWED')}>Đang xem xét</button>
-                    <button className="user-report-resolve" disabled={userReportActionId !== null} onClick={() => void applyUserReportStatus(report.id, 'RESOLVED')}>Giải quyết</button>
-                    <button className="user-report-reject" disabled={userReportActionId !== null} onClick={() => void applyUserReportStatus(report.id, 'REJECTED')}>Từ chối</button>
+                    <button className="user-report-resolve" disabled={userReportActionId !== null} onClick={() => void acceptUserReport(report.id)}>Tiếp nhận</button>
                   </>}
                   {report.status === 'REVIEWED' && <>
-                    <button className="user-report-resolve" disabled={userReportActionId !== null} onClick={() => void applyUserReportStatus(report.id, 'RESOLVED')}>Giải quyết</button>
-                    <button className="user-report-reject" disabled={userReportActionId !== null} onClick={() => void applyUserReportStatus(report.id, 'REJECTED')}>Từ chối</button>
+                    <button className="user-report-reject" disabled={userReportActionId !== null} onClick={() => void rejectUserReport(report.id)}>Từ chối</button>
+                    <button className="user-report-resolve" disabled={userReportActionId !== null} onClick={() => void confirmViolation(report.id)}>Xác nhận vi phạm</button>
+                  </>}
+                  {report.status === 'INVESTIGATING' && <>
+                    <button className="user-report-reject" disabled={userReportActionId !== null} onClick={() => void finishInvestigation(report.id, 'RESOLVED')}>Khóa vĩnh viễn</button>
+                    <button className="user-report-resolve" disabled={userReportActionId !== null} onClick={() => void finishInvestigation(report.id, 'CLEARED')}>Mở khóa</button>
                   </>}
                 </footer>
               </article>)}
-              {!reportsLoading && !reportsError && adminUserReports.length === 0 && <div className="empty-state"><p>Chưa có báo cáo người dùng nào.</p></div>}
+              {!reportsLoading && !reportsError && currentUserReports.length === 0 && <div className="empty-state"><p>{adminUserReports.length === 0 ? 'Chưa có báo cáo người dùng nào.' : 'Không có báo cáo trong mục này.'}</p></div>}
             </section>
             <div className="section-title-row admin-legacy-report-heading"><div><span className="section-eyebrow">LUỒNG BÁO CÁO TIN ĐĂNG CŨ</span><h2>Báo cáo tin đăng</h2></div></div>
             <div className="admin-panel report-table">

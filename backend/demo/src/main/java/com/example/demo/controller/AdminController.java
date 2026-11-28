@@ -135,7 +135,7 @@ public class AdminController {
     public AdminUserReportResponse updateUserReport(
             @PathVariable Long id,
             @Valid @RequestBody UpdateUserReportStatusRequest request) {
-        return userReportService.updateAdminStatus(id, request.status());
+        return userReportService.updateAdminStatus(id, request.status(), request.reason());
     }
 
     @PostMapping("/listings/{id}/approve")
@@ -206,7 +206,7 @@ public class AdminController {
     public record ProcessReportRequest(@NotNull AdminReportAction action) {
     }
 
-    public record UpdateUserReportStatusRequest(@NotNull UserReportStatus status) {
+    public record UpdateUserReportStatusRequest(@NotNull UserReportStatus status, String reason) {
     }
 
     public record CreateCategoryRequest(@NotBlank @Size(max = 80) String name) {

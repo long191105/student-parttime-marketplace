@@ -234,7 +234,7 @@ export function MarketplaceLayout({
                   ? <div className="header-notification-list">{notifications.slice(0, 5).map((notification) => {
                     const isMessage = notification.type === 'NEW_MESSAGE'
                     const Icon = isMessage ? MessageCircle : ShieldCheck
-                    const tone = isMessage ? 'notification-orange' : notification.type === 'LISTING_APPROVED' ? 'notification-green' : 'notification-yellow'
+                    const tone = isMessage ? 'notification-orange' : notification.type === 'LISTING_APPROVED' || notification.type === 'REPORT_STATUS' ? 'notification-green' : 'notification-yellow'
                     return <button
                       type="button"
                       className={`notification-item header-notification-item${notification.read ? '' : ' notification-unread'}`}

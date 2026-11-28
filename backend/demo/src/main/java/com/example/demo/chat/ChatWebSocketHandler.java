@@ -80,12 +80,28 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
             return;
         }
 
-        UserAccount user = (UserAccount) session.getAttributes().get(USER_ATTRIBUTE);
-        if (user == null) {
+        UserAccount connectedUser = (UserAccount) session.getAttributes().get(USER_ATTRIBUTE);
+        if (connectedUser == null) {
             authenticate(session, request);
             return;
         }
 
+        UserAccount user;
+        try {
+            user = (UserAccount) userDetailsService.loadUserByUsername(connectedUser.getEmail());
+        } catch (AuthenticationException exception) {
+            sendError(session, "Tài khoản không còn quyền sử dụng hộp thư.");
+            closeQuietly(session, CloseStatus.POLICY_VIOLATION);
+            removeSession(session);
+            return;
+        }
+        if (!user.isEnabled()) {
+            sendError(session, "Tài khoản đang bị khóa và không thể sử dụng hộp thư.");
+            closeQuietly(session, CloseStatus.POLICY_VIOLATION);
+            removeSession(session);
+            return;
+        }
+        session.getAttributes().put(USER_ATTRIBUTE, user);
         SecurityContext context = SecurityContextHolder.createEmptyContext();
         context.setAuthentication(new UsernamePasswordAuthenticationToken(user, null, user.getAuthorities()));
         SecurityContextHolder.setContext(context);

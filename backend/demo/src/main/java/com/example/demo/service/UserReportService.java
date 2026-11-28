@@ -47,6 +47,7 @@ public class UserReportService {
     private final ChatConversationRepository conversationRepository;
     private final ChatMessageRepository messageRepository;
     private final CurrentUserService currentUserService;
+    private final UserNotificationService notificationService;
 
     public UserReportService(
             UserReportRepository reportRepository,
@@ -55,7 +56,8 @@ public class UserReportService {
             ListingReportRepository listingReportRepository,
             ChatConversationRepository conversationRepository,
             ChatMessageRepository messageRepository,
-            CurrentUserService currentUserService) {
+            CurrentUserService currentUserService,
+            UserNotificationService notificationService) {
         this.reportRepository = reportRepository;
         this.userAccountRepository = userAccountRepository;
         this.listingRepository = listingRepository;
@@ -63,6 +65,7 @@ public class UserReportService {
         this.conversationRepository = conversationRepository;
         this.messageRepository = messageRepository;
         this.currentUserService = currentUserService;
+        this.notificationService = notificationService;
     }
 
     @Transactional
@@ -183,22 +186,51 @@ public class UserReportService {
     }
 
     @Transactional
-    public AdminUserReportResponse updateAdminStatus(Long reportId, UserReportStatus status) {
+    public AdminUserReportResponse updateAdminStatus(Long reportId, UserReportStatus status, String reason) {
         if (status == null || status == UserReportStatus.PENDING) {
             throw badRequest("Trạng thái xử lý báo cáo không hợp lệ.");
         }
         UserReport report = reportRepository.findByIdForUpdate(reportId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy báo cáo."));
-        if (report.getStatus() == UserReportStatus.RESOLVED || report.getStatus() == UserReportStatus.REJECTED) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Báo cáo này đã được xử lý.");
+        UserReportStatus currentStatus = report.getStatus();
+
+        if (currentStatus == UserReportStatus.PENDING && status == UserReportStatus.REVIEWED) {
+            report.setStatus(status);
+        } else if (currentStatus == UserReportStatus.REVIEWED && status == UserReportStatus.REJECTED) {
+            String normalizedReason = reason == null ? "" : reason.trim();
+            if (normalizedReason.isEmpty() || normalizedReason.length() > 500) {
+                throw badRequest("Lý do từ chối phải có từ 1 đến 500 ký tự.");
+            }
+            report.setResolutionReason(normalizedReason);
+            report.setStatus(status);
+            notificationService.notifyReportRejected(report, normalizedReason);
+        } else if (currentStatus == UserReportStatus.REVIEWED && status == UserReportStatus.INVESTIGATING) {
+            UserAccount reportedUser = lockReportedAccount(report);
+            reportedUser.setStatus(AccountStatus.LOCKED);
+            report.setStatus(status);
+            notificationService.notifyInvestigationStarted(report);
+        } else if (currentStatus == UserReportStatus.INVESTIGATING
+                && (status == UserReportStatus.RESOLVED || status == UserReportStatus.CLEARED)) {
+            UserAccount reportedUser = lockReportedAccount(report);
+            boolean permanentlyLocked = status == UserReportStatus.RESOLVED;
+            reportedUser.setStatus(permanentlyLocked ? AccountStatus.LOCKED : AccountStatus.ACTIVE);
+            report.setStatus(status);
+            notificationService.notifyInvestigationResolved(report, permanentlyLocked);
+        } else {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Báo cáo không thể chuyển sang trạng thái này.");
         }
-        report.setStatus(status);
+
         UserReport updatedReport = reportRepository.save(report);
         UserAccount reportedUser = report.getReportedUser();
         reportedUser.setFlagged(reportRepository.countDistinctPendingReporters(
                 reportedUser.getId(), UserReportStatus.PENDING) >= 3);
         userAccountRepository.save(reportedUser);
         return AdminUserReportResponse.from(updatedReport);
+    }
+
+    private UserAccount lockReportedAccount(UserReport report) {
+        return userAccountRepository.findByIdForUpdate(report.getReportedUser().getId())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy người dùng."));
     }
 
     private void requireChatOrTransactionHistory(Long reporterId, Long reportedUserId, Long chatRoomId) {
