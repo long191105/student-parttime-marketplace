@@ -11,6 +11,7 @@ public record AdminUserResponse(
         String role,
         String status,
         long listingCount,
+        boolean isFlagged,
         Instant createdAt) {
 
     public static AdminUserResponse from(UserAccount user, long listingCount) {
@@ -21,6 +22,7 @@ public record AdminUserResponse(
                 user.getRole().name(),
                 user.getStatus().name(),
                 listingCount,
+                user.isFlagged(),
                 user.getCreatedAt());
     }
 }

@@ -5,7 +5,7 @@ import { ScrollToTopButton } from '../components/ScrollToTopButton'
 import type { Listing, ListingStatus } from '../domain/Listing'
 import { categories } from '../data/categories'
 import { formatImageUrl } from '../services/ImageUrl'
-import type { AdminCategory, AdminReport, AdminReportAction, AdminReportStatus, AdminStats, AdminUser, AdminUserStatus } from '../services/MarketplaceApi'
+import type { AdminCategory, AdminReport, AdminReportAction, AdminReportStatus, AdminStats, AdminUser, AdminUserReport, AdminUserReportStatus, AdminUserStatus } from '../services/MarketplaceApi'
 
 interface AdminPageProps {
   listings: Listing[]
@@ -19,6 +19,8 @@ interface AdminPageProps {
   onUserStatusChange: (id: number, status: AdminUserStatus) => Promise<AdminUser>
   onLoadReports: () => Promise<AdminReport[]>
   onReportAction: (id: number, action: AdminReportAction) => Promise<AdminReport>
+  onLoadUserReports: () => Promise<AdminUserReport[]>
+  onUserReportStatusChange: (id: number, status: AdminUserReportStatus) => Promise<AdminUserReport>
   onLoadCategories: () => Promise<AdminCategory[]>
   onCreateCategory: (name: string) => Promise<AdminCategory>
 }
@@ -104,6 +106,29 @@ function reportStatusLabel(status: AdminReportStatus): string {
   return status === 'DISMISSED' ? 'Đã bỏ qua' : 'Đã xử lý'
 }
 
+function userReportStatusLabel(status: AdminUserReportStatus): string {
+  if (status === 'PENDING') return 'Chờ xử lý'
+  if (status === 'REVIEWED') return 'Đang xem xét'
+  return status === 'RESOLVED' ? 'Đã giải quyết' : 'Đã từ chối'
+}
+
+function userReportReasonLabel(reason: AdminUserReport['reason']): string {
+  const labels: Record<AdminUserReport['reason'], string> = {
+    SCAM: 'Lừa đảo / Chiếm đoạt tài sản',
+    PROHIBITED_ITEM: 'Hàng cấm / Vi phạm quy định',
+    HARASSMENT: 'Xúc phạm / Quấy rối',
+    SPAM: 'Spam / Tài khoản giả mạo',
+    OTHER: 'Lý do khác',
+  }
+  return labels[reason]
+}
+
+function userReportSourceLabel(report: AdminUserReport): string {
+  if (report.sourceType === 'CHAT') return `Cuộc trò chuyện #${report.chatRoomId}`
+  if (report.sourceType === 'POST') return `Tin đăng #${report.postId}${report.postTitle ? ` · ${report.postTitle}` : ''}`
+  return 'Hồ sơ cá nhân'
+}
+
 const adminNavigation: { id: AdminTab; label: string; icon: typeof LayoutDashboard }[] = [
   { id: 'overview', label: 'Tổng quan', icon: LayoutDashboard },
   { id: 'listings', label: 'Tin hiển thị', icon: List },
@@ -113,7 +138,7 @@ const adminNavigation: { id: AdminTab; label: string; icon: typeof LayoutDashboa
   { id: 'users', label: 'Người dùng', icon: Users },
 ]
 
-export function AdminPage({ listings, onStatusChange, onOpen, onExit, onHome, onSignOut, onLoadStats, onLoadUsers, onUserStatusChange, onLoadReports, onReportAction, onLoadCategories, onCreateCategory }: AdminPageProps) {
+export function AdminPage({ listings, onStatusChange, onOpen, onExit, onHome, onSignOut, onLoadStats, onLoadUsers, onUserStatusChange, onLoadReports, onReportAction, onLoadUserReports, onUserReportStatusChange, onLoadCategories, onCreateCategory }: AdminPageProps) {
   const [activeTab, setActiveTab] = useState<AdminTab>('overview')
   const [accountMenuOpen, setAccountMenuOpen] = useState(false)
   const accountMenuRef = useRef<HTMLDivElement>(null)
@@ -134,10 +159,12 @@ export function AdminPage({ listings, onStatusChange, onOpen, onExit, onHome, on
   const [userActionId, setUserActionId] = useState<number | null>(null)
   const [usersReload, setUsersReload] = useState(0)
   const [adminReports, setAdminReports] = useState<AdminReport[]>([])
+  const [adminUserReports, setAdminUserReports] = useState<AdminUserReport[]>([])
   const [reportsLoading, setReportsLoading] = useState(false)
   const [reportsError, setReportsError] = useState('')
   const [reportActionError, setReportActionError] = useState('')
   const [reportActionId, setReportActionId] = useState<number | null>(null)
+  const [userReportActionId, setUserReportActionId] = useState<number | null>(null)
   const [reportsReload, setReportsReload] = useState(0)
   const [now, setNow] = useState(() => new Date())
   const [dateRange, setDateRange] = useState<DateRange>('30days')
@@ -255,8 +282,11 @@ export function AdminPage({ listings, onStatusChange, onOpen, onExit, onHome, on
       setReportsLoading(true)
       setReportsError('')
       try {
-        const reports = await onLoadReports()
-        if (active) setAdminReports(reports)
+        const [reports, userReports] = await Promise.all([onLoadReports(), onLoadUserReports()])
+        if (active) {
+          setAdminReports(reports)
+          setAdminUserReports(userReports)
+        }
       } catch (error) {
         if (active) setReportsError(error instanceof Error ? error.message : 'Không thể tải báo cáo vi phạm.')
       } finally {
@@ -267,7 +297,7 @@ export function AdminPage({ listings, onStatusChange, onOpen, onExit, onHome, on
     return () => {
       active = false
     }
-  }, [activeTab, onLoadReports, reportsReload])
+  }, [activeTab, onLoadReports, onLoadUserReports, reportsReload])
 
   useEffect(() => {
     if (activeTab !== 'categories') return
@@ -332,6 +362,19 @@ export function AdminPage({ listings, onStatusChange, onOpen, onExit, onHome, on
       setReportActionError(error instanceof Error ? error.message : 'Không thể cập nhật báo cáo.')
     } finally {
       setReportActionId(null)
+    }
+  }
+
+  async function applyUserReportStatus(reportId: number, status: AdminUserReportStatus) {
+    setUserReportActionId(reportId)
+    setReportActionError('')
+    try {
+      const updatedReport = await onUserReportStatusChange(reportId, status)
+      setAdminUserReports((current) => current.map((report) => report.id === reportId ? updatedReport : report))
+    } catch (error) {
+      setReportActionError(error instanceof Error ? error.message : 'Không thể cập nhật trạng thái báo cáo.')
+    } finally {
+      setUserReportActionId(null)
     }
   }
 
@@ -469,9 +512,40 @@ export function AdminPage({ listings, onStatusChange, onOpen, onExit, onHome, on
           </>}
 
           {activeTab === 'reports' && <>
-            <div className="admin-page-heading"><div><span className="section-eyebrow">AN TOÀN CỘNG ĐỒNG</span><h1>Báo cáo vi phạm</h1><p>Báo cáo được gửi bởi người dùng và đồng bộ trực tiếp từ cơ sở dữ liệu.</p></div><span className="pending-count">{adminReports.length} báo cáo</span></div>
+            <div className="admin-page-heading"><div><span className="section-eyebrow">AN TOÀN CỘNG ĐỒNG</span><h1>Báo cáo vi phạm</h1><p>Báo cáo được gửi bởi người dùng và đồng bộ trực tiếp từ cơ sở dữ liệu.</p></div><span className="pending-count">{adminReports.length + adminUserReports.length} báo cáo</span></div>
             {reportsError && <div className="admin-stats-error" role="alert">Không thể tải báo cáo: {reportsError}<button onClick={() => setReportsReload((value) => value + 1)}>Thử lại</button></div>}
             {reportActionError && <div className="admin-stats-error" role="alert">{reportActionError}</div>}
+            <section className="admin-user-report-section">
+              <div className="section-title-row"><div><span className="section-eyebrow">BÁO CÁO TÀI KHOẢN</span><h2>Báo cáo người dùng</h2></div><span className="pending-count">{adminUserReports.filter((report) => report.status === 'PENDING').length} đang chờ</span></div>
+              {reportsLoading && <div className="empty-state"><p>Đang tải báo cáo người dùng...</p></div>}
+              {!reportsLoading && !reportsError && adminUserReports.map((report) => <article className="admin-user-report-card" key={`user-report-${report.id}`}>
+                <header className="admin-user-report-card-heading">
+                  <div><strong>#{report.id} · {userReportReasonLabel(report.reason)}</strong><small>{new Date(report.createdAt).toLocaleString('vi-VN')} · {userReportSourceLabel(report)}</small></div>
+                  <span className={`user-report-status user-report-status-${report.status.toLowerCase()}`}>{userReportStatusLabel(report.status)}</span>
+                </header>
+                <div className="admin-user-report-parties">
+                  <span><small>NGƯỜI BÁO CÁO</small><strong>{report.reporterName}</strong><small>ID #{report.reporterId}</small></span>
+                  <span><small>NGƯỜI BỊ BÁO CÁO</small><strong>{report.reportedUserName}</strong><small>ID #{report.reportedUserId}{report.reportedUserFlagged ? ' · Ưu tiên kiểm tra' : ''}</small></span>
+                </div>
+                <p className="admin-user-report-description">{report.description}</p>
+                {report.evidenceUrls.length > 0 && <div className="admin-user-report-evidence">
+                  {report.evidenceUrls.map((url, index) => <a href={url} key={url} target="_blank" rel="noreferrer" aria-label={`Mở bằng chứng ${index + 1} của báo cáo #${report.id}`}><img src={url} alt={`Bằng chứng ${index + 1}`} loading="lazy" /></a>)}
+                </div>}
+                <footer className="admin-user-report-actions">
+                  {report.status === 'PENDING' && <>
+                    <button disabled={userReportActionId !== null} onClick={() => void applyUserReportStatus(report.id, 'REVIEWED')}>Đang xem xét</button>
+                    <button className="user-report-resolve" disabled={userReportActionId !== null} onClick={() => void applyUserReportStatus(report.id, 'RESOLVED')}>Giải quyết</button>
+                    <button className="user-report-reject" disabled={userReportActionId !== null} onClick={() => void applyUserReportStatus(report.id, 'REJECTED')}>Từ chối</button>
+                  </>}
+                  {report.status === 'REVIEWED' && <>
+                    <button className="user-report-resolve" disabled={userReportActionId !== null} onClick={() => void applyUserReportStatus(report.id, 'RESOLVED')}>Giải quyết</button>
+                    <button className="user-report-reject" disabled={userReportActionId !== null} onClick={() => void applyUserReportStatus(report.id, 'REJECTED')}>Từ chối</button>
+                  </>}
+                </footer>
+              </article>)}
+              {!reportsLoading && !reportsError && adminUserReports.length === 0 && <div className="empty-state"><p>Chưa có báo cáo người dùng nào.</p></div>}
+            </section>
+            <div className="section-title-row admin-legacy-report-heading"><div><span className="section-eyebrow">LUỒNG BÁO CÁO TIN ĐĂNG CŨ</span><h2>Báo cáo tin đăng</h2></div></div>
             <div className="admin-panel report-table">
               <div className="admin-table-heading admin-report-heading"><span>NGƯỜI BÁO CÁO</span><span>TIN ĐƯỢC BÁO CÁO</span><span>LÝ DO</span><span>TRẠNG THÁI</span><span>THAO TÁC</span></div>
               {reportsLoading && <div className="empty-state"><p>Đang tải báo cáo...</p></div>}
@@ -488,7 +562,7 @@ export function AdminPage({ listings, onStatusChange, onOpen, onExit, onHome, on
                   </> : <span>—</span>}
                 </div>
               </div>)}
-              {!reportsLoading && !reportsError && adminReports.length === 0 && <div className="empty-state"><span>✓</span><h3>Chưa có báo cáo vi phạm</h3><p>Báo cáo do người dùng gửi sẽ xuất hiện tại đây.</p></div>}
+              {!reportsLoading && !reportsError && adminReports.length === 0 && <div className="empty-state"><span>✓</span><h3>Chưa có báo cáo tin đăng cũ</h3><p>Báo cáo người dùng mới được hiển thị ở khung phía trên.</p></div>}
             </div>
           </>}
 
@@ -497,9 +571,9 @@ export function AdminPage({ listings, onStatusChange, onOpen, onExit, onHome, on
             {usersError && <div className="admin-stats-error" role="alert">Không thể tải người dùng: {usersError}<button onClick={() => setUsersReload((value) => value + 1)}>Thử lại</button></div>}
             {userActionError && <div className="admin-stats-error" role="alert">{userActionError}</div>}
             <div className="admin-panel report-table">
-              <div className="admin-table-heading user-table-heading"><span>THÀNH VIÊN</span><span>EMAIL</span><span>VAI TRÒ</span><span>TRẠNG THÁI</span><span>TIN ĐĂNG</span><span>THAO TÁC</span></div>
+              <div className="admin-table-heading user-table-heading"><span>THÀNH VIÊN</span><span>EMAIL</span><span>VAI TRÒ</span><span>TRẠNG THÁI</span><span>TIN ĐĂNG</span><span>KIỂM DUYỆT</span><span>THAO TÁC</span></div>
               {usersLoading && <div className="empty-state"><p>Đang tải danh sách người dùng...</p></div>}
-              {!usersLoading && adminUsers.filter((user) => `${user.fullName} ${user.email}`.toLocaleLowerCase('vi').includes(userSearch.toLocaleLowerCase('vi'))).map((user) => <div className="admin-table-row user-table-row" key={user.id}><strong>{user.fullName}</strong><span>{user.email}</span><span>{user.role === 'ADMIN' ? 'Quản trị viên' : 'Thành viên'}</span><span className={user.status === 'LOCKED' ? 'user-locked' : 'user-active'}>{user.status === 'LOCKED' ? 'Đã khóa' : 'Hoạt động'}</span><span>{user.listingCount}</span><button className="user-status-button" disabled={userActionId !== null || (user.role === 'ADMIN' && user.status === 'ACTIVE')} onClick={() => void changeUserStatus(user)}>{userActionId === user.id ? 'Đang lưu...' : user.status === 'LOCKED' ? 'Mở khóa' : 'Khóa tài khoản'}</button></div>)}
+              {!usersLoading && adminUsers.filter((user) => `${user.fullName} ${user.email}`.toLocaleLowerCase('vi').includes(userSearch.toLocaleLowerCase('vi'))).map((user) => <div className="admin-table-row user-table-row" key={user.id}><strong>{user.fullName}</strong><span>{user.email}</span><span>{user.role === 'ADMIN' ? 'Quản trị viên' : 'Thành viên'}</span><span className={user.status === 'LOCKED' ? 'user-locked' : 'user-active'}>{user.status === 'LOCKED' ? 'Đã khóa' : 'Hoạt động'}</span><span>{user.listingCount}</span><span>{user.isFlagged ? <b className="user-flagged-badge">Ưu tiên kiểm tra</b> : '—'}</span><button className="user-status-button" disabled={userActionId !== null || (user.role === 'ADMIN' && user.status === 'ACTIVE')} onClick={() => void changeUserStatus(user)}>{userActionId === user.id ? 'Đang lưu...' : user.status === 'LOCKED' ? 'Mở khóa' : 'Khóa tài khoản'}</button></div>)}
               {!usersLoading && !usersError && adminUsers.filter((user) => `${user.fullName} ${user.email}`.toLocaleLowerCase('vi').includes(userSearch.toLocaleLowerCase('vi'))).length === 0 && <div className="empty-state"><h3>Không tìm thấy người dùng</h3><p>Hãy thử tên hoặc email khác.</p></div>}
             </div>
           </>}

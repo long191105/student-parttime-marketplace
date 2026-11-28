@@ -1,0 +1,107 @@
+<?xml version='1.0' encoding='utf-8'?>
+<mxfile host="app.diagrams.net" modified="2026-11-28T06:00:00.000Z" agent="Codex" version="24.7.17" type="device">
+  <diagram id="erd" name="ERD">
+    <mxGraphModel dx="1800" dy="1000" grid="1" gridSize="10" page="1" pageScale="1" pageWidth="1800" pageHeight="1150">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="users" value="user_accounts&#10;PK id&#10;email UNIQUE&#10;role, status&#10;profile/auth" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#EAF2F8;strokeColor=#2F5597;fontSize=15;fontColor=#17365D;" vertex="1" parent="1">
+          <mxGeometry x="80" y="80" width="260" height="145" as="geometry" />
+        </mxCell>
+        <mxCell id="pending" value="pending_registrations&#10;PK id&#10;email UNIQUE&#10;OTP hash + expiry" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#EAF2F8;strokeColor=#2F5597;fontSize=15;fontColor=#17365D;" vertex="1" parent="1">
+          <mxGeometry x="390" y="50" width="260" height="145" as="geometry" />
+        </mxCell>
+        <mxCell id="cats" value="categories&#10;PK id&#10;slug UNIQUE&#10;active" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#EAF2F8;strokeColor=#2F5597;fontSize=15;fontColor=#17365D;" vertex="1" parent="1">
+          <mxGeometry x="720" y="50" width="260" height="145" as="geometry" />
+        </mxCell>
+        <mxCell id="list" value="listings&#10;PK id&#10;FK seller_id&#10;category STRING&#10;status, price, condition" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#EAF2F8;strokeColor=#2F5597;fontSize=15;fontColor=#17365D;" vertex="1" parent="1">
+          <mxGeometry x="400" y="300" width="260" height="145" as="geometry" />
+        </mxCell>
+        <mxCell id="images" value="listing_images&#10;FK listing_id&#10;image_order&#10;image_url" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#EAF2F8;strokeColor=#2F5597;fontSize=15;fontColor=#17365D;" vertex="1" parent="1">
+          <mxGeometry x="740" y="290" width="260" height="145" as="geometry" />
+        </mxCell>
+        <mxCell id="draft" value="listing_drafts&#10;PK id&#10;FK seller_id UNIQUE&#10;content_json" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#EAF2F8;strokeColor=#2F5597;fontSize=15;fontColor=#17365D;" vertex="1" parent="1">
+          <mxGeometry x="60" y="320" width="260" height="145" as="geometry" />
+        </mxCell>
+        <mxCell id="fav" value="favorites&#10;PK id&#10;FK user_id&#10;FK listing_id&#10;unique pair" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#EAF2F8;strokeColor=#2F5597;fontSize=15;fontColor=#17365D;" vertex="1" parent="1">
+          <mxGeometry x="60" y="570" width="260" height="145" as="geometry" />
+        </mxCell>
+        <mxCell id="conv" value="chat_conversations&#10;PK id&#10;FK listing_id&#10;FK buyer_id, seller_id&#10;unique listing+buyer" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#EAF2F8;strokeColor=#2F5597;fontSize=15;fontColor=#17365D;" vertex="1" parent="1">
+          <mxGeometry x="790" y="520" width="260" height="145" as="geometry" />
+        </mxCell>
+        <mxCell id="msg" value="chat_messages&#10;PK id&#10;FK conversation_id&#10;FK sender_id&#10;type/content/location" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#EAF2F8;strokeColor=#2F5597;fontSize=15;fontColor=#17365D;" vertex="1" parent="1">
+          <mxGeometry x="1120" y="520" width="260" height="145" as="geometry" />
+        </mxCell>
+        <mxCell id="review" value="chat_reviews&#10;PK id&#10;FK conversation_id&#10;FK reviewer/reviewee&#10;unique conv+reviewer" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#EAF2F8;strokeColor=#2F5597;fontSize=15;fontColor=#17365D;" vertex="1" parent="1">
+          <mxGeometry x="1450" y="520" width="260" height="145" as="geometry" />
+        </mxCell>
+        <mxCell id="report" value="listing_reports&#10;PK id&#10;FK reporter_id&#10;FK listing_id&#10;status/reason" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#EAF2F8;strokeColor=#2F5597;fontSize=15;fontColor=#17365D;" vertex="1" parent="1">
+          <mxGeometry x="390" y="650" width="260" height="145" as="geometry" />
+        </mxCell>
+        <mxCell id="notif" value="user_notifications&#10;PK id&#10;FK recipient_id&#10;type/read_at" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#EAF2F8;strokeColor=#2F5597;fontSize=15;fontColor=#17365D;" vertex="1" parent="1">
+          <mxGeometry x="80" y="800" width="260" height="145" as="geometry" />
+        </mxCell>
+        <mxCell id="follow" value="user_follows&#10;PK id&#10;FK follower_id&#10;FK followed_id&#10;unique pair" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#EAF2F8;strokeColor=#2F5597;fontSize=15;fontColor=#17365D;" vertex="1" parent="1">
+          <mxGeometry x="720" y="800" width="260" height="145" as="geometry" />
+        </mxCell>
+        <mxCell id="r1" value="seller_id" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;strokeColor=#4472C4;fontSize=12;" edge="1" parent="1" source="users" target="list">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="r2" value="gallery" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;strokeColor=#4472C4;fontSize=12;" edge="1" parent="1" source="list" target="images">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="r3" value="owner" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;strokeColor=#4472C4;fontSize=12;" edge="1" parent="1" source="users" target="draft">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="r4" value="user" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;strokeColor=#4472C4;fontSize=12;" edge="1" parent="1" source="users" target="fav">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="r5" value="listing" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;strokeColor=#4472C4;fontSize=12;" edge="1" parent="1" source="list" target="fav">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="r6" value="listing" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;strokeColor=#4472C4;fontSize=12;" edge="1" parent="1" source="list" target="conv">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="r7" value="buyer" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;strokeColor=#4472C4;fontSize=12;" edge="1" parent="1" source="users" target="conv">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="r8" value="seller" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;strokeColor=#4472C4;fontSize=12;" edge="1" parent="1" source="users" target="conv">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="r9" value="messages" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;strokeColor=#4472C4;fontSize=12;" edge="1" parent="1" source="conv" target="msg">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="r10" value="sender" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;strokeColor=#4472C4;fontSize=12;" edge="1" parent="1" source="users" target="msg">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="r11" value="reviews" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;strokeColor=#4472C4;fontSize=12;" edge="1" parent="1" source="conv" target="review">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="r12" value="reporter" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;strokeColor=#4472C4;fontSize=12;" edge="1" parent="1" source="users" target="report">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="r13" value="target" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;strokeColor=#4472C4;fontSize=12;" edge="1" parent="1" source="list" target="report">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="r14" value="recipient" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;strokeColor=#4472C4;fontSize=12;" edge="1" parent="1" source="users" target="notif">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="r15" value="follower/followed" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;strokeColor=#4472C4;fontSize=12;" edge="1" parent="1" source="users" target="follow">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="review_tags" value="chat_review_tags&#10;FK review_id&#10;tag" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#EAF2F8;strokeColor=#2F5597;fontSize=15;fontColor=#17365D;" vertex="1" parent="1">
+          <mxGeometry x="1450" y="740" width="260" height="125" as="geometry" />
+        </mxCell>
+        <mxCell id="review_images" value="chat_review_images&#10;FK review_id&#10;image_order ? image_url" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#EAF2F8;strokeColor=#2F5597;fontSize=15;fontColor=#17365D;" vertex="1" parent="1">
+          <mxGeometry x="1450" y="920" width="260" height="125" as="geometry" />
+        </mxCell>
+        <mxCell id="review-tags-rel" value="collection" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;strokeColor=#4472C4;fontSize=12;" edge="1" parent="1" source="review" target="review_tags">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="review-images-rel" value="ordered collection" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;strokeColor=#4472C4;fontSize=12;" edge="1" parent="1" source="review" target="review_images">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

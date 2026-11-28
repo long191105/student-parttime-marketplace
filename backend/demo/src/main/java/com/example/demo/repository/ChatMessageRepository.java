@@ -17,6 +17,20 @@ public interface ChatMessageRepository extends JpaRepository<ChatMessage, Long> 
 
     Optional<ChatMessage> findFirstByConversationIdOrderBySentAtDesc(Long conversationId);
 
+    long countByConversationId(Long conversationId);
+
+    @Query("""
+            select count(message) > 0
+            from ChatMessage message
+            where (message.conversation.buyer.id = :firstUserId
+                    and message.conversation.seller.id = :secondUserId)
+               or (message.conversation.buyer.id = :secondUserId
+                    and message.conversation.seller.id = :firstUserId)
+            """)
+    boolean existsMessageBetweenUsers(
+            @Param("firstUserId") Long firstUserId,
+            @Param("secondUserId") Long secondUserId);
+
     @Query("""
             select count(message)
             from ChatMessage message

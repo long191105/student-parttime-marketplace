@@ -4,6 +4,7 @@ import { ArrowLeft, ExternalLink, ImagePlus, Map, MapPin, MessageCircle, Mic, Mi
 import type { AuthUser, CallType, ChatConversation, ChatMessage, ChatReviewStatus, ChatSocketEvent, MarketplaceApi } from '../services/MarketplaceApi'
 import { uploadChatMediaToCloudinary, uploadImagesToCloudinary } from '../services/CloudinaryUpload'
 import { useAppDialog } from '../components/AppDialogContext'
+import { ReportButton } from '../components/ReportButton'
 
 interface InboxPageProps {
   api: MarketplaceApi
@@ -1050,6 +1051,18 @@ export function InboxPage({ api, user, initialConversationId, isVisible, onOpenL
                   <button type="button" aria-label="Gọi video" title="Gọi video" onClick={() => startCallSafely('video')} disabled={connection !== 'connected' || callState.status !== 'idle'}>
                     <Video size={18} />
                   </button>
+                  <ReportButton
+                    api={api}
+                    currentUserId={String(user.id)}
+                    onRequireAuth={() => {}}
+                    className="chat-report-button"
+                    context={{
+                      sourceType: 'CHAT',
+                      label: 'Báo cáo người dùng từ cuộc trò chuyện',
+                      reportedUserId: Number(activeChat.participantId),
+                      chatRoomId: Number(activeChat.id),
+                    }}
+                  />
                 </div>
               </header>
               <button className="chat-product-card" onClick={() => onOpenListing(activeChat.listingId)}>

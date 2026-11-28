@@ -29,6 +29,8 @@ import com.example.demo.model.UserAccount;
 import com.example.demo.model.UserRole;
 import com.example.demo.repository.ListingReportRepository;
 import com.example.demo.repository.ListingRepository;
+import com.example.demo.repository.UserAccountRepository;
+import com.example.demo.repository.UserReportRepository;
 
 @ExtendWith(MockitoExtension.class)
 class ListingReportServiceTest {
@@ -38,6 +40,12 @@ class ListingReportServiceTest {
 
     @Mock
     private ListingRepository listingRepository;
+
+    @Mock
+    private UserAccountRepository userAccountRepository;
+
+    @Mock
+    private UserReportRepository userReportRepository;
 
     @Mock
     private CurrentUserService currentUserService;
@@ -58,9 +66,16 @@ class ListingReportServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new ListingReportService(reportRepository, listingRepository, currentUserService, listingService);
+        service = new ListingReportService(
+                reportRepository,
+                listingRepository,
+                userAccountRepository,
+                userReportRepository,
+                currentUserService,
+                listingService);
         lenient().when(currentUserService.requireUser()).thenReturn(reporter);
         lenient().when(reporter.getId()).thenReturn(7L);
+        lenient().when(reporter.getStatus()).thenReturn(AccountStatus.ACTIVE);
         lenient().when(reporter.getFullName()).thenReturn("Reporter");
         lenient().when(listing.getId()).thenReturn(41L);
         lenient().when(listing.getTitle()).thenReturn("Listing");
@@ -69,6 +84,11 @@ class ListingReportServiceTest {
         lenient().when(seller.getId()).thenReturn(8L);
         lenient().when(seller.getFullName()).thenReturn("Seller");
         lenient().when(seller.getRole()).thenReturn(UserRole.MEMBER);
+        lenient().when(userAccountRepository.findByIdForUpdate(7L)).thenReturn(Optional.of(reporter));
+        lenient().when(reportRepository.countByReporter_IdAndCreatedAtGreaterThanEqualAndCreatedAtLessThan(
+                org.mockito.ArgumentMatchers.eq(7L), org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any())).thenReturn(0L);
+        lenient().when(userReportRepository.countByReporter_IdAndCreatedAtGreaterThanEqualAndCreatedAtLessThan(
+                org.mockito.ArgumentMatchers.eq(7L), org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any())).thenReturn(0L);
     }
 
     @Test

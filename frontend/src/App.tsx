@@ -15,7 +15,7 @@ import { SellPage } from './pages/SellPage'
 import { BuyingGuidePage } from './pages/BuyingGuidePage'
 import { SafetyPolicyPage } from './pages/SafetyPolicyPage'
 import type { Listing, ListingData, ListingStatus } from './domain/Listing'
-import { MarketplaceApi, MarketplaceApiError, type AdminCategory, type AdminReport, type AdminReportAction, type AdminStats, type AdminUserStatus, type AuthSession, type AuthUser, type ListingFormDraft, type UserNotification } from './services/MarketplaceApi'
+import { MarketplaceApi, MarketplaceApiError, type AdminCategory, type AdminReport, type AdminReportAction, type AdminStats, type AdminUserReport, type AdminUserReportStatus, type AdminUserStatus, type AuthSession, type AuthUser, type ListingFormDraft, type UserNotification } from './services/MarketplaceApi'
 import { MarketplaceService } from './services/MarketplaceService'
 import { categories, categoriesForNames } from './data/categories'
 
@@ -88,13 +88,14 @@ export function App() {
   const updateAdminUserStatus = useCallback((id: number, status: AdminUserStatus) => api.updateAdminUserStatus(id, status), [])
   const loadAdminReports = useCallback(() => api.listAdminReports(), [])
   const processAdminReport = useCallback((id: number, action: AdminReportAction): Promise<AdminReport> => api.processAdminReport(id, action), [])
+  const loadAdminUserReports = useCallback(() => api.listAdminUserReports(), [])
+  const updateAdminUserReportStatus = useCallback((id: number, status: AdminUserReportStatus): Promise<AdminUserReport> => api.updateAdminUserReportStatus(id, status), [])
   const loadAdminCategories = useCallback(() => api.listAdminCategories(), [])
   const createAdminCategory = useCallback(async (name: string): Promise<AdminCategory> => {
     const createdCategory = await api.createAdminCategory(name)
     setCategoryOptions((current) => categoriesForNames([...current.map((category) => category.name), createdCategory.name]))
     return createdCategory
   }, [])
-  const submitListingReport = useCallback((listingId: string, reason: string) => api.submitListingReport(listingId, reason), [])
   const [listings, setListings] = useState<Listing[]>(() => service.getListings())
   const [savedIds, setSavedIds] = useState<string[]>(() => service.getFavorites())
   const [favoriteListings, setFavoriteListings] = useState<Listing[]>(() => {
@@ -794,7 +795,7 @@ export function App() {
     if (user.role !== 'ADMIN') {
       return <div className="admin-route-message"><h1>Bạn không có quyền truy cập</h1><p>Trang quản trị chỉ dành cho tài khoản quản trị viên.</p><button className="button-primary" onClick={leaveAdminRoute}>Về trang chủ</button></div>
     }
-    return <AdminPage listings={listings} onStatusChange={changeStatus} onOpen={openListingFromAdmin} onExit={leaveAdminRoute} onHome={() => navigate('home', { historyMode: 'replace' })} onSignOut={signOut} onLoadStats={loadAdminStats} onLoadUsers={loadAdminUsers} onUserStatusChange={updateAdminUserStatus} onLoadReports={loadAdminReports} onReportAction={processAdminReport} onLoadCategories={loadAdminCategories} onCreateCategory={createAdminCategory} />
+    return <AdminPage listings={listings} onStatusChange={changeStatus} onOpen={openListingFromAdmin} onExit={leaveAdminRoute} onHome={() => navigate('home', { historyMode: 'replace' })} onSignOut={signOut} onLoadStats={loadAdminStats} onLoadUsers={loadAdminUsers} onUserStatusChange={updateAdminUserStatus} onLoadReports={loadAdminReports} onReportAction={processAdminReport} onLoadUserReports={loadAdminUserReports} onUserReportStatusChange={updateAdminUserReportStatus} onLoadCategories={loadAdminCategories} onCreateCategory={createAdminCategory} />
   }
 
   if (view === 'auth') {
@@ -829,7 +830,7 @@ export function App() {
       {notice && <div className="toast-message" role="status">{notice}<button onClick={() => setNotice('')} aria-label="Đóng thông báo">×</button></div>}
       {view === 'home' && <ExplorePage listings={activeListings} savedIds={savedIds} categoryCounts={activeCategoryCounts} categories={categoryOptions} onOpen={openListing} onToggleSaved={toggleSaved} onCategory={selectCategory} />}
       {view === 'search' && <SearchPage listings={activeListings} savedIds={savedIds} query={query} categories={categoryOptions} category={category} location={location} onQueryChange={setQuery} onCategoryChange={setCategory} onLocationChange={setLocation} onOpen={openListing} onToggleSaved={toggleSaved} />}
-      {view === 'detail' && selectedListing && <ListingDetailPage key={selectedListing.id} listing={selectedListing} related={relatedListings} saved={savedIds.includes(selectedListing.id)} currentUserId={user ? String(user.id) : null} onBack={() => goBack(previousView === 'detail' ? 'home' : previousView)} onToggleSaved={toggleSaved} onOpen={openListing} onContact={() => void openChat(selectedListing.id)} onSeller={() => openProfile(selectedListing.sellerId)} onReport={submitListingReport} onRevealPhone={async (id) => {
+      {view === 'detail' && selectedListing && <ListingDetailPage key={selectedListing.id} listing={selectedListing} related={relatedListings} saved={savedIds.includes(selectedListing.id)} currentUserId={user ? String(user.id) : null} onBack={() => goBack(previousView === 'detail' ? 'home' : previousView)} onToggleSaved={toggleSaved} onOpen={openListing} onContact={() => void openChat(selectedListing.id)} onSeller={() => openProfile(selectedListing.sellerId)} api={api} onRequireAuth={() => navigate('auth')} onRevealPhone={async (id) => {
         if (apiState !== 'connected') throw new Error('Backend chưa kết nối; không thể tải số điện thoại thật.')
         if (!user) {
           setNotice('Đăng nhập để xem số điện thoại người bán.')

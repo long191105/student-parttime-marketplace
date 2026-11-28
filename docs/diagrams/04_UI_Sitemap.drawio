@@ -1,0 +1,70 @@
+<mxfile host="Electron" agent="Codex">
+  <diagram id="ui-sitemap" name="UI Sitemap">
+    <mxGraphModel dx="3788" dy="1245" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1600" pageHeight="1100" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="root" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#EAF2F8;strokeColor=#2F5597;fontSize=15;fontColor=#17365D;" value="Chợ Hời SPA&#xa;App.tsx · MarketplaceLayout" vertex="1">
+          <mxGeometry height="80" width="280" x="600" y="40" as="geometry" />
+        </mxCell>
+        <mxCell id="guest" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#EAF2F8;strokeColor=#2F5597;fontSize=15;fontColor=#17365D;" value="Guest views&#xa;ExplorePage · SearchPage&#xa;ListingDetailPage · Guides" vertex="1">
+          <mxGeometry height="130" width="300" x="100" y="220" as="geometry" />
+        </mxCell>
+        <mxCell id="member" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#EAF2F8;strokeColor=#2F5597;fontSize=15;fontColor=#17365D;" value="Member views&#xa;AuthPage · SellPage · MyListingsPage&#xa;Favorites · Inbox · Notifications · Profile" vertex="1">
+          <mxGeometry height="140" width="390" x="500" y="220" as="geometry" />
+        </mxCell>
+        <mxCell id="admin" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFF2CC;strokeColor=#BF9000;fontSize=14;" value="AdminPage&#xa;Moderation · Users · Reports&#xa;Stats · Categories" vertex="1">
+          <mxGeometry height="140" width="330" x="1200" y="215" as="geometry" />
+        </mxCell>
+        <mxCell id="auth" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFF2CC;strokeColor=#BF9000;fontSize=14;" value="AuthPage" vertex="1">
+          <mxGeometry height="70" width="180" x="40" y="480" as="geometry" />
+        </mxCell>
+        <mxCell id="sell" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFF2CC;strokeColor=#BF9000;fontSize=14;" value="SellPage · MyListingsPage" vertex="1">
+          <mxGeometry height="70" width="270" x="360" y="480" as="geometry" />
+        </mxCell>
+        <mxCell id="msg" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFF2CC;strokeColor=#BF9000;fontSize=14;" value="InboxPage · WebRTC call UI" vertex="1">
+          <mxGeometry height="70" width="280" x="690" y="480" as="geometry" />
+        </mxCell>
+        <mxCell id="notice" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFF2CC;strokeColor=#BF9000;fontSize=14;" value="NotificationsPage · ProfilePage" vertex="1">
+          <mxGeometry height="70" width="300" x="1010" y="490" as="geometry" />
+        </mxCell>
+        <mxCell id="learn" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFF2CC;strokeColor=#BF9000;fontSize=14;" value="BuyingGuidePage · SafetyPolicyPage&#xa;CheckInPage" vertex="1">
+          <mxGeometry height="90" width="330" x="100" y="650" as="geometry" />
+        </mxCell>
+        <mxCell id="listing" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFF2CC;strokeColor=#BF9000;fontSize=14;" value="ExplorePage · SearchPage&#xa;ListingDetailPage" vertex="1">
+          <mxGeometry height="90" width="300" x="-120" y="50" as="geometry" />
+        </mxCell>
+        <mxCell id="adminapi" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFF2CC;strokeColor=#BF9000;fontSize=14;" value="Browser location /admin" vertex="1">
+          <mxGeometry height="90" width="260" x="1235" y="640" as="geometry" />
+        </mxCell>
+        <mxCell id="edge1" edge="1" parent="1" source="root" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;strokeColor=#4472C4;fontSize=12;" target="guest" value="browse">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge2" edge="1" parent="1" source="root" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;strokeColor=#4472C4;fontSize=12;" target="member" value="session state">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge3" edge="1" parent="1" source="root" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;strokeColor=#4472C4;fontSize=12;" target="admin" value="/admin + role">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge4" edge="1" parent="1" source="member" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;strokeColor=#4472C4;fontSize=12;" target="sell" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge5" edge="1" parent="1" source="member" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;strokeColor=#4472C4;fontSize=12;" target="msg" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge6" edge="1" parent="1" source="member" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;strokeColor=#4472C4;fontSize=12;" target="notice" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge7" edge="1" parent="1" source="guest" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;strokeColor=#4472C4;fontSize=12;" target="learn" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge8" edge="1" parent="1" source="guest" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;strokeColor=#4472C4;fontSize=12;" target="listing" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge9" edge="1" parent="1" source="admin" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;strokeColor=#4472C4;fontSize=12;" target="adminapi" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
