@@ -136,7 +136,7 @@ export interface ChatMessage {
   senderId: string
   senderName: string
   content: string
-  messageType: 'TEXT' | 'LOCATION' | 'MISSED_CALL' | 'CALL'
+  messageType: 'TEXT' | 'LOCATION' | 'IMAGE' | 'VIDEO' | 'MISSED_CALL' | 'CALL'
   latitude: number | null
   longitude: number | null
   mapUrl: string | null

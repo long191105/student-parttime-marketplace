@@ -120,6 +120,14 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
                         optionalNumber(request, "latitude"),
                         optionalNumber(request, "longitude"),
                         request.path("mapUrl").asString(""));
+            } else if ("IMAGE".equals(messageType) || "VIDEO".equals(messageType)) {
+                savedMessage = chatService.sendMediaMessage(
+                        conversationId,
+                        content,
+                        request.path("mediaUrl").asString(""),
+                        "IMAGE".equals(messageType)
+                                ? com.example.demo.model.ChatMessageType.IMAGE
+                                : com.example.demo.model.ChatMessageType.VIDEO);
             } else {
                 sendError(session, "Loại tin nhắn không được hỗ trợ.");
                 return;

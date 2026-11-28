@@ -148,6 +148,39 @@ public class ChatService {
         return ChatMessageResponse.from(message);
     }
 
+    @Transactional
+    public ChatMessageResponse sendMediaMessage(
+            Long conversationId,
+            String content,
+            String mediaUrl,
+            ChatMessageType mediaType) {
+        if (mediaType != ChatMessageType.IMAGE && mediaType != ChatMessageType.VIDEO) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Loại media không hợp lệ.");
+        }
+        UserAccount sender = currentUserService.requireUser();
+        String normalizedUrl = validateMediaUrl(mediaUrl);
+        String normalizedContent = content == null || content.isBlank()
+                ? (mediaType == ChatMessageType.IMAGE ? "Đã gửi ảnh" : "Đã gửi video")
+                : validateContent(content.trim());
+        ChatConversation conversation = requireParticipant(conversationId, sender);
+        ChatMessage message = messageRepository.save(new ChatMessage(
+                conversation,
+                sender,
+                normalizedContent,
+                mediaType,
+                null,
+                null,
+                normalizedUrl));
+        conversation.touch();
+        conversationRepository.save(conversation);
+        notificationService.notifyNewMessage(
+                otherParticipant(conversation, sender),
+                conversation,
+                sender,
+                normalizedContent);
+        return ChatMessageResponse.from(message);
+    }
+
     private static UserAccount otherParticipant(ChatConversation conversation, UserAccount sender) {
         return conversation.getBuyer().getId().equals(sender.getId())
                 ? conversation.getSeller()
@@ -482,6 +515,24 @@ public class ChatService {
             return uri.toASCIIString();
         } catch (URISyntaxException exception) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Chỉ hỗ trợ liên kết Google Maps an toàn (HTTPS).", exception);
+        }
+    }
+
+    private static String validateMediaUrl(String value) {
+        if (value == null || value.isBlank() || value.length() > 2000) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Liên kết media không hợp lệ.");
+        }
+        try {
+            URI uri = new URI(value.trim());
+            if (!"https".equalsIgnoreCase(uri.getScheme())
+                    || uri.getHost() == null
+                    || uri.getUserInfo() != null
+                    || uri.getPort() != -1) {
+                throw new URISyntaxException(value, "URL is not secure");
+            }
+            return uri.toASCIIString();
+        } catch (URISyntaxException exception) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Chỉ hỗ trợ media HTTPS.", exception);
         }
     }
 }

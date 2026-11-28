@@ -1042,6 +1042,14 @@ img { display: block; max-width: 100%; }
 .chat-compose-tools button { display: grid; width: 28px; height: 28px; place-items: center; border: 0; border-radius: 3px; background: transparent; color: #798872; }
 .chat-compose-tools button:hover { background: #f0f3eb; }
 .chat-compose-tools button:disabled { cursor: wait; opacity: .5; }
+.chat-media-upload { display: grid; width: 28px; height: 28px; place-items: center; border-radius: 3px; background: transparent; color: #798872; cursor: pointer; }
+.chat-media-upload:hover { background: #f0f3eb; }
+.chat-media-upload:has(input:disabled) { cursor: wait; opacity: .5; }
+.chat-media-upload input { position: absolute; width: 1px; height: 1px; overflow: hidden; opacity: 0; }
+.chat-media-bubble { padding: 4px 4px 19px; }
+.chat-media-bubble a { display: block; }
+.chat-media-bubble img,
+.chat-media-bubble video { display: block; width: min(280px, 68vw); max-height: 320px; border-radius: 7px; object-fit: cover; background: #111; }
 .chat-compose > input { flex: 1; min-width: 0; border: 0; outline: 0; font-size: 11px; }
 .send-message-button { display: grid; width: 32px; height: 32px; place-items: center; border: 0; border-radius: 3px; background: #436e4b; color: #fff; }
 .send-message-button:disabled { background: #d8ded2; }
