@@ -129,7 +129,9 @@ public class ListingReportService {
     @Transactional(readOnly = true)
     public long countOpenReports() {
         return reportRepository.countByStatus(ListingReportStatus.OPEN)
-                + userReportRepository.countByStatus(com.example.demo.model.UserReportStatus.PENDING);
+                + userReportRepository.countByStatus(com.example.demo.model.UserReportStatus.PENDING)
+                + userReportRepository.countByStatus(com.example.demo.model.UserReportStatus.REVIEWED)
+                + userReportRepository.countByStatus(com.example.demo.model.UserReportStatus.INVESTIGATING);
     }
 
     @Transactional(readOnly = true)
@@ -137,7 +139,11 @@ public class ListingReportService {
         return reportRepository.countByStatusAndCreatedAtGreaterThanEqualAndCreatedAtLessThan(
                 ListingReportStatus.OPEN, from, to)
                 + userReportRepository.countByStatusAndCreatedAtGreaterThanEqualAndCreatedAtLessThan(
-                        com.example.demo.model.UserReportStatus.PENDING, from, to);
+                        com.example.demo.model.UserReportStatus.PENDING, from, to)
+                + userReportRepository.countByStatusAndCreatedAtGreaterThanEqualAndCreatedAtLessThan(
+                        com.example.demo.model.UserReportStatus.REVIEWED, from, to)
+                + userReportRepository.countByStatusAndCreatedAtGreaterThanEqualAndCreatedAtLessThan(
+                        com.example.demo.model.UserReportStatus.INVESTIGATING, from, to);
     }
 
     private static void validatePaging(int page, int size) {

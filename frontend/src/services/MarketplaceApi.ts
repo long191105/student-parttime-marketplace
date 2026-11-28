@@ -19,6 +19,7 @@ export interface AuthUser {
   fullName: string
   email: string
   role: 'MEMBER' | 'ADMIN'
+  status: AdminUserStatus
 }
 
 export interface UserProfile {
@@ -58,7 +59,7 @@ export interface AdminReport {
   createdAt: string
 }
 
-export type AdminUserReportStatus = 'PENDING' | 'REVIEWED' | 'RESOLVED' | 'REJECTED'
+export type AdminUserReportStatus = 'PENDING' | 'REVIEWED' | 'INVESTIGATING' | 'RESOLVED' | 'REJECTED' | 'CLEARED'
 
 export interface AdminUserReport {
   id: number
@@ -75,6 +76,7 @@ export interface AdminUserReport {
   description: string
   evidenceUrls: string[]
   status: AdminUserReportStatus
+  resolutionReason: string | null
   createdAt: string
 }
 
@@ -110,7 +112,7 @@ export interface AdminCategory {
   slug: string
 }
 
-export type UserNotificationType = 'LISTING_APPROVED' | 'LISTING_REJECTED' | 'NEW_MESSAGE'
+export type UserNotificationType = 'LISTING_APPROVED' | 'LISTING_REJECTED' | 'NEW_MESSAGE' | 'REPORT_STATUS' | 'ACCOUNT_STATUS'
 
 export interface UserNotification {
   id: number
@@ -328,10 +330,10 @@ export class MarketplaceApi {
     return reports
   }
 
-  async updateAdminUserReportStatus(id: number, status: AdminUserReportStatus): Promise<AdminUserReport> {
+  async updateAdminUserReportStatus(id: number, status: AdminUserReportStatus, reason?: string): Promise<AdminUserReport> {
     return this.request<AdminUserReport>(`/admin/user-reports/${id}`, {
       method: 'PATCH',
-      body: JSON.stringify({ status }),
+      body: JSON.stringify({ status, ...(reason ? { reason } : {}) }),
     })
   }
 

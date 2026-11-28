@@ -6,6 +6,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import java.time.Instant;
@@ -58,6 +59,9 @@ class UserReportServiceTest {
     private CurrentUserService currentUserService;
 
     @Mock
+    private UserNotificationService notificationService;
+
+    @Mock
     private UserAccount reporter;
 
     @Mock
@@ -74,9 +78,10 @@ class UserReportServiceTest {
                 listingReportRepository,
                 conversationRepository,
                 messageRepository,
-                currentUserService);
+                currentUserService,
+                notificationService);
         lenient().when(currentUserService.requireUser()).thenReturn(reporter);
-        when(reporter.getId()).thenReturn(7L);
+        lenient().when(reporter.getId()).thenReturn(7L);
         lenient().when(reporter.getStatus()).thenReturn(AccountStatus.ACTIVE);
         lenient().when(userAccountRepository.findByIdForUpdate(7L)).thenReturn(Optional.of(reporter));
         lenient().when(userAccountRepository.findByIdForUpdate(8L)).thenReturn(Optional.of(reportedUser));
@@ -148,12 +153,109 @@ class UserReportServiceTest {
     }
 
     @Test
-    void updateAdminStatusResolvesReportAndRecalculatesFlag() {
-        when(reporter.getFullName()).thenReturn("Reporter");
-        when(reportedUser.getId()).thenReturn(8L);
+    void acceptingReportMovesItIntoProcessingWithoutLockingTheReportedUser() {
+        UserReport report = createReport();
+        ReflectionTestUtils.setField(report, "id", 12L);
+        when(reportRepository.findByIdForUpdate(12L)).thenReturn(Optional.of(report));
+        when(reportRepository.save(report)).thenReturn(report);
+        when(reportRepository.countDistinctPendingReporters(8L, UserReportStatus.PENDING)).thenReturn(2L);
+
+        var result = service.updateAdminStatus(12L, UserReportStatus.REVIEWED, null);
+
+        assertEquals("REVIEWED", result.status());
+        verify(reportedUser, never()).setStatus(any());
+        verifyNoInteractions(notificationService);
+    }
+
+    @Test
+    void confirmingViolationLocksAccountAndStartsInvestigation() {
+        UserReport report = createReport();
+        report.setStatus(UserReportStatus.REVIEWED);
+        ReflectionTestUtils.setField(report, "id", 12L);
+        when(reportRepository.findByIdForUpdate(12L)).thenReturn(Optional.of(report));
+        when(userAccountRepository.findByIdForUpdate(8L)).thenReturn(Optional.of(reportedUser));
+        when(userAccountRepository.save(reportedUser)).thenReturn(reportedUser);
+        when(reportRepository.save(report)).thenReturn(report);
+        when(reportRepository.countDistinctPendingReporters(8L, UserReportStatus.PENDING)).thenReturn(0L);
+
+        var result = service.updateAdminStatus(12L, UserReportStatus.INVESTIGATING, null);
+
+        assertEquals("INVESTIGATING", result.status());
+        verify(reportedUser).setStatus(AccountStatus.LOCKED);
+        verify(userAccountRepository).save(reportedUser);
+        verify(notificationService).notifyInvestigationStarted(report);
+    }
+
+    @Test
+    void rejectingReviewedReportRequiresReasonAndNotifiesReporter() {
+        UserReport report = createReport();
+        report.setStatus(UserReportStatus.REVIEWED);
+        ReflectionTestUtils.setField(report, "id", 12L);
+        when(reportRepository.findByIdForUpdate(12L)).thenReturn(Optional.of(report));
+        when(reportRepository.save(report)).thenReturn(report);
+        when(reportRepository.countDistinctPendingReporters(8L, UserReportStatus.PENDING)).thenReturn(0L);
+
+        var result = service.updateAdminStatus(12L, UserReportStatus.REJECTED, "Thiếu bằng chứng.");
+
+        assertEquals("REJECTED", result.status());
+        assertEquals("Thiếu bằng chứng.", result.resolutionReason());
+        verify(notificationService).notifyReportRejected(report, "Thiếu bằng chứng.");
+        verify(reportedUser, never()).setStatus(any());
+    }
+
+    @Test
+    void rejectingReviewedReportWithoutReasonIsRejected() {
+        UserReport report = createReport();
+        report.setStatus(UserReportStatus.REVIEWED);
+        ReflectionTestUtils.setField(report, "id", 12L);
+        when(reportRepository.findByIdForUpdate(12L)).thenReturn(Optional.of(report));
+
+        assertThrows(ResponseStatusException.class,
+                () -> service.updateAdminStatus(12L, UserReportStatus.REJECTED, "  "));
+        verify(reportRepository, never()).save(any(UserReport.class));
+        verifyNoInteractions(notificationService);
+    }
+
+    @Test
+    void finalClearUnlocksAccountAndNotifiesBothParties() {
+        UserReport report = createReport();
+        report.setStatus(UserReportStatus.INVESTIGATING);
+        ReflectionTestUtils.setField(report, "id", 12L);
         when(reportedUser.getFullName()).thenReturn("Reported user");
         when(reportedUser.isFlagged()).thenReturn(true);
-        UserReport report = new UserReport(
+        when(reportRepository.findByIdForUpdate(12L)).thenReturn(Optional.of(report));
+        when(userAccountRepository.findByIdForUpdate(8L)).thenReturn(Optional.of(reportedUser));
+        when(userAccountRepository.save(reportedUser)).thenReturn(reportedUser);
+        when(reportRepository.save(report)).thenReturn(report);
+        when(reportRepository.countDistinctPendingReporters(8L, UserReportStatus.PENDING)).thenReturn(2L);
+
+        var result = service.updateAdminStatus(12L, UserReportStatus.CLEARED, null);
+
+        assertEquals("CLEARED", result.status());
+        verify(reportedUser).setStatus(AccountStatus.ACTIVE);
+        verify(userAccountRepository).save(reportedUser);
+        verify(notificationService).notifyInvestigationResolved(report, false);
+    }
+
+    @Test
+    void investigationCannotBeFinalizedWithoutBeingStarted() {
+        UserReport report = createReport();
+        report.setStatus(UserReportStatus.REVIEWED);
+        when(reportRepository.findByIdForUpdate(12L)).thenReturn(Optional.of(report));
+        ReflectionTestUtils.setField(report, "id", 12L);
+
+        assertThrows(ResponseStatusException.class,
+                () -> service.updateAdminStatus(12L, UserReportStatus.CLEARED, null));
+        verifyNoInteractions(notificationService);
+        verify(reportedUser, never()).setStatus(any());
+    }
+
+    private UserReport createReport() {
+        lenient().when(reporter.getFullName()).thenReturn("Reporter");
+        lenient().when(reportedUser.getId()).thenReturn(8L);
+        lenient().when(reportedUser.getFullName()).thenReturn("Reported user");
+        lenient().when(reportedUser.isFlagged()).thenReturn(true);
+        return new UserReport(
                 reporter,
                 reportedUser,
                 UserReportSourceType.PROFILE,
@@ -162,15 +264,25 @@ class UserReportServiceTest {
                 UserReportReason.OTHER,
                 "Mô tả chi tiết vi phạm đủ để quản trị viên xem xét.",
                 List.of());
+    }
+
+    @Test
+    void updateAdminStatusResolvesReportAndRecalculatesFlag() {
+        UserReport report = createReport();
+        report.setStatus(UserReportStatus.INVESTIGATING);
         ReflectionTestUtils.setField(report, "id", 12L);
+        when(userAccountRepository.findByIdForUpdate(8L)).thenReturn(Optional.of(reportedUser));
+        when(userAccountRepository.save(reportedUser)).thenReturn(reportedUser);
         when(reportRepository.findByIdForUpdate(12L)).thenReturn(Optional.of(report));
         when(reportRepository.save(report)).thenReturn(report);
         when(reportRepository.countDistinctPendingReporters(8L, UserReportStatus.PENDING)).thenReturn(2L);
 
-        var result = service.updateAdminStatus(12L, UserReportStatus.RESOLVED);
+        var result = service.updateAdminStatus(12L, UserReportStatus.RESOLVED, null);
 
         assertEquals("RESOLVED", result.status());
+        verify(reportedUser).setStatus(AccountStatus.LOCKED);
         verify(reportedUser).setFlagged(false);
-        verify(userAccountRepository).save(reportedUser);
+        verify(notificationService).notifyInvestigationResolved(report, true);
     }
+
 }

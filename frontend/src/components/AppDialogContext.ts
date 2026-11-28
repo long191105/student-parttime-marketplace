@@ -2,7 +2,7 @@ import { createContext, useContext } from 'react'
 
 export interface AppDialogContextValue {
   showAlert: (message: string, title?: string) => Promise<void>
-  showConfirm: (message: string, title?: string, confirmLabel?: string) => Promise<boolean>
+  showConfirm: (message: string, title?: string, confirmLabel?: string, cancelLabel?: string) => Promise<boolean>
   showPrompt: (message: string, title?: string, placeholder?: string) => Promise<string | null>
 }
 

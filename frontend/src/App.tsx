@@ -89,7 +89,7 @@ export function App() {
   const loadAdminReports = useCallback(() => api.listAdminReports(), [])
   const processAdminReport = useCallback((id: number, action: AdminReportAction): Promise<AdminReport> => api.processAdminReport(id, action), [])
   const loadAdminUserReports = useCallback(() => api.listAdminUserReports(), [])
-  const updateAdminUserReportStatus = useCallback((id: number, status: AdminUserReportStatus): Promise<AdminUserReport> => api.updateAdminUserReportStatus(id, status), [])
+  const updateAdminUserReportStatus = useCallback((id: number, status: AdminUserReportStatus, reason?: string): Promise<AdminUserReport> => api.updateAdminUserReportStatus(id, status, reason), [])
   const loadAdminCategories = useCallback(() => api.listAdminCategories(), [])
   const createAdminCategory = useCallback(async (name: string): Promise<AdminCategory> => {
     const createdCategory = await api.createAdminCategory(name)
@@ -224,23 +224,31 @@ export function App() {
         if (savedSession) {
           try {
             nextUser = await api.getCurrentUser()
-            const [myListings, favorites, active, pending] = await Promise.all([
-              api.listMyListings(),
-              api.listFavorites(),
-              nextUser.role === 'ADMIN' ? api.listAdminListings('ACTIVE') : Promise.resolve([]),
-              nextUser.role === 'ADMIN' ? api.listPendingListings() : Promise.resolve([]),
-            ])
-            nextListings = mergeListings(publicListings, myListings, active, pending)
-            nextFavoriteListings = favorites
-            nextSavedIds = favorites.map((listing) => listing.id)
+            if (nextUser.status === 'ACTIVE') {
+              const [myListings, favorites, active, pending] = await Promise.all([
+                api.listMyListings(),
+                api.listFavorites(),
+                nextUser.role === 'ADMIN' ? api.listAdminListings('ACTIVE') : Promise.resolve([]),
+                nextUser.role === 'ADMIN' ? api.listPendingListings() : Promise.resolve([]),
+              ])
+              nextListings = mergeListings(publicListings, myListings, active, pending)
+              nextFavoriteListings = favorites
+              nextSavedIds = favorites.map((listing) => listing.id)
+            } else if (active) {
+              setNotice('Tài khoản đang bị khóa. Bạn chỉ có thể xem nội dung công khai và thông báo.')
+            }
           } catch (error) {
-            if (!(error instanceof MarketplaceApiError) || error.status !== 401) {
+            if (error instanceof MarketplaceApiError && error.status === 423) {
+              nextUser = await api.getCurrentUser()
+              if (active) setNotice('Tài khoản đang bị khóa. Bạn chỉ có thể xem nội dung công khai và thông báo.')
+            } else if (error instanceof MarketplaceApiError && error.status === 401) {
+              api.clearSession()
+              nextUser = null
+              console.error('Không thể khôi phục phiên tài khoản.', error)
+              if (active) setNotice('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.')
+            } else {
               throw error
             }
-            api.clearSession()
-            nextUser = null
-            console.error('Không thể khôi phục phiên tài khoản.', error)
-            if (active) setNotice('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.')
           }
         }
 
@@ -286,7 +294,7 @@ export function App() {
   }, [apiState])
 
   useEffect(() => {
-    if (apiState !== 'connected' || !user) return
+    if (apiState !== 'connected' || !user || user.status !== 'ACTIVE') return
 
     let active = true
     async function refreshUnreadCount() {
@@ -310,12 +318,21 @@ export function App() {
   useEffect(() => {
     if (apiState !== 'connected' || !user) return
 
+    const activeUser = user
     let active = true
     let knownNotificationIds: Set<number> | null = null
     async function refreshNotifications() {
       try {
-        const feed = await api.listNotifications()
+        const [feed, currentUser] = await Promise.all([api.listNotifications(), api.getCurrentUser()])
         if (!active) return
+        if (activeUser.status !== currentUser.status) {
+          setUser(currentUser)
+          if (currentUser.status === 'LOCKED') {
+            setNotice('Tài khoản đang bị khóa. Bạn chỉ có thể xem nội dung công khai và thông báo.')
+          } else {
+            setNotice('Tài khoản đã được mở khóa. Bạn có thể tiếp tục sử dụng đầy đủ tính năng.')
+          }
+        }
         if (knownNotificationIds) {
           const newestNotification = feed.notifications.find((item) => !knownNotificationIds?.has(item.id))
           if (newestNotification) setNotice(`${newestNotification.title}: ${newestNotification.detail}`)
@@ -339,7 +356,27 @@ export function App() {
       active = false
       window.clearInterval(interval)
     }
-  }, [apiState, notificationRetry, user])
+  }, [apiState, notificationRetry, user, view])
+
+  useEffect(() => {
+    if (user?.status !== 'LOCKED' || view === 'notifications'
+        || !(authenticationRequiredViews.includes(view) || view === 'favorites')) return
+    const timer = window.setTimeout(() => {
+      const currentEntry = readAppNavigationEntry(window.history.state)
+      window.history.replaceState(withAppNavigationEntry({
+        view: 'home',
+        selectedId: null,
+        selectedConversationId: null,
+        previousView: 'home',
+        sellReturnView: 'home',
+        depth: currentEntry?.depth ?? 0,
+      }), '', window.location.href)
+      setView('home')
+      setSelectedId(null)
+      setSelectedConversationId(null)
+    }, 0)
+    return () => window.clearTimeout(timer)
+  }, [user?.status, view])
 
   useEffect(() => {
     if (apiState !== 'connected' || !isAdminRoute || user?.role !== 'ADMIN') return
@@ -382,6 +419,11 @@ export function App() {
   }
 
   function navigate(nextView: AppView, options: NavigationOptions = {}) {
+    if (user?.status === 'LOCKED' && nextView !== 'notifications'
+        && (authenticationRequiredViews.includes(nextView) || nextView === 'favorites')) {
+      setNotice('Tài khoản đang bị khóa. Bạn chỉ có thể xem nội dung công khai và thông báo.')
+      return
+    }
     const needsAuth = authenticationRequiredViews.includes(nextView) && !user
     const targetView = nextView === 'auth' || needsAuth ? 'auth' : nextView
     const targetPreviousView = options.previousView ?? (nextView === 'auth'
@@ -504,10 +546,18 @@ export function App() {
       navigate('messages', { selectedConversationId: notification.targetId })
       return
     }
+    if (notification.type === 'REPORT_STATUS' || notification.type === 'ACCOUNT_STATUS') {
+      navigate('notifications')
+      return
+    }
     navigate('my-listings')
   }
 
   async function openChat(listingId: string) {
+    if (user?.status === 'LOCKED') {
+      setNotice('Tài khoản đang bị khóa và không thể sử dụng chat.')
+      return
+    }
     if (!user) {
       setNotice('Đăng nhập để trò chuyện với người bán.')
       navigate('auth')
@@ -531,7 +581,7 @@ export function App() {
     let nextListings = publicListings
     let nextSavedIds: string[] = []
     let nextFavoriteListings: Listing[] = []
-    if (userOverride) {
+    if (userOverride?.status === 'ACTIVE') {
       const [myListings, favorites, active, pending] = await Promise.all([
         api.listMyListings(),
         api.listFavorites(),
@@ -551,6 +601,10 @@ export function App() {
 
   async function toggleSaved(id: string) {
     if (apiState === 'connected') {
+      if (user?.status === 'LOCKED') {
+        setNotice('Tài khoản đang bị khóa và không thể lưu tin yêu thích.')
+        return
+      }
       if (!user) {
         setNotice('Đăng nhập để lưu tin yêu thích.')
         navigate('auth')
@@ -827,11 +881,16 @@ export function App() {
     >
       {apiState === 'offline' && <div className="api-status-banner" role="status"><span>DEMO · Chưa kết nối database; thao tác chỉ lưu trên trình duyệt.</span><button onClick={retryConnection}>Thử kết nối lại</button><small>{apiError}</small></div>}
       {apiState === 'connecting' && <div className="api-status-banner api-status-connecting" role="status"><span>Đang kết nối Chợ Hời API...</span></div>}
+      {user?.status === 'LOCKED' && <div className="account-restriction-banner" role="status"><span><strong>Tài khoản đang bị hạn chế</strong><small>Bạn chỉ có thể xem tin công khai và thông báo. Không thể đăng tin hoặc sử dụng chat.</small></span><button onClick={() => navigate('notifications')}>Xem thông báo</button></div>}
       {notice && <div className="toast-message" role="status">{notice}<button onClick={() => setNotice('')} aria-label="Đóng thông báo">×</button></div>}
       {view === 'home' && <ExplorePage listings={activeListings} savedIds={savedIds} categoryCounts={activeCategoryCounts} categories={categoryOptions} onOpen={openListing} onToggleSaved={toggleSaved} onCategory={selectCategory} />}
       {view === 'search' && <SearchPage listings={activeListings} savedIds={savedIds} query={query} categories={categoryOptions} category={category} location={location} onQueryChange={setQuery} onCategoryChange={setCategory} onLocationChange={setLocation} onOpen={openListing} onToggleSaved={toggleSaved} />}
-      {view === 'detail' && selectedListing && <ListingDetailPage key={selectedListing.id} listing={selectedListing} related={relatedListings} saved={savedIds.includes(selectedListing.id)} currentUserId={user ? String(user.id) : null} onBack={() => goBack(previousView === 'detail' ? 'home' : previousView)} onToggleSaved={toggleSaved} onOpen={openListing} onContact={() => void openChat(selectedListing.id)} onSeller={() => openProfile(selectedListing.sellerId)} api={api} onRequireAuth={() => navigate('auth')} onRevealPhone={async (id) => {
+      {view === 'detail' && selectedListing && <ListingDetailPage key={selectedListing.id} listing={selectedListing} related={relatedListings} saved={savedIds.includes(selectedListing.id)} currentUserId={user?.status === 'ACTIVE' ? String(user.id) : null} onBack={() => goBack(previousView === 'detail' ? 'home' : previousView)} onToggleSaved={toggleSaved} onOpen={openListing} onContact={() => void openChat(selectedListing.id)} onSeller={() => openProfile(selectedListing.sellerId)} api={api} onRequireAuth={() => navigate('auth')} onRevealPhone={async (id) => {
         if (apiState !== 'connected') throw new Error('Backend chưa kết nối; không thể tải số điện thoại thật.')
+        if (user?.status === 'LOCKED') {
+          setNotice('Tài khoản đang bị khóa và không thể xem thông tin liên hệ.')
+          throw new Error('Tài khoản đang bị khóa.')
+        }
         if (!user) {
           setNotice('Đăng nhập để xem số điện thoại người bán.')
           navigate('auth')
@@ -846,7 +905,7 @@ export function App() {
       {view === 'check-in' && <CheckInPage userId={user?.id ?? null} onBack={() => goBack('home')} />}
       {view === 'buying-guide' && <BuyingGuidePage onBack={() => goBack('home')} onExplore={() => navigate('search')} onStartSelling={startNewListing} />}
       {view === 'safety-policy' && <SafetyPolicyPage onBack={() => goBack('home')} />}
-      {user && apiState === 'connected' && <div className={view === 'messages' ? '' : 'inbox-background-listener'} aria-hidden={view !== 'messages'}>
+      {user?.status === 'ACTIVE' && apiState === 'connected' && <div className={view === 'messages' ? '' : 'inbox-background-listener'} aria-hidden={view !== 'messages'}>
         <InboxPage api={api} user={user} initialConversationId={selectedConversationId} isVisible={view === 'messages'} onUnreadCountChange={updateUnreadMessageCount} onListingSold={(id) => setListings((current) => current.map((listing) => listing.id === id ? listing.withStatus('SOLD') : listing))} onOpenProfile={openProfile} onOpenListing={(id) => {
           const listing = listings.find((item) => item.id === id)
           if (listing) openListing(listing)

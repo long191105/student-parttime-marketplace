@@ -17,6 +17,7 @@ import com.example.demo.model.ListingStatus;
 import com.example.demo.model.UserAccount;
 import com.example.demo.model.UserNotification;
 import com.example.demo.model.UserNotificationType;
+import com.example.demo.model.UserReport;
 import com.example.demo.repository.UserNotificationRepository;
 
 @Service
@@ -110,5 +111,62 @@ public class UserNotificationService {
                 "Tin nhắn mới từ " + sender.getFullName(),
                 detail,
                 conversation.getId().toString()));
+    }
+
+    @Transactional
+    public void notifyReportRejected(UserReport report, String reason) {
+        notificationRepository.save(new UserNotification(
+                report.getReporter(),
+                UserNotificationType.REPORT_STATUS,
+                "Báo cáo vi phạm đã bị từ chối",
+                "Báo cáo #" + report.getId() + " về " + report.getReportedUser().getFullName()
+                        + " đã bị từ chối. Lý do: " + reason,
+                report.getId().toString()));
+    }
+
+    @Transactional
+    public void notifyInvestigationStarted(UserReport report) {
+        notificationRepository.save(new UserNotification(
+                report.getReporter(),
+                UserNotificationType.REPORT_STATUS,
+                "Báo cáo vi phạm đang được điều tra",
+                "Báo cáo #" + report.getId() + " đã được xác nhận để điều tra. Tài khoản bị báo cáo "
+                        + "đã được tạm khóa trong thời gian điều tra.",
+                report.getId().toString()));
+        notificationRepository.save(new UserNotification(
+                report.getReportedUser(),
+                UserNotificationType.ACCOUNT_STATUS,
+                "Tài khoản tạm thời bị khóa để điều tra",
+                "Chúng tôi đang điều tra báo cáo vi phạm liên quan đến tài khoản của bạn. Thời gian điều tra "
+                        + "dự kiến tối đa 24 giờ; tài khoản sẽ tiếp tục bị hạn chế cho đến khi quản trị viên "
+                        + "thông báo kết quả. Trong thời gian này, bạn chỉ có thể xem nội dung công khai và "
+                        + "thông báo, không thể đăng tin hoặc sử dụng chat.",
+                report.getId().toString()));
+    }
+
+    @Transactional
+    public void notifyInvestigationResolved(UserReport report, boolean permanentlyLocked) {
+        String result = permanentlyLocked
+                ? "Kết quả điều tra xác nhận tài khoản đã vi phạm. Tài khoản của bạn bị khóa vĩnh viễn."
+                : "Kết quả điều tra đã có: bạn không có vi phạm. Chúng tôi sẽ mở khóa tài khoản của bạn.";
+        String reporterDetail = permanentlyLocked
+                ? "Báo cáo #" + report.getId() + " đã được xử lý. Kết quả điều tra xác nhận có vi phạm "
+                        + "và tài khoản đã bị khóa vĩnh viễn."
+                : "Báo cáo #" + report.getId() + " đã được xử lý. Kết quả điều tra không xác nhận vi phạm "
+                        + "và tài khoản đã được mở khóa.";
+        notificationRepository.save(new UserNotification(
+                report.getReportedUser(),
+                UserNotificationType.ACCOUNT_STATUS,
+                permanentlyLocked ? "Tài khoản bị khóa vĩnh viễn" : "Tài khoản đã được mở khóa",
+                result + (permanentlyLocked
+                        ? " Bạn vẫn có thể xem nội dung công khai và thông báo."
+                        : ""),
+                report.getId().toString()));
+        notificationRepository.save(new UserNotification(
+                report.getReporter(),
+                UserNotificationType.REPORT_STATUS,
+                "Báo cáo vi phạm đã có kết quả",
+                reporterDetail,
+                report.getId().toString()));
     }
 }

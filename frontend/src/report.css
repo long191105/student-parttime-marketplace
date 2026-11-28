@@ -81,6 +81,11 @@
 .admin-user-report-section { display: grid; gap: 12px; margin-bottom: 28px; }
 .admin-user-report-section > .section-title-row { margin: 0; }
 .admin-user-report-section .section-title-row h2, .admin-legacy-report-heading h2 { margin: 3px 0 0; color: #3e493e; font-family: var(--display); font-size: 17px; }
+.admin-user-report-tabs { display: flex; flex-wrap: wrap; gap: 7px; padding: 5px; border: 1px solid #e8e9e1; border-radius: 7px; background: #f7f8f4; }
+.admin-user-report-tab { display: inline-flex; min-height: 34px; align-items: center; gap: 8px; padding: 0 11px; border: 1px solid transparent; border-radius: 5px; background: transparent; color: #697365; font-size: 11px; font-weight: 650; cursor: pointer; }
+.admin-user-report-tab span { display: grid; min-width: 20px; height: 20px; place-items: center; padding: 0 5px; border-radius: 10px; background: #ecefe8; color: #65715e; font-size: 10px; }
+.admin-user-report-tab-active { border-color: #dce5d5; background: #fffefa; color: #496644; box-shadow: 0 1px 3px rgb(25 35 25 / 5%); }
+.admin-user-report-tab-active span { background: #e8f0e2; color: #4b7044; }
 .admin-user-report-card { display: grid; gap: 14px; padding: 17px 18px; border: 1px solid #e8e9e1; border-radius: 8px; background: #fffefa; }
 .admin-user-report-card-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; }
 .admin-user-report-card-heading > div { display: grid; gap: 5px; }
@@ -89,7 +94,9 @@
 .user-report-status { flex: 0 0 auto; padding: 5px 8px; border-radius: 4px; font-size: 10px; font-weight: 700; }
 .user-report-status-pending { background: #fff3e5; color: #a2612e; }
 .user-report-status-reviewed { background: #edf2fb; color: #526e9a; }
+.user-report-status-investigating { background: #fff3e5; color: #a2612e; }
 .user-report-status-resolved { background: #edf5e9; color: #4c7544; }
+.user-report-status-cleared { background: #edf5e9; color: #4c7544; }
 .user-report-status-rejected { background: #f3f1ef; color: #77736f; }
 .admin-user-report-parties { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
 .admin-user-report-parties > span { display: grid; gap: 4px; padding: 10px; border-radius: 6px; background: #f7f8f4; }
@@ -97,6 +104,7 @@
 .admin-user-report-parties strong { color: #465044; font-size: 12px; }
 .admin-user-report-parties > span > small:last-child { color: #9a5d35; }
 .admin-user-report-description { margin: 0; color: #5e685d; font-size: 12px; line-height: 1.65; white-space: pre-wrap; overflow-wrap: anywhere; }
+.admin-user-report-resolution { margin: 0; padding: 9px 11px; border-radius: 5px; background: #f8f3f1; color: #7d5148; font-size: 11px; line-height: 1.5; }
 .admin-user-report-evidence { display: flex; flex-wrap: wrap; gap: 8px; }
 .admin-user-report-evidence img { display: block; width: 76px; height: 76px; border: 1px solid #e4e6de; border-radius: 5px; object-fit: cover; }
 .admin-user-report-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 7px; }
