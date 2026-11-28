@@ -125,6 +125,17 @@ public class UserNotificationService {
     }
 
     @Transactional
+    public void notifyReportAccepted(UserReport report) {
+        notificationRepository.save(new UserNotification(
+                report.getReporter(),
+                UserNotificationType.REPORT_STATUS,
+                "Báo cáo vi phạm đã được tiếp nhận",
+                "Báo cáo #" + report.getId() + " về " + report.getReportedUser().getFullName()
+                        + " đã được tiếp nhận và đang được xem xét. Chúng tôi sẽ thông báo khi có kết quả.",
+                report.getId().toString()));
+    }
+
+    @Transactional
     public void notifyInvestigationStarted(UserReport report) {
         notificationRepository.save(new UserNotification(
                 report.getReporter(),

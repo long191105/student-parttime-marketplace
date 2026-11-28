@@ -6,6 +6,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 
 import java.math.BigDecimal;
+import java.util.List;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -23,6 +24,9 @@ import com.example.demo.model.ListingStatus;
 import com.example.demo.model.UserAccount;
 import com.example.demo.model.UserNotification;
 import com.example.demo.model.UserNotificationType;
+import com.example.demo.model.UserReport;
+import com.example.demo.model.UserReportReason;
+import com.example.demo.model.UserReportSourceType;
 import com.example.demo.model.UserRole;
 import com.example.demo.repository.UserNotificationRepository;
 
@@ -115,5 +119,31 @@ class UserNotificationServiceTest {
 
         verify(notificationRepository).save(any(UserNotification.class));
         verifyNoInteractions(eventPublisher);
+    }
+
+    @Test
+    void notifiesReporterWhenTheirReportIsAccepted() {
+        UserAccount reporter = new UserAccount("Mai Tran", "mai@gmail.com", "hashed", null, UserRole.MEMBER);
+        UserAccount reportedUser = new UserAccount("Dung Nguyen", "dung@gmail.com", "hashed", null, UserRole.MEMBER);
+        UserReport report = new UserReport(
+                reporter,
+                reportedUser,
+                UserReportSourceType.PROFILE,
+                null,
+                null,
+                UserReportReason.HARASSMENT,
+                "Mô tả báo cáo đủ chi tiết để quản trị viên xem xét.",
+                List.of());
+        ReflectionTestUtils.setField(report, "id", 12L);
+
+        notificationService.notifyReportAccepted(report);
+
+        ArgumentCaptor<UserNotification> notificationCaptor = ArgumentCaptor.forClass(UserNotification.class);
+        verify(notificationRepository).save(notificationCaptor.capture());
+        UserNotification notification = notificationCaptor.getValue();
+        assertEquals(reporter, notification.getRecipient());
+        assertEquals(UserNotificationType.REPORT_STATUS, notification.getType());
+        assertEquals("Báo cáo vi phạm đã được tiếp nhận", notification.getTitle());
+        assertEquals("12", notification.getTargetId());
     }
 }
