@@ -196,6 +196,7 @@ public class UserReportService {
 
         if (currentStatus == UserReportStatus.PENDING && status == UserReportStatus.REVIEWED) {
             report.setStatus(status);
+            notificationService.notifyReportAccepted(report);
         } else if (currentStatus == UserReportStatus.REVIEWED && status == UserReportStatus.REJECTED) {
             String normalizedReason = reason == null ? "" : reason.trim();
             if (normalizedReason.isEmpty() || normalizedReason.length() > 500) {

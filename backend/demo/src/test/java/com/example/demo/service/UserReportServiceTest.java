@@ -164,7 +164,7 @@ class UserReportServiceTest {
 
         assertEquals("REVIEWED", result.status());
         verify(reportedUser, never()).setStatus(any());
-        verifyNoInteractions(notificationService);
+        verify(notificationService).notifyReportAccepted(report);
     }
 
     @Test
